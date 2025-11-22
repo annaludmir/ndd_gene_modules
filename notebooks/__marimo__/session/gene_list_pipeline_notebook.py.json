@@ -1,0 +1,28 @@
+{
+  "version": "1",
+  "metadata": {
+    "marimo_version": "0.17.8"
+  },
+  "cells": [
+    {
+      "id": "Hbol",
+      "code_hash": "e35f3f17d63f4a66665504ad42f8451d",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": [
+        {
+          "type": "stream",
+          "name": "stdout",
+          "text": "get_gmt script: imports done\ngmt file already exists, continue..\nNone\nNone\nstarting plotting ges results for gene list:  sysndd_id_abnormal_facial_shape_abnormal_heart_morphology_for_pipeline\nNone\n",
+          "mimetype": "text/plain"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,75 @@
+loading ...
+loaded conda.sh
+sh shell detected
+showing results from hsg_all_gene_set
+radialglia
+outpath:  /scratch200/reutj/data/ges_results/hsg_all_gene_set/radialglia/
+overlap: 206 hsg/har genes found in radialglia speceficity table. length of speceficity table=11859 genes
+0.2254
+hsg result for: radialglia is non significant
+proliferating
+outpath:  /scratch200/reutj/data/ges_results/hsg_all_gene_set/proliferating/
+overlap: 210 hsg/har genes found in proliferating speceficity table. length of speceficity table=12103 genes
+0.0805
+hsg result for: proliferating is non significant
+differentiating
+outpath:  /scratch200/reutj/data/ges_results/hsg_all_gene_set/differentiating/
+overlap: 203 hsg/har genes found in differentiating speceficity table. length of speceficity table=11607 genes
+0.3054
+hsg result for: differentiating is non significant
+IPC
+outpath:  /scratch200/reutj/data/ges_results/hsg_all_gene_set/IPC/
+overlap: 206 hsg/har genes found in IPC speceficity table. length of speceficity table=12021 genes
+0.124
+hsg result for: IPC is non significant
+NPCs
+outpath:  /scratch200/reutj/data/ges_results/hsg_all_gene_set/NPCs/
+overlap: 206 hsg/har genes found in NPCs speceficity table. length of speceficity table=12011 genes
+0.0192
+hsg result for: NPCs is significant!
+G1
+outpath:  /scratch200/reutj/data/ges_results/hsg_all_gene_set/G1/
+overlap: 203 hsg/har genes found in G1 speceficity table. length of speceficity table=12044 genes
+0.8681
+hsg result for: G1 is non significant
+S
+outpath:  /scratch200/reutj/data/ges_results/hsg_all_gene_set/S/
+overlap: 210 hsg/har genes found in S speceficity table. length of speceficity table=12361 genes
+0.2145
+hsg result for: S is non significant
+G2M
+outpath:  /scratch200/reutj/data/ges_results/hsg_all_gene_set/G2M/
+overlap: 213 hsg/har genes found in G2M speceficity table. length of speceficity table=12394 genes
+0.0017
+hsg result for: G2M is significant!
+PostM
+outpath:  /scratch200/reutj/data/ges_results/hsg_all_gene_set/PostM/
+overlap: 206 hsg/har genes found in PostM speceficity table. length of speceficity table=12011 genes
+0.0192
+hsg result for: PostM is significant!
+Neuron
+outpath:  /scratch200/reutj/data/ges_results/hsg_all_gene_set/Neuron/
+overlap: 203 hsg/har genes found in Neuron speceficity table. length of speceficity table=11801 genes
+0.1417
+hsg result for: Neuron is non significant
+Glioblast
+outpath:  /scratch200/reutj/data/ges_results/hsg_all_gene_set/Glioblast/
+overlap: 211 hsg/har genes found in Glioblast speceficity table. length of speceficity table=12089 genes
+0.6411
+hsg result for: Glioblast is non significant
+Neuroblast
+outpath:  /scratch200/reutj/data/ges_results/hsg_all_gene_set/Neuroblast/
+overlap: 197 hsg/har genes found in Neuroblast speceficity table. length of speceficity table=11252 genes
+0.326
+hsg result for: Neuroblast is non significant
+differentiating_non_cycling
+outpath:  /scratch200/reutj/data/ges_results/hsg_all_gene_set/differentiating_non_cycling/
+overlap: 203 hsg/har genes found in differentiating_non_cycling speceficity table. length of speceficity table=11602 genes
+0.2815
+hsg result for: differentiating_non_cycling is non significant
+proliferating_non_cycling
+outpath:  /scratch200/reutj/data/ges_results/hsg_all_gene_set/proliferating_non_cycling/
+overlap: 203 hsg/har genes found in proliferating_non_cycling speceficity table. length of speceficity table=11475 genes
+0.5406
+hsg result for: proliferating_non_cycling is non significant
+DONE

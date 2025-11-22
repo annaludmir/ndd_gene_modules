@@ -1,0 +1,347 @@
+{
+  "version": "1",
+  "metadata": {
+    "marimo_version": "0.17.8"
+  },
+  "cells": [
+    {
+      "id": "LyRK",
+      "code_hash": "1d0db38904205bec4d6f6f6a1f6cec3e",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "Hbol",
+      "code_hash": "4ed08b12ead71ddc05a1efbb6259075a",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "MJUe",
+      "code_hash": "bad13af6b15e719b8ff199bc3cd5e159",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "vblA",
+      "code_hash": "4e6666ba12fc43786b02efe8b752ba17",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/html": "<marimo-ui-element object-id='vblA-0' random-id='78a207c8-4a4e-f17f-8e8f-7e78559d8fc4'><marimo-table data-initial-value='[]' data-label='null' data-data='&quot;[{&#92;&quot;symbol&#92;&quot;:&#92;&quot;ALG12&#92;&quot;,&#92;&quot;ens&#92;&quot;:&#92;&quot;ENSG00000182858&#92;&quot;,&#92;&quot;name&#92;&quot;:&#92;&quot;ALG12&#92;&quot;,&#92;&quot;description&#92;&quot;:&#92;&quot;ALG12 alpha-1,6-mannosyltransferase [Source:HGNC Symbol;Acc:HGNC:19358]&#92;&quot;,&#92;&quot;namespace&#92;&quot;:&#92;&quot;ENTREZGENE,GENECARDS,HGNC,UNIPROT_GN,WIKIGENE&#92;&quot;},{&#92;&quot;symbol&#92;&quot;:&#92;&quot;ANKRD11&#92;&quot;,&#92;&quot;ens&#92;&quot;:&#92;&quot;ENSG00000167522&#92;&quot;,&#92;&quot;name&#92;&quot;:&#92;&quot;ANKRD11&#92;&quot;,&#92;&quot;description&#92;&quot;:&#92;&quot;ankyrin repeat domain containing 11 [Source:HGNC Symbol;Acc:HGNC:21316]&#92;&quot;,&#92;&quot;namespace&#92;&quot;:&#92;&quot;ENTREZGENE,GENECARDS,HGNC,UNIPROT_GN,WIKIGENE&#92;&quot;},{&#92;&quot;symbol&#92;&quot;:&#92;&quot;ARID1B&#92;&quot;,&#92;&quot;ens&#92;&quot;:&#92;&quot;ENSG00000049618&#92;&quot;,&#92;&quot;name&#92;&quot;:&#92;&quot;ARID1B&#92;&quot;,&#92;&quot;description&#92;&quot;:&#92;&quot;AT-rich interaction domain 1B [Source:HGNC Symbol;Acc:HGNC:18040]&#92;&quot;,&#92;&quot;namespace&#92;&quot;:&#92;&quot;ENTREZGENE,GENECARDS,HGNC,UNIPROT_GN,WIKIGENE&#92;&quot;},{&#92;&quot;symbol&#92;&quot;:&#92;&quot;AUTS2&#92;&quot;,&#92;&quot;ens&#92;&quot;:&#92;&quot;ENSG00000158321&#92;&quot;,&#92;&quot;name&#92;&quot;:&#92;&quot;AUTS2&#92;&quot;,&#92;&quot;description&#92;&quot;:&#92;&quot;activator of transcription and developmental regulator AUTS2 [Source:HGNC Symbol;Acc:HGNC:14262]&#92;&quot;,&#92;&quot;namespace&#92;&quot;:&#92;&quot;ENTREZGENE,GENECARDS,HGNC,UNIPROT_GN,WIKIGENE&#92;&quot;},{&#92;&quot;symbol&#92;&quot;:&#92;&quot;B3GLCT&#92;&quot;,&#92;&quot;ens&#92;&quot;:&#92;&quot;ENSG00000187676&#92;&quot;,&#92;&quot;name&#92;&quot;:&#92;&quot;B3GLCT&#92;&quot;,&#92;&quot;description&#92;&quot;:&#92;&quot;beta 3-glucosyltransferase [Source:HGNC Symbol;Acc:HGNC:20207]&#92;&quot;,&#92;&quot;namespace&#92;&quot;:&#92;&quot;ENTREZGENE,GENECARDS,HGNC,UNIPROT_GN,WIKIGENE&#92;&quot;},{&#92;&quot;symbol&#92;&quot;:&#92;&quot;BRAF&#92;&quot;,&#92;&quot;ens&#92;&quot;:&#92;&quot;ENSG00000157764&#92;&quot;,&#92;&quot;name&#92;&quot;:&#92;&quot;BRAF&#92;&quot;,&#92;&quot;description&#92;&quot;:&#92;&quot;B-Raf proto-oncogene, serine/threonine kinase [Source:HGNC Symbol;Acc:HGNC:1097]&#92;&quot;,&#92;&quot;namespace&#92;&quot;:&#92;&quot;ENTREZGENE,GENECARDS,HGNC,UNIPROT_GN,WIKIGENE&#92;&quot;},{&#92;&quot;symbol&#92;&quot;:&#92;&quot;BUB1B&#92;&quot;,&#92;&quot;ens&#92;&quot;:&#92;&quot;ENSG00000156970&#92;&quot;,&#92;&quot;name&#92;&quot;:&#92;&quot;BUB1B&#92;&quot;,&#92;&quot;description&#92;&quot;:&#92;&quot;BUB1 mitotic checkpoint serine/threonine kinase B [Source:HGNC Symbol;Acc:HGNC:1149]&#92;&quot;,&#92;&quot;namespace&#92;&quot;:&#92;&quot;ENTREZGENE,GENECARDS,HGNC,UNIPROT_GN,WIKIGENE&#92;&quot;},{&#92;&quot;symbol&#92;&quot;:&#92;&quot;CACNA1C&#92;&quot;,&#92;&quot;ens&#92;&quot;:&#92;&quot;ENSG00000151067&#92;&quot;,&#92;&quot;name&#92;&quot;:&#92;&quot;CACNA1C&#92;&quot;,&#92;&quot;description&#92;&quot;:&#92;&quot;calcium voltage-gated channel subunit alpha1 C [Source:HGNC Symbol;Acc:HGNC:1390]&#92;&quot;,&#92;&quot;namespace&#92;&quot;:&#92;&quot;ENTREZGENE,GENECARDS,HGNC,UNIPROT_GN,WIKIGENE&#92;&quot;},{&#92;&quot;symbol&#92;&quot;:&#92;&quot;CREBBP&#92;&quot;,&#92;&quot;ens&#92;&quot;:&#92;&quot;ENSG00000005339&#92;&quot;,&#92;&quot;name&#92;&quot;:&#92;&quot;CREBBP&#92;&quot;,&#92;&quot;description&#92;&quot;:&#92;&quot;CREB binding protein [Source:HGNC Symbol;Acc:HGNC:2348]&#92;&quot;,&#92;&quot;namespace&#92;&quot;:&#92;&quot;ENTREZGENE,GENECARDS,HGNC,UNIPROT_GN,WIKIGENE&#92;&quot;},{&#92;&quot;symbol&#92;&quot;:&#92;&quot;DHCR24&#92;&quot;,&#92;&quot;ens&#92;&quot;:&#92;&quot;ENSG00000116133&#92;&quot;,&#92;&quot;name&#92;&quot;:&#92;&quot;DHCR24&#92;&quot;,&#92;&quot;description&#92;&quot;:&#92;&quot;24-dehydrocholesterol reductase [Source:HGNC Symbol;Acc:HGNC:2859]&#92;&quot;,&#92;&quot;namespace&#92;&quot;:&#92;&quot;ENTREZGENE,GENECARDS,HGNC,UNIPROT_GN,WIKIGENE&#92;&quot;}]&quot;' data-total-rows='263' data-total-columns='5' data-max-columns='50' data-banner-text='&quot;&quot;' data-pagination='true' data-page-size='10' data-field-types='[[&quot;symbol&quot;,[&quot;string&quot;,&quot;object&quot;]],[&quot;ens&quot;,[&quot;string&quot;,&quot;object&quot;]],[&quot;name&quot;,[&quot;string&quot;,&quot;object&quot;]],[&quot;description&quot;,[&quot;string&quot;,&quot;object&quot;]],[&quot;namespace&quot;,[&quot;string&quot;,&quot;object&quot;]]]' data-show-filters='true' data-show-download='true' data-show-column-summaries='true' data-show-data-types='true' data-show-page-size-selector='true' data-show-column-explorer='true' data-show-chart-builder='true' data-row-headers='[]' data-has-stable-row-id='false' data-lazy='false' data-preload='false'></marimo-table></marimo-ui-element>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "PyNX",
+      "code_hash": "63d9b9c4cd3580c843055942ee861643",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"playing-around-with-the-data\">Playing Around With The Data</h1></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "bkHC",
+      "code_hash": "ad15df613b18ac8b1a1f0bcbe7b31983",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "PKri",
+      "code_hash": "066e5aa1acebdb20ae7de3ceb2468171",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "Xref",
+      "code_hash": "37d5994445fe33142c5d80b9fa1db7c5",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "SFPL",
+      "code_hash": "337b8068a1c54bdc98db487c247707fb",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "BYtC",
+      "code_hash": "437d1a463025ff32b17e1d1eafc9ea44",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "RGSE",
+      "code_hash": "0a11961d9391c17d8ad4e5b9de3f0444",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "Kclp",
+      "code_hash": "6b5c7e50959145e8f584be0386765487",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "emfo",
+      "code_hash": "3b5e8dbf1d14c35c99ac2d7cefd7fc80",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "Hstk",
+      "code_hash": "5bbf10781915c5837fca720da9eef12e",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "nWHF",
+      "code_hash": "17933517c0777fa955ece1ead1cdec60",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "iLit",
+      "code_hash": "9471d2285a2462a332a8d1c2a4f02aaa",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "ZHCJ",
+      "code_hash": "da09f1fc00b271a9d3eb27f21b4b5f5e",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "ROlb",
+      "code_hash": "c6f3b6f4e08e8351166c4b99d5e1226e",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "qnkX",
+      "code_hash": "05a16b829abbd19c206e475c8df273c4",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "TqIu",
+      "code_hash": "4cdd93cc54d6cce2118e22e39291e408",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "Vxnm",
+      "code_hash": "206fdea091a857552f791a550e8b59ac",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "DnEU",
+      "code_hash": "c7bf9e0bd0d9977a407c690014aff08e",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "ulZA",
+      "code_hash": "8967efc48ea4e9086930c76720fc8fcc",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "ecfG",
+      "code_hash": "b182d6c420f532bf37dc93a0a0728644",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "Pvdt",
+      "code_hash": "4d9d689986d15d681ac0e1f8da98f8ff",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "oPae",
+      "code_hash": "0e067fa17f595ef05ac131fa8ac04061",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"running-ges-score-and-pipeline\">Running GES Score and Pipeline</h1></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "ZBYS",
+      "code_hash": "d3c93dacfd1719365ac92a7de6e02cab",
+      "outputs": [
+        {
+          "type": "error",
+          "ename": "exception",
+          "evalue": "Command '['python', '-u', './notebooks/ges_score_corrected_no_permutations.py', \"['region_general']\", \"['radialglia','Cerebellum','Diencephalon','Fibroblast','Glioblast','Forebrain_general','hindbrain_general','Immune','Midbrain_general','Neural_crest','IPC','Neuroblast','Neuron','Oligo','Forebrain','Hindbrain','Placodes','Pons','Medulla','Telencephalon','Vascular']\", 'data_all', '/miridan-data/annaludmir/data/ges_results/']' returned non-zero exit status 1.",
+          "traceback": []
+        }
+      ],
+      "console": [
+        {
+          "type": "stream",
+          "name": "stdout",
+          "text": "STDOUT:\n imports done\nstarting running\ndata uploaded\ndata loaded in 32.76 seconds.\npreprocessing done in 727.83 seconds\n\n\nSTDERR:\n /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new/lib/python3.10/site-packages/scanpy/preprocessing/_simple.py:170: ImplicitModificationWarning: Trying to modify attribute `.obs` of view, initializing view as actual.\n  adata.obs[\"n_genes\"] = number\nTraceback (most recent call last):\n  File \"/miridan-data/annaludmir/conda-envs/jupyter-scanpy_new/lib/python3.10/site-packages/pandas/core/indexes/base.py\", line 3805, in get_loc\n    return self._engine.get_loc(casted_key)\n  File \"index.pyx\", line 167, in pandas._libs.index.IndexEngine.get_loc\n  File \"index.pyx\", line 196, in pandas._libs.index.IndexEngine.get_loc\n  File \"pandas/_libs/hashtable_class_helper.pxi\", line 7081, in pandas._libs.hashtable.PyObjectHashTable.get_item\n  File \"pandas/_libs/hashtable_class_helper.pxi\", line 7089, in pandas._libs.hashtable.PyObjectHashTable.get_item\nKeyError: \"'region_general'\"\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/miridan-data/annaludmir/./notebooks/ges_score_corrected_no_permutations.py\", line 159, in <module>\n    cell_types=adata.obs[i].unique().tolist()\n  File \"/miridan-data/annaludmir/conda-envs/jupyter-scanpy_new/lib/python3.10/site-packages/pandas/core/frame.py\", line 4102, in __getitem__\n    indexer = self.columns.get_loc(key)\n  File \"/miridan-data/annaludmir/conda-envs/jupyter-scanpy_new/lib/python3.10/site-packages/pandas/core/indexes/base.py\", line 3812, in get_loc\n    raise KeyError(key) from err\nKeyError: \"'region_general'\"\n\n",
+          "mimetype": "text/plain"
+        },
+        {
+          "type": "stream",
+          "name": "stderr",
+          "text": "<span class=\"codehilite\"><div class=\"highlight\"><pre><span></span><span class=\"gt\">Traceback (most recent call last):</span>\n  File <span class=\"nb\">&quot;/tmp/marimo_2599304/__marimo__cell_ZBYS_.py&quot;</span>, line <span class=\"m\">13</span>, in <span class=\"n\">&lt;module&gt;</span>\n<span class=\"w\">    </span><span class=\"n\">result</span> <span class=\"o\">=</span> <span class=\"n\">subprocess</span><span class=\"o\">.</span><span class=\"n\">run</span><span class=\"p\">(</span>\n  File <span class=\"nb\">&quot;/miridan-data/annaludmir/conda-envs/jupyter-scanpy_new/lib/python3.10/subprocess.py&quot;</span>, line <span class=\"m\">526</span>, in <span class=\"n\">run</span>\n<span class=\"w\">    </span><span class=\"k\">raise</span> <span class=\"n\">CalledProcessError</span><span class=\"p\">(</span><span class=\"n\">retcode</span><span class=\"p\">,</span> <span class=\"n\">process</span><span class=\"o\">.</span><span class=\"n\">args</span><span class=\"p\">,</span>\n<span class=\"gr\">subprocess.CalledProcessError</span>: <span class=\"n\">Command &#39;[&#39;python&#39;, &#39;-u&#39;, &#39;./notebooks/ges_score_corrected_no_permutations.py&#39;, &quot;[&#39;region_general&#39;]&quot;, &quot;[&#39;radialglia&#39;,&#39;Cerebellum&#39;,&#39;Diencephalon&#39;,&#39;Fibroblast&#39;,&#39;Glioblast&#39;,&#39;Forebrain_general&#39;,&#39;hindbrain_general&#39;,&#39;Immune&#39;,&#39;Midbrain_general&#39;,&#39;Neural_crest&#39;,&#39;IPC&#39;,&#39;Neuroblast&#39;,&#39;Neuron&#39;,&#39;Oligo&#39;,&#39;Forebrain&#39;,&#39;Hindbrain&#39;,&#39;Placodes&#39;,&#39;Pons&#39;,&#39;Medulla&#39;,&#39;Telencephalon&#39;,&#39;Vascular&#39;]&quot;, &#39;data_all&#39;, &#39;/miridan-data/annaludmir/data/ges_results/&#39;]&#39; returned non-zero exit status 1.</span>\n</pre></div>\n</span>",
+          "mimetype": "application/vnd.marimo+traceback"
+        }
+      ]
+    },
+    {
+      "id": "aLJB",
+      "code_hash": "9d487d82c1918f6e8a8f57771123db66",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "JyOE",
+      "code_hash": "bdaecd8c76f0e0b6e77496694d4b99ad",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"analyzing-results\">Analyzing Results</h1></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "nHfw",
+      "code_hash": "bd50e5b6a07e51f96609ce00dc9fbc9f",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "xXTn",
+      "code_hash": "17301d35e4d0b778a9823ee8459845fc",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "AjVT",
+      "code_hash": "8764a0d1d7b9f534aa52cc3fcb631206",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "pHFh",
+      "code_hash": "e3da95a18d852fc83f5abdd6572a17b0",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "NCOB",
+      "code_hash": "af79dfc2b6024c09af7fcee8b67a76c0",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "aqbW",
+      "code_hash": "2133f9e04923f1826f48bd98f4722a79",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "TRpd",
+      "code_hash": "01883f0953e27c4cf1fe915460a44c8d",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "TXez",
+      "code_hash": "4075876cee8a17a77147b5448b2c40e4",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "dNNg",
+      "code_hash": "3f07fe1d8135ba26d28035f4ecb46743",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "yCnT",
+      "code_hash": "2b1bf33f680a0e804e7655954da3eae7",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "wlCL",
+      "code_hash": "2db96847d27a130346563b605960fd25",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "kqZH",
+      "code_hash": "8430a8bc4829bdacde736dcdb066f639",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "wAgl",
+      "code_hash": "2f879c05c0e876d6dc8bc1afbef3b094",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "rEll",
+      "code_hash": "5113848ef16f601f6b2f0823951069cb",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "dGlV",
+      "code_hash": "d21b52b536ad8a7f2b7687645ff4bf89",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "SdmI",
+      "code_hash": "a5a96abaaba16e2ce76fdf5c9cb6f9db",
+      "outputs": [],
+      "console": []
+    }
+  ]
+}

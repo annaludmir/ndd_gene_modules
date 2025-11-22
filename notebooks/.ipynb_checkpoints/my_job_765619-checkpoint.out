@@ -1,0 +1,147 @@
+loading ...
+loaded conda.sh
+sh shell detected
+RG_other
+Gene
+METTL26    8.849079
+EXOSC7     8.539935
+COPZ1      8.417384
+POLG2      8.259785
+GPATCH4    8.264674
+Name: stat, dtype: float64
+outpath:  /scratch200/reutj/data/deseq2_RG_other/
+0.8936
+hsg result for: RG_other is non significant
+0.113
+har result for: RG_other is non significant
+IPC_other
+Gene
+INIP        15.561409
+ZNF519      14.590908
+EIF4EBP2    11.958134
+EMSY        11.143254
+FAM76B      11.120901
+Name: stat, dtype: float64
+outpath:  /scratch200/reutj/data/deseq2_IPC_other/
+0.5035
+hsg result for: IPC_other is non significant
+0.0002
+har result for: IPC_other is significant!
+differentiting_proliferating
+Gene
+MAPT     23.883003
+SNCB     23.316475
+HSDL1    22.674339
+SFXN3    22.661017
+YPEL4    22.141285
+Name: stat, dtype: float64
+outpath:  /scratch200/reutj/data/deseq2_differentiting_proliferating/
+0.014
+hsg result for: differentiting_proliferating is significant!
+0.0
+har result for: differentiting_proliferating is significant!
+NPCs_other
+Gene
+SAPCD2        20.764464
+LSM5          20.281053
+PIF1          18.769263
+AC106820.5    18.354908
+CCNF          18.244175
+Name: stat, dtype: float64
+outpath:  /scratch200/reutj/data/deseq2_NPCs_other/
+0.5069
+hsg result for: NPCs_other is non significant
+0.0098
+har result for: NPCs_other is significant!
+G1_other
+Gene
+GNPDA1        10.462445
+AL357055.3    10.081533
+NPEPL1         8.958234
+PPARA          8.596426
+HDDC3          8.563453
+Name: stat, dtype: float64
+outpath:  /scratch200/reutj/data/deseq2_G1_other/
+0.0112
+hsg result for: G1_other is significant!
+0.0675
+har result for: G1_other is non significant
+S_other
+Gene
+NUP160    11.959898
+TTF1      10.390063
+BRD2      10.342168
+DIAPH1     9.352176
+HAUS2      9.211211
+Name: stat, dtype: float64
+outpath:  /scratch200/reutj/data/deseq2_S_other/
+0.2012
+hsg result for: S_other is non significant
+0.5052
+har result for: S_other is non significant
+G2M_other
+Gene
+WSB1      18.775453
+PIBF1     18.002705
+CEP164    17.176628
+IFNAR1    16.545309
+PILRB     16.494474
+Name: stat, dtype: float64
+outpath:  /scratch200/reutj/data/deseq2_G2M_other/
+0.0707
+hsg result for: G2M_other is non significant
+0.0
+har result for: G2M_other is significant!
+SG2M_other
+Gene
+FAM76B      19.748173
+HIST1H4C    19.179094
+CMC2        18.502367
+METTL4      17.199634
+FKBPL       16.966876
+Name: stat, dtype: float64
+outpath:  /scratch200/reutj/data/deseq2_SG2M_other/
+0.6137
+hsg result for: SG2M_other is non significant
+0.0211
+har result for: SG2M_other is significant!
+Neuron_other
+Gene
+C8orf34-AS1    12.305411
+LCLAT1         10.795093
+KRT31          10.586743
+DGKD           10.531873
+HIVEP2         10.377072
+Name: stat, dtype: float64
+outpath:  /scratch200/reutj/data/deseq2_Neuron_other/
+0.1646
+hsg result for: Neuron_other is non significant
+0.0
+har result for: Neuron_other is significant!
+Glioblast_other
+Gene
+AC007666.1    10.315454
+WNT11          9.436319
+HBEGF          8.201170
+EHD2           8.018233
+MAPK3          7.512994
+Name: stat, dtype: float64
+outpath:  /scratch200/reutj/data/deseq2_Glioblast_other/
+0.0509
+hsg result for: Glioblast_other is non significant
+0.1461
+har result for: Glioblast_other is non significant
+Neuroblast_other
+Gene
+LHX5-AS1      11.002295
+AC005064.1     9.750771
+AC012464.1     9.384447
+LAMC1-AS1      9.413344
+PEPD           8.929709
+Name: stat, dtype: float64
+outpath:  /scratch200/reutj/data/deseq2_Neuroblast_other/
+0.1666
+hsg result for: Neuroblast_other is non significant
+0.0015
+har result for: Neuroblast_other is significant!
+DONE

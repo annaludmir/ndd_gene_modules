@@ -1,0 +1,28 @@
+{
+  "version": "1",
+  "metadata": {
+    "marimo_version": "0.17.8"
+  },
+  "cells": [
+    {
+      "id": "Hbol",
+      "code_hash": "df360e06dfb6b2748faf0eca146c1e68",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": [
+        {
+          "type": "stream",
+          "name": "stdout",
+          "text": "imports done\nstarting running\ndata uploaded\ndata loaded in 95.41 seconds.\npreprocessing done in 363.39 seconds\n[\"b'Forebrain_general'\", \"b'Midbrain_general'\", \"b'hindbrain_general'\", \"b'Head'\", \"b'Brain'\"]\nradialglia\nCerebellum\nDiencephalon\nFibroblast\nGlioblast\nForebrain_general\nhindbrain_general\nImmune\nMidbrain_general\nNeural_crest\nIPC\nNeuroblast\nNeuron\nOligo\nForebrain\nHindbrain\nPlacodes\nPons\nMedulla\nTelencephalon\nVascular\nDONE\n",
+          "mimetype": "text/plain"
+        }
+      ]
+    }
+  ]
+}

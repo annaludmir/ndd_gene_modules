@@ -1,0 +1,447 @@
+loading ...
+loaded conda.sh
+sh shell detected
+imports done
+data loaded
+data loaded and preprocessed in 224.39 seconds
+reading psb data
+starting deseq analysis on Cell-cycle-phase
+finished_creating_dds_obsect_for_Cell-cycle-phase in 41.13 seconds 
+starting analysis for comparison: ('Non-cycling', 'PostM')
+summarizing scores
+Log2 fold change & Wald test p-value: Cell-cycle-phase Non-cycling vs PostM
+               baseMean  log2FoldChange  ...        pvalue          padj
+Gene                                     ...                            
+CFAP52         8.798257        0.077360  ...  8.847145e-01  9.219116e-01
+TP73          31.924896        2.868043  ...  4.285666e-06  1.705928e-05
+LHX1         112.743085        3.325443  ...  4.575538e-11  3.323524e-10
+CFAP126       24.887591        0.900416  ...  9.200930e-02  1.545439e-01
+BHMT          10.388782        0.168688  ...  7.735912e-01  8.395173e-01
+...                 ...             ...  ...           ...           ...
+ADORA2A-AS1   10.826945        0.769477  ...  5.157009e-03  1.216183e-02
+ENTPD4       579.776715        0.294250  ...  3.746004e-07  1.722734e-06
+LINC01833     18.235934        0.813628  ...  1.448012e-01  2.272637e-01
+C5orf46        2.018312       -1.324650  ...  8.843250e-02  1.494210e-01
+LPAR5          3.919139        1.505885  ...  2.425988e-03  6.122745e-03
+
+[30251 rows x 6 columns]
+saved results to /scratch200/reutj/data/deseq2/deseq_results_Non-cycling_PostM
+length sig results:  1112
+printing fisher exact results for Non-cycling vs PostM
+hsg genes results:  (['CORO1A', 'CNTNAP2', 'ARHGAP15', 'PCDH15', 'RGS6', 'ST6GAL2', 'FAM228A', 'MAPT', 'CD8A', 'TPPP', 'FMNL1', 'AFF3', 'PRKCH', 'AC022679.2', 'PCDHB6', 'OBSCN', 'TCAF2', 'MIR137HG', 'ADARB1', 'GPRIN2', 'NBEA', 'SATB2-AS1'], np.float64(0.1249619455330211))
+har genes results:  (['RAPGEF5', 'TMEM179', 'SMIM22', 'CPLX1', 'DOC2B', 'EFNA5', 'REEP1', 'ABLIM1', 'CHL1-AS1', 'EDIL3', 'SHISA6', 'ZEB2', 'KIF26A', 'COL15A1', 'HAS3', 'NTM', 'NFASC', 'BTNL9', 'THSD7B', 'CHL1', 'ARHGAP15', 'DSCAML1', 'RGS6', 'SLC8A1', 'ENOX1', 'KLHL29', 'CHRNB4', 'NRXN1', 'MDGA1', 'EBF3', 'ADCYAP1', 'LINC00599', 'SIX3', 'SGCZ', 'TPPP', 'PRMT8', 'CALY', 'AFF3', 'MAFA', 'POU2F2', 'SLC45A1', 'KCNJ5', 'UNCX', 'RGS17', 'PLA2G4C', 'TBR1', 'SLC4A10', 'FOXQ1', 'MYO5B', 'CBFA2T3', 'ZBTB18', 'SCG5', 'PPEF1', 'SLCO3A1', 'KCTD12', 'CDH13', 'LHX5', 'PPP2R2B', 'ARRB1', 'CPS1'], np.float64(1.2615694553844191e-09))
+length sig results:  474
+printing fisher exact results for PostM vs Non-cycling
+hsg genes results:  (['NBPF10', 'ZNF492', 'SPAG5', 'ASPM', 'ZFP36L1', 'ARHGAP11A', 'FAM72B', 'OXGR1', 'NEK2', 'FAM72C', 'KIF18A', 'FAM72D'], np.float64(0.051881788074544646))
+har genes results:  (['TACC3', 'CDT1', 'SKA3', 'BUB1', 'RHPN1-AS1', 'MND1', 'MELK', 'ARHGAP11A', 'SUV39H1'], np.float64(0.7557107446228493))
+finished analysis for pair ('Non-cycling', 'PostM') in 2.44 seconds
+starting analysis for comparison: ('Non-cycling', 'S')
+summarizing scores
+Log2 fold change & Wald test p-value: Cell-cycle-phase Non-cycling vs S
+               baseMean  log2FoldChange  ...        pvalue          padj
+Gene                                     ...                            
+CFAP52         8.798257        3.638529  ...  8.497280e-09  3.600493e-08
+TP73          31.924896        3.075495  ...  3.613777e-07  1.304664e-06
+LHX1         112.743085        3.530035  ...  1.375276e-12  7.941955e-12
+CFAP126       24.887591        3.230455  ...  6.937335e-09  2.962567e-08
+BHMT          10.388782        0.221150  ...  6.893853e-01  7.597455e-01
+...                 ...             ...  ...           ...           ...
+ADORA2A-AS1   10.826945        0.737012  ...  7.950705e-04  1.876613e-03
+ENTPD4       579.776715        0.294970  ...  3.421301e-08  1.367003e-07
+LINC01833     18.235934        1.662584  ...  2.130054e-03  4.700654e-03
+C5orf46        2.018312       -1.488687  ...  2.558828e-02  4.569136e-02
+LPAR5          3.919139        0.976095  ...  9.462186e-03  1.849752e-02
+
+[30251 rows x 6 columns]
+saved results to /scratch200/reutj/data/deseq2/deseq_results_Non-cycling_S
+length sig results:  1311
+printing fisher exact results for Non-cycling vs S
+hsg genes results:  (['CNTNAP2', 'PCDHB12', 'ARHGAP15', 'PCDH15', 'PCDHB14', 'RGS6', 'ST6GAL2', 'FAM228A', 'LEPR', 'MAPT', 'CD8A', 'TPPP', 'FMNL1', 'AC022679.2', 'SPANXA2-OT1', 'NLN', 'PCDHB6', 'MIR137HG', 'ADARB1', 'NBEA', 'PCDHB10', 'OPRM1', 'SYT2', 'RARA-AS1', 'SATB2-AS1'], np.float64(0.15483556901042456))
+har genes results:  (['SMIM22', 'CPLX1', 'DOC2B', 'ZNF503-AS2', 'ANTXR2', 'CHL1-AS1', 'ABLIM1', 'CCDC24', 'EDIL3', 'SHISA6', 'KIF26A', 'ZEB2', 'COL15A1', 'NTM', 'NFASC', 'ARHGAP15', 'THSD7B', 'CHL1', 'DSCAML1', 'RGS6', 'ENOX1', 'CHRNB4', 'NRXN1', 'DTX1', 'MDGA1', 'EBF3', 'ADCYAP1', 'LINC00599', 'SIX3', 'LEPR', 'SGCZ', 'TPPP', 'PRMT8', 'CALY', 'MAFA', 'POU2F2', 'SLC45A1', 'KCNJ5', 'UNCX', 'PLA2G4C', 'TBR1', 'SLC4A10', 'FOXQ1', 'MYO5B', 'CBFA2T3', 'GOLGA6L2', 'ZBTB18', 'SCG5', 'PPEF1', 'ELFN1', 'KCTD12', 'CDH13', 'LHX5', 'PPP2R2B', 'ARRB1', 'SPON2'], np.float64(1.1472218687914036e-05))
+length sig results:  797
+printing fisher exact results for S vs Non-cycling
+hsg genes results:  (['CDK5RAP2', 'CCDC74B', 'ASPM', 'ZNF492', 'ANKRD20A4', 'FAM72B', 'NEK2', 'FAM72C', 'SPAG5', 'FAM95B1', 'ELN', 'PRIM2', 'OXGR1', 'KIF18A', 'DDX11', 'FAM72D', 'RIBC2', 'NBPF10', 'ARHGAP11A', 'CDH12'], np.float64(0.01566887557652865))
+har genes results:  (['NEDD4', 'RRM1', 'DONSON', 'SUV39H1', 'FANCA', 'FKBP5', 'TACC3', 'CDT1', 'NUP210', 'PRIM2', 'RPA3', 'NXPH2', 'CNTLN', 'SKA3', 'BUB1', 'MND1', 'MELK', 'ARHGAP11A', 'PLP2'], np.float64(0.8106018219950497))
+finished analysis for pair ('Non-cycling', 'S') in 2.12 seconds
+starting analysis for comparison: ('Non-cycling', 'G1')
+summarizing scores
+Log2 fold change & Wald test p-value: Cell-cycle-phase Non-cycling vs G1
+               baseMean  log2FoldChange  ...        pvalue          padj
+Gene                                     ...                            
+CFAP52         8.798257        2.512289  ...  1.219978e-05  3.692751e-05
+TP73          31.924896        3.713106  ...  1.602651e-09  7.239278e-09
+LHX1         112.743085        3.489406  ...  2.591149e-12  1.475442e-11
+CFAP126       24.887591        2.147192  ...  5.644552e-05  1.569953e-04
+BHMT          10.388782        0.235169  ...  6.714242e-01  7.477704e-01
+...                 ...             ...  ...           ...           ...
+ADORA2A-AS1   10.826945        0.937209  ...  4.562425e-05  1.284499e-04
+ENTPD4       579.776715        0.362636  ...  1.760780e-11  9.397695e-11
+LINC01833     18.235934        1.577667  ...  4.004698e-03  8.513316e-03
+C5orf46        2.018312       -1.477997  ...  2.992391e-02  5.313704e-02
+LPAR5          3.919139        0.854954  ...  2.313159e-02  4.225051e-02
+
+[30251 rows x 6 columns]
+saved results to /scratch200/reutj/data/deseq2/deseq_results_Non-cycling_G1
+length sig results:  1186
+printing fisher exact results for Non-cycling vs G1
+hsg genes results:  (['CNTNAP2', 'ARHGAP15', 'PCDH15', 'PCDHB14', 'RGS6', 'ST6GAL2', 'FAM228A', 'OTUD7A', 'LEPR', 'MAPT', 'CD8A', 'TPPP', 'FMNL1', 'AFF3', 'PRKCH', 'AC022679.2', 'TCAF2', 'MIR137HG', 'ADARB1', 'NBEA', 'PCDHB10', 'SLC12A5', 'SATB2-AS1'], np.float64(0.16989577433960373))
+har genes results:  (['RAPGEF5', 'SMIM22', 'CPLX1', 'DOC2B', 'ZNF503-AS2', 'ANTXR2', 'CHL1-AS1', 'ABLIM1', 'EDIL3', 'SHISA6', 'ZEB2', 'KIF26A', 'COL15A1', 'BTNL9', 'NTM', 'NFASC', 'ARHGAP15', 'THSD7B', 'CHL1', 'DSCAML1', 'RGS6', 'SLC8A1', 'ENOX1', 'KLHL29', 'CHRNB4', 'NRXN1', 'DTX1', 'MDGA1', 'EBF3', 'CDH22', 'ADCYAP1', 'LINC00599', 'SIX3', 'LEPR', 'CCM2L', 'SGCZ', 'TPPP', 'PRMT8', 'CALY', 'AFF3', 'MAFA', 'POU2F2', 'KCNJ5', 'RGS17', 'PLA2G4C', 'TBR1', 'SLC4A10', 'FOXQ1', 'MYO5B', 'CBFA2T3', 'ZBTB18', 'SCG5', 'ELFN1', 'KCTD12', 'CDH13', 'LHX5', 'EOMES', 'PPP2R2B', 'ARRB1'], np.float64(4.9776253703752334e-08))
+length sig results:  962
+printing fisher exact results for G1 vs Non-cycling
+hsg genes results:  (['MICA', 'ASPM', 'GYPC', 'ZNF492', 'ZFP36L1', 'FAM72B', 'FAM72C', 'NAT1', 'NEK2', 'PARP4', 'SPAG5', 'FAM95B1', 'ELN', 'PRIM2', 'PMP2', 'OXGR1', 'KIF18A', 'DDX11', 'FAM72D', 'RIBC2', 'NBPF10', 'PRKCB', 'ARHGAP11A'], np.float64(0.01864564904855516))
+har genes results:  (['FOLH1', 'CLDN18', 'GLI3', 'ITGB4', 'POU6F2', 'GSDMD', 'RAD51B', 'NEDD4', 'STK3', 'RHPN1-AS1', 'RRM1', 'SLFN11', 'DONSON', 'SUV39H1', 'NAT1', 'FANCA', 'TACC3', 'MYCBP', 'NPAS3', 'CDT1', 'NUP210', 'HES1', 'PRIM2', 'RPA3', 'NXPH2', 'SKA3', 'BUB1', 'MND1', 'MELK', 'ARHGAP11A', 'CDH23'], np.float64(0.06186315191480618))
+finished analysis for pair ('Non-cycling', 'G1') in 2.46 seconds
+starting analysis for comparison: ('Non-cycling', 'G2M')
+summarizing scores
+Log2 fold change & Wald test p-value: Cell-cycle-phase Non-cycling vs G2M
+               baseMean  log2FoldChange  ...        pvalue          padj
+Gene                                     ...                            
+CFAP52         8.798257        3.615830  ...  3.739349e-05  1.059345e-04
+TP73          31.924896        4.311632  ...  1.918405e-09  8.406213e-09
+LHX1         112.743085        3.951474  ...  5.445626e-14  3.390059e-13
+CFAP126       24.887591        2.954639  ...  3.800702e-06  1.212761e-05
+BHMT          10.388782        1.647693  ...  2.168797e-02  3.986568e-02
+...                 ...             ...  ...           ...           ...
+ADORA2A-AS1   10.826945        0.882468  ...  4.404278e-03  9.224911e-03
+ENTPD4       579.776715        0.180519  ...  2.844507e-03  6.159055e-03
+LINC01833     18.235934        1.554452  ...  1.886560e-02  3.512011e-02
+C5orf46        2.018312       -1.142157  ...  2.141648e-01  2.980259e-01
+LPAR5          3.919139        1.073025  ...  3.074765e-02  5.463559e-02
+
+[30251 rows x 6 columns]
+saved results to /scratch200/reutj/data/deseq2/deseq_results_Non-cycling_G2M
+length sig results:  1592
+printing fisher exact results for Non-cycling vs G2M
+hsg genes results:  (['CORO1A', 'CNTNAP2', 'PI4KA', 'PTPN20', 'ARHGAP15', 'RGS6', 'SLC6A15', 'MAL2', 'ST6GAL2', 'FAM228A', 'GRIN3A', 'MAPT', 'CD8A', 'TPPP', 'FMNL1', 'AC022679.2', 'PRKCH', 'NLN', 'OBSCN', 'TCAF2', 'GADD45G', 'MIR137HG', 'ADARB1', 'GPRIN2', 'NBEA', 'SLC12A5', 'OPRM1', 'SYT2', 'RARA-AS1', 'SATB2-AS1'], np.float64(0.131101734321721))
+har genes results:  (['ABLIM1', 'CHL1-AS1', 'EDIL3', 'SHISA6', 'ZEB2', 'COL15A1', 'CCDC136', 'BTNL9', 'DSCAML1', 'KLHL29', 'CHRNB4', 'MDGA1', 'LINC00599', 'SIX3', 'TPPP', 'SLC45A1', 'PLA2G4C', 'LINC01141', 'CDH13', 'LHX5', 'SPON2', 'RSPO3', 'MDGA2', 'TMEM179', 'PPP1R13B', 'CPLX1', 'PCDH1', 'ZNF503-AS2', 'KIF26A', 'NTM', 'NFASC', 'THSD7B', 'CHL1', 'RGS6', 'SLC8A1', 'GMDS', 'NRXN1', 'IGFBP3', 'EBF3', 'ADCYAP1', 'MRM1', 'PRMT8', 'CALY', 'MAFA', 'KCNJ5', 'KCNIP2', 'SLC4A10', 'FOXQ1', 'ARRB1', 'RAPGEF5', 'SMIM22', 'ANTXR2', 'CCDC24', 'ARHGAP15', 'DTX1', 'POU2F2', 'FGF14', 'RGS17', 'TBR1', 'ANKRD44', 'ALK', 'ZBTB18', 'SCG5', 'PPEF1', 'ELFN1', 'KCTD12', 'PPP2R2B', 'DOC2B', 'REEP1', 'EIF4EBP1', 'WIPI1', 'ENOX1', 'CCM2L', 'SGCZ', 'UNCX', 'MYO5B', 'ARHGEF4', 'CBFA2T3', 'PTPRT'], np.float64(1.5960401531155892e-10))
+length sig results:  901
+printing fisher exact results for G2M vs Non-cycling
+hsg genes results:  (['NBPF10', 'ZNF492', 'CDK5RAP2', 'AR', 'SPAG5', 'ANKRD20A4', 'FAM95B1', 'ASPM', 'GKAP1', 'NBPF14', 'ZFP36L1', 'ARHGAP11A', 'FAM72B', 'PDCD4', 'NEK2', 'FAM72C', 'KIF18A', 'FAM72D'], np.float64(0.15554870889176717))
+har genes results:  (['CLDN18', 'ETV5', 'CEP112', 'CDC27', 'RHPN1-AS1', 'SUV39H1', 'ASCL1', 'TACC3', 'CNTRL', 'LINC00982', 'FSTL1', 'DMRTA2', 'HES1', 'APCDD1', 'CNTLN', 'SKA3', 'BUB1', 'MND1', 'MELK', 'ARHGAP11A', 'CDH23'], np.float64(0.9099786923899063))
+finished analysis for pair ('Non-cycling', 'G2M') in 2.16 seconds
+starting analysis for comparison: ('PostM', 'S')
+summarizing scores
+Log2 fold change & Wald test p-value: Cell-cycle-phase PostM vs S
+               baseMean  log2FoldChange  ...        pvalue          padj
+Gene                                     ...                            
+CFAP52         8.798257        3.561169  ...  4.103160e-08  4.417323e-07
+TP73          31.924896        0.207452  ...  7.453715e-01  8.545473e-01
+LHX1         112.743085        0.204592  ...  6.887192e-01  8.159679e-01
+CFAP126       24.887591        2.330038  ...  5.649670e-05  3.473956e-04
+BHMT          10.388782        0.052462  ...  9.298736e-01  9.620886e-01
+...                 ...             ...  ...           ...           ...
+ADORA2A-AS1   10.826945       -0.032465  ...  9.114337e-01  9.515166e-01
+ENTPD4       579.776715        0.000720  ...  9.901867e-01  9.942188e-01
+LINC01833     18.235934        0.848956  ...  1.505795e-01  2.922406e-01
+C5orf46        2.018312       -0.164037  ...  8.139101e-01  8.980650e-01
+LPAR5          3.919139       -0.529790  ...  3.111327e-01  4.905055e-01
+
+[30251 rows x 6 columns]
+saved results to /scratch200/reutj/data/deseq2/deseq_results_PostM_S
+length sig results:  89
+printing fisher exact results for PostM vs S
+hsg genes results:  (['FANK1'], 1.0)
+har genes results:  (['ENKUR', 'NFE2L3'], 1.0)
+length sig results:  224
+printing fisher exact results for S vs PostM
+hsg genes results:  (['HIST2H2BF'], np.float64(0.38761748407720986))
+har genes results:  (['CDT1', 'SKA3', 'RRM1', 'MND1', 'MELK', 'FANCA'], np.float64(0.6504948683783496))
+finished analysis for pair ('PostM', 'S') in 2.16 seconds
+starting analysis for comparison: ('PostM', 'G1')
+summarizing scores
+Log2 fold change & Wald test p-value: Cell-cycle-phase PostM vs G1
+               baseMean  log2FoldChange     lfcSE      stat    pvalue      padj
+Gene                                                                           
+CFAP52         8.798257        2.434929  0.594625  4.094897  0.000042  0.000318
+TP73          31.924896        0.845063  0.649164  1.301770  0.192995  0.344219
+LHX1         112.743085        0.163963  0.511195  0.320745  0.748403  0.851269
+CFAP126       24.887591        1.246776  0.556469  2.240512  0.025058  0.073051
+BHMT          10.388782        0.066482  0.597563  0.111255  0.911414  0.950698
+...                 ...             ...       ...       ...       ...       ...
+ADORA2A-AS1   10.826945        0.167732  0.300553  0.558077  0.576792  0.724903
+ENTPD4       579.776715        0.068386  0.059022  1.158650  0.246599  0.410303
+LINC01833     18.235934        0.764039  0.597276  1.279205  0.200825  0.354002
+C5orf46        2.018312       -0.153347  0.712140 -0.215333  0.829508       NaN
+LPAR5          3.919139       -0.650930  0.525047 -1.239757  0.215065  0.371410
+
+[30251 rows x 6 columns]
+saved results to /scratch200/reutj/data/deseq2/deseq_results_PostM_G1
+length sig results:  157
+printing fisher exact results for PostM vs G1
+hsg genes results:  (['ASPM', 'FAM72B', 'FAM72C', 'NEK2', 'FAM72D'], np.float64(0.07795699217423024))
+har genes results:  (['BUB1', 'TACC3', 'TBR1', 'NFE2L3'], np.float64(0.7853711334566607))
+length sig results:  90
+printing fisher exact results for G1 vs PostM
+hsg genes results:  ([], np.float64(0.6434529570719252))
+har genes results:  (['TMEM179', 'CDT1', 'FANCA'], np.float64(0.46444317607393437))
+finished analysis for pair ('PostM', 'G1') in 2.43 seconds
+starting analysis for comparison: ('PostM', 'G2M')
+summarizing scores
+Log2 fold change & Wald test p-value: Cell-cycle-phase PostM vs G2M
+               baseMean  log2FoldChange     lfcSE      stat    pvalue      padj
+Gene                                                                           
+CFAP52         8.798257        3.538469  0.890132  3.975217  0.000070  0.000389
+TP73          31.924896        1.443589  0.746533  1.933725  0.053147  0.121733
+LHX1         112.743085        0.626032  0.537028  1.165733  0.243722  0.392739
+CFAP126       24.887591        2.054223  0.657117  3.126116  0.001771  0.006948
+BHMT          10.388782        1.479006  0.748519  1.975910  0.048165  0.112459
+...                 ...             ...       ...       ...       ...       ...
+ADORA2A-AS1   10.826945        0.112991  0.365913  0.308791  0.757480  0.847538
+ENTPD4       579.776715       -0.113731  0.065123 -1.746417  0.080739  0.169397
+LINC01833     18.235934        0.740824  0.698920  1.059954  0.289165  0.445026
+C5orf46        2.018312        0.182493  0.946016  0.192907  0.847032       NaN
+LPAR5          3.919139       -0.432860  0.613023 -0.706106  0.480122  0.631811
+
+[30251 rows x 6 columns]
+saved results to /scratch200/reutj/data/deseq2/deseq_results_PostM_G2M
+length sig results:  107
+printing fisher exact results for PostM vs G2M
+hsg genes results:  (['MICA'], 1.0)
+har genes results:  (['ZNF503-AS2', 'NFE2L3', 'MRM1'], np.float64(0.7386890760002034))
+length sig results:  365
+printing fisher exact results for G2M vs PostM
+hsg genes results:  (['SPAG5', 'ASPM', 'ARHGAP11A', 'FAM72B', 'NEK2', 'FAM72C', 'KIF18A', 'FAM72D'], np.float64(0.26102442388720826))
+har genes results:  (['TACC3', 'SKA3', 'CDC27', 'BUB1', 'MND1', 'MELK', 'ARHGAP11A', 'CEP112', 'SUV39H1'], np.float64(0.7256880810145783))
+finished analysis for pair ('PostM', 'G2M') in 2.22 seconds
+starting analysis for comparison: ('S', 'G1')
+summarizing scores
+Log2 fold change & Wald test p-value: Cell-cycle-phase S vs G1
+               baseMean  log2FoldChange     lfcSE      stat    pvalue      padj
+Gene                                                                           
+CFAP52         8.798257       -1.126240  0.681935 -1.651536  0.098629  0.202322
+TP73          31.924896        0.637611  0.630722  1.010922  0.312054  0.472373
+LHX1         112.743085       -0.040629  0.504393 -0.080550  0.935799  0.963757
+CFAP126       24.887591       -1.083262  0.577955 -1.874303  0.060889  0.138302
+BHMT          10.388782        0.014019  0.566462  0.024749  0.980255  0.988781
+...                 ...             ...       ...       ...       ...       ...
+ADORA2A-AS1   10.826945        0.200197  0.250899  0.797919  0.424918  0.585242
+ENTPD4       579.776715        0.067666  0.054648  1.238223  0.215633  0.362553
+LINC01833     18.235934       -0.084917  0.585385 -0.145062  0.884662  0.931757
+C5orf46        2.018312        0.010690  0.598295  0.017867  0.985745  0.992194
+LPAR5          3.919139       -0.121141  0.414999 -0.291906  0.770359  0.859273
+
+[30251 rows x 6 columns]
+saved results to /scratch200/reutj/data/deseq2/deseq_results_S_G1
+length sig results:  231
+printing fisher exact results for S vs G1
+hsg genes results:  (['HIST2H2BF', 'SPAG5', 'ASPM', 'ARHGAP11A', 'FAM72B', 'NEK2', 'FAM72C', 'KIF18A', 'FAM72D'], np.float64(0.006709488513534183))
+har genes results:  (['TACC3', 'SKA3', 'BUB1', 'MELK', 'ARHGAP11A'], 1.0)
+length sig results:  22
+printing fisher exact results for G1 vs S
+hsg genes results:  (['GRIN2C'], np.float64(0.27382646073514333))
+har genes results:  (['MRM1'], np.float64(0.39985795444341404))
+finished analysis for pair ('S', 'G1') in 2.08 seconds
+starting analysis for comparison: ('S', 'G2M')
+summarizing scores
+Log2 fold change & Wald test p-value: Cell-cycle-phase S vs G2M
+               baseMean  log2FoldChange     lfcSE      stat    pvalue      padj
+Gene                                                                           
+CFAP52         8.798257       -0.022700  0.947921 -0.023947  0.980895  0.989385
+TP73          31.924896        1.236137  0.730829  1.691418  0.090757  0.185387
+LHX1         112.743085        0.421439  0.530719  0.794091  0.427143  0.586756
+CFAP126       24.887591       -0.275815  0.674263 -0.409062  0.682494  0.795501
+BHMT          10.388782        1.426543  0.725443  1.966444  0.049247  0.113410
+...                 ...             ...       ...       ...       ...       ...
+ADORA2A-AS1   10.826945        0.145456  0.326778  0.445122  0.656231  0.776734
+ENTPD4       579.776715       -0.114451  0.061301 -1.867019  0.061899  0.136508
+LINC01833     18.235934       -0.108132  0.689153 -0.156906  0.875319  0.925816
+C5orf46        2.018312        0.346530  0.864593  0.400802  0.688566       NaN
+LPAR5          3.919139        0.096930  0.525027  0.184619  0.853528  0.911804
+
+[30251 rows x 6 columns]
+saved results to /scratch200/reutj/data/deseq2/deseq_results_S_G2M
+length sig results:  217
+printing fisher exact results for S vs G2M
+hsg genes results:  (['CORO1A', 'RIBC2'], np.float64(0.7742811691603769))
+har genes results:  (['NXPH2', 'CDT1', 'MDGA2', 'TMEM179', 'NUP210', 'FREM2', 'EIF4EBP1', 'DONSON', 'MRM1'], np.float64(0.102916288098674))
+length sig results:  217
+printing fisher exact results for G2M vs S
+hsg genes results:  (['ASPM', 'FAM72B', 'FAM72C', 'TPTE2', 'NEK2', 'KIF18A', 'FAM72D'], np.float64(0.038921010844962724))
+har genes results:  (['BUB1', 'TACC3', 'RSPH9'], np.float64(0.49621987528475436))
+finished analysis for pair ('S', 'G2M') in 2.23 seconds
+starting analysis for comparison: ('G1', 'G2M')
+summarizing scores
+Log2 fold change & Wald test p-value: Cell-cycle-phase G1 vs G2M
+               baseMean  log2FoldChange     lfcSE      stat    pvalue      padj
+Gene                                                                           
+CFAP52         8.798257        1.103540  0.913493  1.208045  0.227030  0.339245
+TP73          31.924896        0.598526  0.739724  0.809121  0.418445  0.542214
+LHX1         112.743085        0.462068  0.531097  0.870027  0.384286  0.508528
+CFAP126       24.887591        0.807447  0.656626  1.229691  0.218813  0.329750
+BHMT          10.388782        1.412524  0.726697  1.943758  0.051925  0.101270
+...                 ...             ...       ...       ...       ...       ...
+ADORA2A-AS1   10.826945       -0.054741  0.333931 -0.163929  0.869787  0.912816
+ENTPD4       579.776715       -0.182117  0.061700 -2.951644  0.003161  0.008605
+LINC01833     18.235934       -0.023215  0.694891 -0.033408  0.973349  0.983306
+C5orf46        2.018312        0.335840  0.875900  0.383423  0.701406  0.788899
+LPAR5          3.919139        0.218070  0.526477  0.414207  0.678722  0.772064
+
+[30251 rows x 6 columns]
+saved results to /scratch200/reutj/data/deseq2/deseq_results_G1_G2M
+length sig results:  494
+printing fisher exact results for G1 vs G2M
+hsg genes results:  (['MICA', 'GRIN2C', 'CHRFAM7A', 'MAL2', 'OXGR1', 'MAOA'], np.float64(0.8489240510829346))
+har genes results:  (['KCNIP2', 'NXPH2', 'GAS7', 'CDT1', 'MDGA2', 'TMEM179', 'GSDMD', 'NUP210', 'SDSL', 'UNCX', 'PIEZO1', 'FREM2', 'EIF4EBP1', 'MRM1'], np.float64(0.44575729877529596))
+length sig results:  524
+printing fisher exact results for G2M vs G1
+hsg genes results:  (['SPAG5', 'GOLGA6L10', 'ASPM', 'ARHGAP11A', 'FAM72B', 'NEK2', 'TPTE2', 'FAM72C', 'KIF18A', 'FAM72D', 'GLRA1'], np.float64(0.1941486200000295))
+har genes results:  (['TACC3', 'CNTRL', 'SKA3', 'CDC27', 'MYH15', 'BUB1', 'TBR1', 'MELK', 'ARHGAP11A', 'CEP112', 'CDH22', 'ASCL1'], 1.0)
+finished analysis for pair ('G1', 'G2M') in 2.17 seconds
+starting deseq analysis on Non-cycling-or-not
+finished_creating_dds_obsect_for_Non-cycling-or-not in 21.41 seconds 
+starting analysis for comparison: ('Non-cycling', 'other')
+summarizing scores
+Log2 fold change & Wald test p-value: Non-cycling-or-not Non-cycling vs other
+               baseMean  log2FoldChange  ...        pvalue          padj
+Gene                                     ...                            
+CFAP52         8.798257        1.744299  ...  1.173309e-02  2.393983e-02
+TP73          31.924896        3.340661  ...  9.221149e-13  7.823307e-12
+LHX1         112.743085        3.509248  ...  2.450343e-22  4.967411e-21
+CFAP126       24.887591        1.963869  ...  1.086250e-04  3.288601e-04
+BHMT          10.388782        0.412981  ...  3.485478e-01  4.514450e-01
+...                 ...             ...  ...           ...           ...
+ADORA2A-AS1   10.826945        0.826371  ...  6.797527e-07  2.884647e-06
+ENTPD4       579.776715        0.289923  ...  6.420196e-09  3.527463e-08
+LINC01833     18.235934        1.454848  ...  1.109665e-04  3.352989e-04
+C5orf46        2.018312       -1.386157  ...  1.322231e-02  2.668048e-02
+LPAR5          3.919139        1.039533  ...  4.427501e-04  1.211847e-03
+
+[30251 rows x 6 columns]
+saved results to /scratch200/reutj/data/deseq2/deseq_results_Non-cycling_other
+length sig results:  1181
+printing fisher exact results for Non-cycling vs other
+hsg genes results:  (['CNTNAP2', 'ARHGAP15', 'PCDH15', 'PCDHB14', 'RGS6', 'ST6GAL2', 'FAM228A', 'MAPT', 'CD8A', 'TPPP', 'FMNL1', 'AC022679.2', 'PRKCH', 'OBSCN', 'TCAF2', 'MIR137HG', 'ADARB1', 'NBEA', 'RARA-AS1', 'SATB2-AS1'], np.float64(0.45422913766602036))
+har genes results:  (['RAPGEF5', 'SMIM22', 'CPLX1', 'DOC2B', 'ZNF503-AS2', 'ANTXR2', 'CHL1-AS1', 'ABLIM1', 'CCDC24', 'EDIL3', 'SHISA6', 'KIF26A', 'ZEB2', 'COL15A1', 'NTM', 'NFASC', 'BTNL9', 'THSD7B', 'CHL1', 'ARHGAP15', 'DSCAML1', 'RGS6', 'SLC8A1', 'PAX3', 'ENOX1', 'KLHL29', 'CHRNB4', 'NRXN1', 'DTX1', 'MDGA1', 'EBF3', 'ADCYAP1', 'LINC00599', 'SIX3', 'CCM2L', 'SGCZ', 'TPPP', 'PRMT8', 'CALY', 'MAFA', 'POU2F2', 'SLC45A1', 'KCNJ5', 'UNCX', 'RGS17', 'PLA2G4C', 'TBR1', 'SLC4A10', 'FOXQ1', 'MYO5B', 'CBFA2T3', 'GOLGA6L2', 'ZBTB18', 'SCG5', 'PPEF1', 'ELFN1', 'KCTD12', 'CDH13', 'LHX5', 'PPP2R2B', 'ARRB1'], np.float64(4.674981770831448e-09))
+finished analysis for pair ('Non-cycling', 'other') in 2.09 seconds
+starting deseq analysis on G1-or-not
+finished_creating_dds_obsect_for_G1-or-not in 21.99 seconds 
+starting analysis for comparison: ('other', 'G1')
+summarizing scores
+Log2 fold change & Wald test p-value: G1-or-not G1 vs other
+               baseMean  log2FoldChange     lfcSE      stat    pvalue      padj
+Gene                                                                           
+CFAP52         8.798257       -1.460086  0.784573 -1.860994  0.062745  0.154976
+TP73          31.924896       -1.838162  0.708495 -2.594461  0.009474  0.038318
+LHX1         112.743085       -1.142410  0.659113 -1.733253  0.083051  0.189898
+CFAP126       24.887591       -0.768959  0.615534 -1.249256  0.211572  0.366515
+BHMT          10.388782        0.120077  0.468995  0.256031  0.797927  0.877720
+...                 ...             ...       ...       ...       ...       ...
+ADORA2A-AS1   10.826945       -0.499193  0.256011 -1.949886  0.051190  0.133499
+ENTPD4       579.776715       -0.167506  0.068330 -2.451410  0.014230  0.052323
+LINC01833     18.235934       -0.871602  0.578268 -1.507265  0.131743  0.263060
+C5orf46        2.018312        0.491374  0.539495  0.910804  0.362398  0.530182
+LPAR5          3.919139       -0.222193  0.390583 -0.568877  0.569440  0.712045
+
+[30251 rows x 6 columns]
+saved results to /scratch200/reutj/data/deseq2/deseq_results_other_G1
+length sig results:  29
+printing fisher exact results for G1 vs other
+hsg genes results:  (['MICA'], np.float64(0.3441493530269871))
+har genes results:  ([], 1.0)
+finished analysis for pair ('other', 'G1') in 2.11 seconds
+starting deseq analysis on G2M-or-not
+finished_creating_dds_obsect_for_G2M-or-not in 22.02 seconds 
+starting analysis for comparison: ('other', 'G2M')
+summarizing scores
+Log2 fold change & Wald test p-value: G2M-or-not G2M vs other
+               baseMean  log2FoldChange     lfcSE      stat    pvalue      padj
+Gene                                                                           
+CFAP52         8.798257       -2.713011  1.031207 -2.630909  0.008516  0.027474
+TP73          31.924896       -2.335488  0.781965 -2.986692  0.002820  0.011131
+LHX1         112.743085       -1.694043  0.657584 -2.576162  0.009990  0.031195
+CFAP126       24.887591       -1.667504  0.689148 -2.419659  0.015535  0.044668
+BHMT          10.388782       -1.483351  0.624396 -2.375656  0.017518  0.049276
+...                 ...             ...       ...       ...       ...       ...
+ADORA2A-AS1   10.826945       -0.355648  0.342842 -1.037352  0.299572  0.435262
+ENTPD4       579.776715        0.023222  0.081245  0.285825  0.775012  0.849764
+LINC01833     18.235934       -0.724472  0.679065 -1.066868  0.286032  0.420701
+C5orf46        2.018312        0.118520  0.807525  0.146769  0.883314       NaN
+LPAR5          3.919139       -0.378496  0.505305 -0.749044  0.453831  0.588339
+
+[30251 rows x 6 columns]
+saved results to /scratch200/reutj/data/deseq2/deseq_results_other_G2M
+length sig results:  295
+printing fisher exact results for G2M vs other
+hsg genes results:  (['ASPM', 'ARHGAP11A', 'FAM72B', 'FAM72C', 'NEK2', 'KIF18A', 'FAM72D'], np.float64(0.20890911935100637))
+har genes results:  (['TACC3', 'CNTRL', 'BUB1', 'ARHGAP11A', 'CEP112'], np.float64(0.6935283314556029))
+finished analysis for pair ('other', 'G2M') in 2.10 seconds
+starting deseq analysis on S-or-not
+finished_creating_dds_obsect_for_S-or-not in 21.77 seconds 
+starting analysis for comparison: ('other', 'S')
+summarizing scores
+Log2 fold change & Wald test p-value: S-or-not S vs other
+               baseMean  log2FoldChange     lfcSE      stat    pvalue      padj
+Gene                                                                           
+CFAP52         8.798257       -2.818508  0.773115 -3.645650  0.000267  0.003517
+TP73          31.924896       -0.827875  0.727023 -1.138720  0.254820  0.445152
+LHX1         112.743085       -1.254172  0.655991 -1.911873  0.055893  0.162044
+CFAP126       24.887591       -2.033590  0.585955 -3.470555  0.000519  0.005892
+BHMT          10.388782        0.158027  0.463256  0.341122  0.733012  0.844735
+...                 ...             ...       ...       ...       ...       ...
+ADORA2A-AS1   10.826945       -0.228462  0.256885 -0.889355  0.373812  0.563214
+ENTPD4       579.776715       -0.084240  0.073105 -1.152323  0.249188  0.438887
+LINC01833     18.235934       -0.941922  0.552063 -1.706184  0.087974  0.220100
+C5orf46        2.018312        0.513319  0.516991  0.992897  0.320760  0.514029
+LPAR5          3.919139       -0.342498  0.381101 -0.898706  0.368809  0.558753
+
+[30251 rows x 6 columns]
+saved results to /scratch200/reutj/data/deseq2/deseq_results_other_S
+length sig results:  39
+printing fisher exact results for S vs other
+hsg genes results:  (['HIST2H2BF'], np.float64(0.43298600767859574))
+har genes results:  ([], 1.0)
+finished analysis for pair ('other', 'S') in 2.29 seconds
+starting deseq analysis on PostM-or-not
+finished_creating_dds_obsect_for_PostM-or-not in 22.19 seconds 
+starting analysis for comparison: ('other', 'PostM')
+summarizing scores
+Log2 fold change & Wald test p-value: PostM-or-not PostM vs other
+               baseMean  log2FoldChange     lfcSE      stat    pvalue      padj
+Gene                                                                           
+CFAP52         8.798257        1.503821  0.748787  2.008343       NaN       NaN
+TP73          31.924896       -1.322871  0.749234 -1.765632       NaN       NaN
+LHX1         112.743085       -1.214554  0.661928 -1.834874  0.066524  0.269705
+CFAP126       24.887591        0.538583  0.626174  0.860118       NaN       NaN
+BHMT          10.388782        0.159620  0.498637  0.320112  0.748883  0.891147
+...                 ...             ...       ...       ...       ...       ...
+ADORA2A-AS1   10.826945       -0.165771  0.303384 -0.546406  0.584787  0.798529
+ENTPD4       579.776715       -0.089919  0.076923 -1.168945  0.242426  0.518838
+LINC01833     18.235934        0.252018  0.605399  0.416285  0.677202  0.854515
+C5orf46        2.018312        0.277913  0.657714  0.422543  0.672629       NaN
+LPAR5          3.919139       -0.919813  0.495550 -1.856146  0.063433       NaN
+
+[30251 rows x 6 columns]
+saved results to /scratch200/reutj/data/deseq2/deseq_results_other_PostM
+length sig results:  15
+printing fisher exact results for PostM vs other
+hsg genes results:  ([], 1.0)
+har genes results:  (['NFE2L3'], np.float64(0.29396394088410455))
+finished analysis for pair ('other', 'PostM') in 2.22 seconds
+starting deseq analysis on SG2M-or-not
+finished_creating_dds_obsect_for_SG2M-or-not in 21.90 seconds 
+starting analysis for comparison: ('other', 'SG2M')
+summarizing scores
+Log2 fold change & Wald test p-value: SG2M-or-not SG2M vs other
+               baseMean  log2FoldChange  ...        pvalue      padj
+Gene                                     ...                        
+CFAP52         8.798257       -3.104669  ...  1.564992e-07  0.000002
+TP73          31.924896       -1.926650  ...  6.815003e-04  0.002975
+LHX1         112.743085       -1.918706  ...  1.156666e-04  0.000646
+CFAP126       24.887591       -2.229839  ...  8.754516e-07  0.000009
+BHMT          10.388782       -0.545189  ...  1.764223e-01  0.286428
+...                 ...             ...  ...           ...       ...
+ADORA2A-AS1   10.826945       -0.334732  ...  1.310877e-01  0.226510
+ENTPD4       579.776715       -0.044670  ...  4.747148e-01  0.604136
+LINC01833     18.235934       -1.038681  ...  1.921812e-02  0.048565
+C5orf46        2.018312        0.468859  ...  3.264783e-01  0.458165
+LPAR5          3.919139       -0.438644  ...  1.781987e-01  0.288737
+
+[30251 rows x 6 columns]
+saved results to /scratch200/reutj/data/deseq2/deseq_results_other_SG2M
+length sig results:  335
+printing fisher exact results for SG2M vs other
+hsg genes results:  (['SPAG5', 'ASPM', 'ARHGAP11A', 'FAM72B', 'NEK2', 'FAM72C', 'KIF18A', 'FAM72D'], np.float64(0.15867889821014425))
+har genes results:  (['TACC3', 'SKA3', 'BUB1', 'MND1', 'MELK', 'ARHGAP11A', 'SUV39H1'], 1.0)
+finished analysis for pair ('other', 'SG2M') in 2.12 seconds
+finished all in 433.19 seconds
+DONE

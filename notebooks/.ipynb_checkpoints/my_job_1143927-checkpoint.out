@@ -1,0 +1,186 @@
+loading ...
+loaded conda.sh
+sh shell detected
+radialglia
+gene
+AMBN         155.780919
+LINC00698     57.658853
+SNCG          51.861599
+ECEL1         29.191546
+LIX1          25.402680
+Name: ges_score, dtype: float64
+outpath:  /scratch200/reutj/data/ges_results_radialglia/
+0.3128
+hsg result for: radialglia is non significant
+0.2864
+har result for: radialglia is non significant
+proliferating
+gene
+AC011139.1    473.933869
+IFI44L        216.419617
+AMBN          209.976114
+ATP1A2        162.057238
+HIST1H3B      151.915223
+Name: ges_score, dtype: float64
+outpath:  /scratch200/reutj/data/ges_results_proliferating/
+0.0874
+hsg result for: proliferating is non significant
+0.0439
+har result for: proliferating is significant!
+differentiating
+gene
+AL158840.1    260.356275
+AC069155.1    241.987651
+SNCB          163.327964
+TG            131.863223
+MYO5B         129.147638
+Name: ges_score, dtype: float64
+outpath:  /scratch200/reutj/data/ges_results_differentiating/
+0.2644
+hsg result for: differentiating is non significant
+0.1149
+har result for: differentiating is non significant
+IPC
+gene
+E2F2          14.137820
+LINC01967     13.907693
+NEUROG1       11.445695
+AC004852.2    11.114488
+MNX1           9.814469
+Name: ges_score, dtype: float64
+outpath:  /scratch200/reutj/data/ges_results_IPC/
+0.1524
+hsg result for: IPC is non significant
+0.2208
+har result for: IPC is non significant
+NPCs
+gene
+AMBN     192.107926
+PIF1      44.869830
+SNCG      40.441249
+CDC20     27.658179
+PLK1      26.445561
+Name: ges_score, dtype: float64
+outpath:  /scratch200/reutj/data/ges_results_NPCs/
+0.0196
+hsg result for: NPCs is significant!
+0.2789
+har result for: NPCs is non significant
+G1
+gene
+E2F1     7.037423
+DERL3    6.337503
+MCM5     6.287786
+MCM3     6.190140
+SYTL4    6.083943
+Name: ges_score, dtype: float64
+outpath:  /scratch200/reutj/data/ges_results_G1/
+0.9077
+hsg result for: G1 is non significant
+0.1261
+har result for: G1 is non significant
+S
+gene
+HIST1H2AJ    36.322808
+HIST1H3B     29.839918
+HIST1H2AI    26.469886
+HIST1H2AM    26.309823
+HIST1H2AH    25.081476
+Name: ges_score, dtype: float64
+outpath:  /scratch200/reutj/data/ges_results_S/
+0.2542
+hsg result for: S is non significant
+0.6944
+har result for: S is non significant
+G2M
+gene
+PIF1          38.643201
+PDCL2         27.888329
+NEK2          27.037397
+AC090159.1    24.948833
+PLK1          24.882773
+Name: ges_score, dtype: float64
+outpath:  /scratch200/reutj/data/ges_results_G2M/
+0.0017
+hsg result for: G2M is significant!
+0.7253
+har result for: G2M is non significant
+SG2M
+gene
+HIST1H2AJ    61.430102
+HIST1H3B     60.110224
+HIST1H3G     43.560787
+HIST1H3C     39.214302
+HIST1H2AI    38.862155
+Name: ges_score, dtype: float64
+outpath:  /scratch200/reutj/data/ges_results_SG2M/
+0.0031
+hsg result for: SG2M is significant!
+0.6517
+har result for: SG2M is non significant
+PostM
+gene
+AMBN     192.107926
+PIF1      44.869830
+SNCG      40.441249
+CDC20     27.658179
+PLK1      26.445561
+Name: ges_score, dtype: float64
+outpath:  /scratch200/reutj/data/ges_results_PostM/
+0.0196
+hsg result for: PostM is significant!
+0.2789
+har result for: PostM is non significant
+Neuron
+gene
+SLC5A8         117.363193
+KRT31          106.686763
+GPR22           76.101683
+SLC26A4-AS1     66.109762
+GRIK3           47.610674
+Name: ges_score, dtype: float64
+outpath:  /scratch200/reutj/data/ges_results_Neuron/
+0.1091
+hsg result for: Neuron is non significant
+0.0032
+har result for: Neuron is significant!
+Glioblast
+gene
+SLCO1C1    31.901106
+ACSBG1     29.742727
+HEPACAM    29.731851
+TNC        28.623165
+HEPN1      27.288392
+Name: ges_score, dtype: float64
+outpath:  /scratch200/reutj/data/ges_results_Glioblast/
+0.7071
+hsg result for: Glioblast is non significant
+0.2285
+har result for: Glioblast is non significant
+Neuroblast
+gene
+LINC02058     16.155042
+AP005328.1    11.769171
+AP000894.3    11.682298
+EBF1          11.320093
+RELN          11.070372
+Name: ges_score, dtype: float64
+outpath:  /scratch200/reutj/data/ges_results_Neuroblast/
+0.2527
+hsg result for: Neuroblast is non significant
+0.0227
+har result for: Neuroblast is significant!
+Non-cycling
+gene
+AL158840.1    208.292928
+SNCB          150.684893
+MYO5B         134.428987
+GPR22         122.117227
+AL020994.2    120.361562
+Name: ges_score, dtype: float64
+outpath:  /scratch200/reutj/data/ges_results_Non-cycling/
+0.1741
+hsg result for: Non-cycling is non significant
+0.0326
+har result for: Non-cycling is significant!
+DONE

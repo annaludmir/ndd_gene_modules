@@ -1,0 +1,477 @@
+loading ...
+loaded conda.sh
+sh shell detected
+imports done
+data loaded
+data loaded and preprocessed in 202.24 seconds
+reading psb data
+starting deseq analysis on Cell-type
+finished_creating_dds_obsect_for_Cell-type in 52.72 seconds 
+starting analysis for comparison: ('Neuroblast', 'Radial glia')
+summarizing scores
+Log2 fold change & Wald test p-value: Cell-type Neuroblast vs Radial glia
+               baseMean  log2FoldChange  ...        pvalue          padj
+Gene                                     ...                            
+CFAP52        31.454798        0.503624  ...  5.015608e-01  5.918134e-01
+TP73         116.624706        5.482957  ...  2.166166e-26  2.509594e-25
+LHX1         392.406063        4.451847  ...  1.977755e-25  2.181153e-24
+CFAP126       90.005690        0.617556  ...  4.340182e-01  5.264475e-01
+BHMT          38.047415        2.425323  ...  1.315975e-04  3.383240e-04
+...                 ...             ...  ...           ...           ...
+ADORA2A-AS1   18.782915        0.909695  ...  1.184744e-04  3.063172e-04
+ENTPD4       889.160381        0.450477  ...  4.061559e-13  2.250923e-12
+LINC01833     14.845579       -0.523466  ...  2.696951e-01  3.567983e-01
+C5orf46        1.225557       -1.968647  ...  9.739062e-02  1.495265e-01
+LPAR5          8.018253        1.812024  ...  1.873716e-05  5.322346e-05
+
+[33538 rows x 6 columns]
+saved results to /scratch200/reutj/data/deseq2/deseq_results_Neuroblast_Radial glia
+length sig results:  1882
+printing fisher exact results for Neuroblast vs Radial glia
+hsg genes results:  (['STRC', 'AC022679.2', 'TCF15', 'OTUD7A', 'SYT2', 'TPPP', 'PCDHB10', 'CD24', 'CCKAR', 'NBEA', 'PCDHA2', 'CD8A', 'MIR137HG', 'LEPR', 'PCDH15', 'ST6GAL2', 'SH3PXD2A', 'SATB2-AS1', 'PRKCH', 'OCM', 'PCDHB14', 'AFF3', 'CORO1A', 'FMNL1', 'MAPT', 'RARA-AS1', 'ARHGAP15', 'GRIN3A', 'CNTNAP2', 'ADARB1'], np.float64(0.5498441219115959))
+har genes results:  (['CHRNB4', 'MAFA', 'CALY', 'DTX1', 'CPLX1', 'EOMES', 'CHL1', 'CPLX2', 'TPPP', 'ENOX1', 'FOXQ1', 'SDS', 'MYO5B', 'ANTXR2', 'ITGA10', 'LHX5', 'ZBTB18', 'PTPRT', 'THSD7B', 'ADCYAP1', 'POU2F2', 'TBR1', 'RGS17', 'SGCZ', 'REEP1', 'SLC4A10', 'SKAP2', 'SHISA6', 'FGF13', 'PPP2R2B', 'KIF26A', 'BTNL9', 'ZEB2', 'LEPR', 'SCRT2', 'NRXN1', 'LINC00599', 'SERP2', 'CAMK2N1', 'GBX2', 'ALK', 'ANKRD44', 'SCG5', 'PRMT8', 'GOLGA6L2', 'CDH13', 'SLC8A1', 'CHL1-AS1', 'CCM2L', 'MLLT3', 'ELFN1', 'SMIM22', 'RAPGEF5', 'KLHL29', 'MDGA1', 'AFF3', 'LRP8', 'EDIL3', 'FRMD4A', 'BHMT', 'KCNJ5', 'AUTS2', 'EBF3', 'DSCAML1', 'MAGIX', 'NTM', 'SMOC1', 'NFASC', 'ARHGAP15', 'SLC45A1', 'LINC00470', 'CBFA2T3', 'SLC8A1-AS1', 'PPP1R13B', 'ARRB1'], np.float64(3.6432286706327626e-06))
+length sig results:  1959
+printing fisher exact results for Radial glia vs Neuroblast
+hsg genes results:  (['GYPE', 'FAM95B1', 'TBC1D8B', 'DHRS4L2', 'MICA', 'AR', 'FANK1', 'PRKCB', 'LINC02397', 'OXGR1', 'BOLL', 'PDCD4', 'DDX11', 'NBPF10', 'PDGFD', 'PARP4', 'ASPM', 'NBPF14', 'GYPC', 'FAM72B', 'CCDC74B', 'ZFP36L1', 'CD44', 'KIF18A', 'PMP2', 'GRIN2C', 'ANKRD20A2', 'FAM72D', 'ELN', 'NAT1', 'SPAG5', 'MYCNOS', 'CDH12', 'ACTR3B', 'ANKRD20A4', 'FAM72C', 'NEK2', 'ARHGAP11A'], np.float64(0.06293622565014333))
+har genes results:  (['SOX1', 'SLC25A21', 'COL27A1', 'CASC2', 'MAGI1', 'FAP', 'FSTL1', 'CSMD2', 'TACC3', 'RPA3', 'RHPN1-AS1', 'POU6F2', 'CRYL1', 'S1PR1', 'CLDN18', 'BUB1', 'SKA3', 'FOXC1', 'FOLH1', 'CDH23', 'PAX6', 'CDT1', 'SYT17', 'PKM', 'PLP2', 'EGLN3', 'GLI2', 'PRDM16', 'ENKUR', 'MELK', 'CNTLN', 'CYP26A1', 'ITGB4', 'MYCBP', 'ZNF385B', 'RCN1', 'SALL3', 'ARHGAP11A', 'ETV5', 'APCDD1', 'GLIS3', 'RAD51B', 'DCDC1', 'SUV39H1', 'FANCA', 'NEDD4', 'FOXP1', 'STK3', 'NXPH2', 'HS6ST3', 'RHPN1', 'IFIH1', 'GSDMD', 'GLI3', 'NPAS3', 'NUP210', 'NAT1', 'HES1', 'ACTR3B', 'FAM86B1', 'LINC01044', 'ZFHX4', 'PACRG', 'LINC00982', 'MND1', 'STK33'], np.float64(0.0022876715263151146))
+finished analysis for pair ('Neuroblast', 'Radial glia') in 1.61 seconds
+starting analysis for comparison: ('Neuroblast', 'Neuronal IPC')
+summarizing scores
+Log2 fold change & Wald test p-value: Cell-type Neuroblast vs Neuronal IPC
+               baseMean  log2FoldChange  ...        pvalue          padj
+Gene                                     ...                            
+CFAP52        31.454798        3.160113  ...  2.031948e-04  6.565289e-04
+TP73         116.624706        3.404548  ...  8.183347e-12  6.839497e-11
+LHX1         392.406063        1.517943  ...  3.221687e-04  1.003846e-03
+CFAP126       90.005690        3.683811  ...  2.186153e-05  8.371224e-05
+BHMT          38.047415        0.367925  ...  5.440496e-01  6.553607e-01
+...                 ...             ...  ...           ...           ...
+ADORA2A-AS1   18.782915        0.581903  ...  1.586067e-02  3.426786e-02
+ENTPD4       889.160381        0.246033  ...  1.667835e-04  5.470107e-04
+LINC01833     14.845579       -0.223845  ...  7.136006e-01  7.964185e-01
+C5orf46        1.225557       -1.569134  ...  2.132237e-01  3.172277e-01
+LPAR5          8.018253        0.111842  ...  7.704018e-01  8.414595e-01
+
+[33538 rows x 6 columns]
+saved results to /scratch200/reutj/data/deseq2/deseq_results_Neuroblast_Neuronal IPC
+length sig results:  1302
+printing fisher exact results for Neuroblast vs Neuronal IPC
+hsg genes results:  (['AC022679.2', 'TPPP', 'NBEA', 'CD8A', 'PTPN20', 'HYDIN', 'MIR137HG', 'ST6GAL2', 'TCAF2', 'SATB2-AS1', 'PRKCH', 'OCM', 'OPRM1', 'FMNL1', 'MAPT', 'RARA-AS1', 'ARHGAP15', 'SPANXA2-OT1', 'CNTNAP2', 'ADARB1'], np.float64(0.7220405575692208))
+har genes results:  (['MAFA', 'CALY', 'ZNF503-AS2', 'CPLX1', 'TPPP', 'CHL1', 'ENOX1', 'FOXQ1', 'PRSS55', 'MYO5B', 'RSPO3', 'LHX5', 'THSD7B', 'ADCYAP1', 'SGCZ', 'TBR1', 'SLC4A10', 'SHISA6', 'ABCG4', 'PPP2R2B', 'BTNL9', 'ZEB2', 'SCRT2', 'LINC01141', 'NRXN1', 'LINC00599', 'ENKUR', 'SCG5', 'CDH13', 'SLC8A1', 'CHL1-AS1', 'CCM2L', 'PLA2G4C', 'EDIL3', 'SPEG', 'KCNJ5', 'ARHGEF4', 'DSCAML1', 'NTM', 'ARHGAP15', 'SLC45A1', 'CCDC24', 'ABLIM1', 'ARRB1', 'RSPH9'], np.float64(0.007792303816719794))
+length sig results:  1072
+printing fisher exact results for Neuronal IPC vs Neuroblast
+hsg genes results:  (['FAM95B1', 'LINC02397', 'PRIM2', 'OXGR1', 'DDX11', 'RIBC2', 'NBPF10', 'PDGFD', 'ASPM', 'NBPF14', 'GADD45G', 'GYPC', 'FAM72B', 'ZFP36L1', 'KIF18A', 'PMP2', 'FAM72D', 'SPAG5', 'CDH12', 'ZNF492', 'FAM72C', 'NEK2', 'ARHGAP11A'], np.float64(0.06605685213907016))
+har genes results:  (['FKBP5', 'SOX1', 'SIM1', 'MAGI1', 'DONSON', 'TACC3', 'RPA3', 'RHPN1-AS1', 'CLDN18', 'BUB1', 'SKA3', 'PRIM2', 'CDH23', 'CDT1', 'SYT17', 'PLP2', 'GLI2', 'MELK', 'DPP4', 'CNTLN', 'CYP26A1', 'RCN1', 'SALL3', 'PRDM13', 'ARHGAP11A', 'FANCA', 'ASCL1', 'SUV39H1', 'STK3', 'NXPH2', 'IFIH1', 'GLI3', 'NUP210', 'RRM1', 'LINC01044', 'NEDD4', 'MND1'], np.float64(0.01634284689767547))
+finished analysis for pair ('Neuroblast', 'Neuronal IPC') in 1.66 seconds
+starting analysis for comparison: ('Neuroblast', 'Neuron')
+summarizing scores
+Log2 fold change & Wald test p-value: Cell-type Neuroblast vs Neuron
+               baseMean  log2FoldChange  ...        pvalue          padj
+Gene                                     ...                            
+CFAP52        31.454798        2.937918  ...  1.935770e-03  9.823573e-03
+TP73         116.624706        3.418827  ...  2.254934e-09  7.477495e-08
+LHX1         392.406063        2.763249  ...  3.406789e-08  8.312971e-07
+CFAP126       90.005690        1.921404  ...  4.242852e-02  1.150910e-01
+BHMT          38.047415        1.323531  ...  7.464816e-02  1.767275e-01
+...                 ...             ...  ...           ...           ...
+ADORA2A-AS1   18.782915       -0.495815  ...  2.246628e-02  7.010941e-02
+ENTPD4       889.160381        0.182963  ...  9.958043e-03  3.681195e-02
+LINC01833     14.845579       -1.831515  ...  1.381544e-02  4.767537e-02
+C5orf46        1.225557        0.427951  ...  7.899612e-01  8.828766e-01
+LPAR5          8.018253       -0.185836  ...  6.264691e-01  7.731591e-01
+
+[33538 rows x 6 columns]
+saved results to /scratch200/reutj/data/deseq2/deseq_results_Neuroblast_Neuron
+length sig results:  705
+printing fisher exact results for Neuroblast vs Neuron
+hsg genes results:  (['ASPM', 'ARHGAP42', 'GADD45G', 'SPAG5', 'GRIN3A', 'FOXP2', 'PDGFD', 'FAM72C', 'CCKAR', 'AR', 'KIF26B', 'NEK2'], np.float64(0.5214664241421592))
+har genes results:  (['SOX1', 'COL27A1', 'ARHGAP42', 'MAGI1', 'EOMES', 'TACC3', 'EMX2', 'ZBTB16', 'RSPO3', 'LHX5', 'THSD7B', 'ADCYAP1', 'SKA3', 'GPRC5B', 'PAX6', 'UNCX', 'CDT1', 'GBX2', 'MELK', 'FREM2', 'GOLGA6L2', 'TLL2', 'RCN1', 'FLNC', 'SALL3', 'PRDM13', 'APCDD1', 'ASCL1', 'PLD5', 'DCDC1', 'DMRTA2', 'MYH7', 'STK3', 'KCNJ5', 'EBF3', 'SMOC1', 'GLI3', 'SDSL', 'ZBTB20', 'ZFHX4', 'LINC00982', 'STK33'], np.float64(2.546107614795466e-08))
+length sig results:  404
+printing fisher exact results for Neuron vs Neuroblast
+hsg genes results:  (['SATB2-AS1', 'CD8A', 'MAL2', 'MIR137HG', 'RGS6'], 1.0)
+har genes results:  (['HS6ST3', 'CDH13', 'DOC2B', 'EFNA5', 'CHL1-AS1', 'GAS7', 'KCTD12', 'COL15A1', 'PRRT4', 'CHL1', 'ZNF385B', 'MDGA2', 'FOXQ1', 'RGS6', 'MYO5B', 'PACRG', 'PPEF1'], np.float64(0.017343995203055206))
+finished analysis for pair ('Neuroblast', 'Neuron') in 1.61 seconds
+starting analysis for comparison: ('Neuroblast', 'Glioblast')
+summarizing scores
+Log2 fold change & Wald test p-value: Cell-type Neuroblast vs Glioblast
+               baseMean  log2FoldChange  ...        pvalue          padj
+Gene                                     ...                            
+CFAP52        31.454798        0.418122  ...  6.632930e-01  7.415838e-01
+TP73         116.624706        4.474571  ...  6.743142e-12  4.060353e-11
+LHX1         392.406063        5.133516  ...  3.104127e-20  3.423365e-19
+CFAP126       90.005690        0.043341  ...  9.657783e-01  9.766630e-01
+BHMT          38.047415        1.451026  ...  7.273650e-02  1.187002e-01
+...                 ...             ...  ...           ...           ...
+ADORA2A-AS1   18.782915        0.354432  ...  1.451663e-01  2.155393e-01
+ENTPD4       889.160381        0.743963  ...  4.579493e-23  6.135451e-22
+LINC01833     14.845579       -0.576888  ...  6.345023e-01  7.178835e-01
+C5orf46        1.225557       -1.257397  ...  4.174102e-01  5.188371e-01
+LPAR5          8.018253        1.907060  ...  1.091937e-04  3.038534e-04
+
+[33538 rows x 6 columns]
+saved results to /scratch200/reutj/data/deseq2/deseq_results_Neuroblast_Glioblast
+length sig results:  1922
+printing fisher exact results for Neuroblast vs Glioblast
+hsg genes results:  (['PCDHB13', 'ZNF286A', 'AC022679.2', 'TCF15', 'OTUD7A', 'SYT2', 'PCDHB10', 'CD24', 'CCKAR', 'NBEA', 'PCDHA2', 'CNTNAP2', 'MIR137HG', 'LEPR', 'PCDH15', 'ST6GAL2', 'KLHL24', 'PCDHB6', 'CEP170', 'SH3PXD2A', 'SATB2-AS1', 'SLC12A5', 'PRKCH', 'GADD45G', 'PCDHB14', 'AFF3', 'CORO1A', 'FMNL1', 'SLC29A4', 'MAPT', 'ARHGAP15', 'GRIN3A', 'GLRA1', 'ADARB1'], np.float64(0.23505331884047126))
+har genes results:  (['CHRNB4', 'CPLX1', 'ZBTB18', 'THSD7B', 'ADCYAP1', 'CDH22', 'KIF26A', 'ZEB2', 'SCG5', 'TLL2', 'ELFN1', 'PRDM13', 'SMIM22', 'FRMD4A', 'KCNJ5', 'MAFA', 'ZNF503-AS2', 'COL15A1', 'ZBTB16', 'ANTXR2', 'PTPRT', 'POU2F2', 'TBR1', 'FGF13', 'NRXN1', 'MLLT3', 'RAPGEF5', 'AUTS2', 'EBF3', 'DSCAML1', 'MAGIX', 'MYH15', 'SMOC1', 'LINC00637', 'SLC8A1-AS1', 'RGS17', 'REEP1', 'GREM1', 'UNCX', 'LEPR', 'PRMT8', 'NEUROG2', 'ARL9', 'TPBGL', 'LRP8', 'TMEM179', 'ARHGAP15', 'SIX3', 'MYO5B', 'CALY', 'DTX1', 'EOMES', 'CPLX2', 'ENOX1', 'FOXQ1', 'ITGA10', 'LHX5', 'PPP1R13B', 'SLC4A10', 'PAH', 'GPRC5B', 'BTNL9', 'SCRT2', 'LINC00599', 'CEP170', 'CCDC141', 'GOLGA6L2', 'DPP4', 'SLC8A1', 'CCM2L', 'KLHL29', 'MDGA1', 'AFF3', 'EDIL3', 'NTM', 'NFASC', 'LINC00470', 'CBFA2T3'], np.float64(1.3087032558571553e-06))
+length sig results:  2459
+printing fisher exact results for Glioblast vs Neuroblast
+hsg genes results:  (['GYPE', 'FAM95B1', 'TBC1D8B', 'DHRS4L2', 'OCLN', 'RGS6', 'MICA', 'DDR2', 'AR', 'FANK1', 'HRH1', 'PRKCB', 'OXGR1', 'PDCD4', 'DDX11', 'MAL2', 'RIBC2', 'NBPF10', 'FAM182B', 'PDGFD', 'PARP4', 'ASPM', 'NBPF14', 'GYPC', 'FAM72B', 'CCDC74B', 'DPY19L2', 'ZFP36L1', 'CD44', 'KIF18A', 'PMP2', 'ANKRD20A2', 'FGF7', 'FAM72D', 'ELN', 'NAT1', 'SPAG5', 'SPTSSB', 'CDH12', 'ACTR3B', 'ANKRD20A4', 'FAM72C', 'ARHGAP11A'], np.float64(0.18680867171875795))
+har genes results:  (['MAGI1', 'FSTL1', 'RHPN1-AS1', 'CRYL1', 'SYT17', 'EGLN3', 'GLI2', 'NUDT7', 'PRDM16', 'FREM2', 'RCN1', 'APCDD1', 'FANCA', 'DCDC1', 'IFIH1', 'RRM1', 'ARHGAP11A', 'MND1', 'SOX1', 'RORA', 'COL27A1', 'CASC2', 'GAS7', 'MDGA2', 'S1PR1', 'CDH23', 'PAX6', 'PLP2', 'ENKUR', 'MELK', 'ITGB4', 'CYP26A1', 'SALL3', 'ETV5', 'DPY19L2', 'THNSL2', 'HS6ST3', 'GSDMD', 'GLI3', 'NUP210', 'NAT1', 'HES1', 'SDSL', 'ACTR3B', 'ZFHX4', 'DONSON', 'OBSL1', 'LIFR', 'SLFN11', 'CLDN18', 'SKA3', 'CDT1', 'CNTLN', 'MYCBP', 'GLIS3', 'RAD51B', 'SUV39H1', 'NXPH2', 'FAM86B1', 'PLEKHA4', 'PACRG', 'STK33', 'FAP', 'DOCK8', 'CSMD2', 'TACC3', 'RPA3', 'POU6F2', 'RGS6', 'ADAMTS17', 'BUB1', 'FOLH1', 'DAB2', 'SPRY4', 'FOXP1', 'STK3', 'RHPN1', 'NPAS3', 'LINC01044', 'ETV1', 'NEDD4', 'LINC00982', 'SAMD5'], np.float64(0.00044493990421540046))
+finished analysis for pair ('Neuroblast', 'Glioblast') in 1.69 seconds
+starting analysis for comparison: ('Radial glia', 'Neuronal IPC')
+summarizing scores
+Log2 fold change & Wald test p-value: Cell-type Radial glia vs Neuronal IPC
+               baseMean  log2FoldChange  ...        pvalue          padj
+Gene                                     ...                            
+CFAP52        31.454798        2.656490  ...  1.814180e-03  5.743852e-03
+TP73         116.624706       -2.078409  ...  1.412786e-04  5.745610e-04
+LHX1         392.406063       -2.933903  ...  8.975538e-12  1.103286e-10
+CFAP126       90.005690        3.066256  ...  4.212083e-04  1.539252e-03
+BHMT          38.047415       -2.057398  ...  1.468263e-03  4.759023e-03
+...                 ...             ...  ...           ...           ...
+ADORA2A-AS1   18.782915       -0.327791  ...  2.197962e-01  3.415870e-01
+ENTPD4       889.160381       -0.204443  ...  1.601192e-03  5.140321e-03
+LINC01833     14.845579        0.299621  ...  5.616728e-01  6.834418e-01
+C5orf46        1.225557        0.399513  ...  7.084604e-01  8.021145e-01
+LPAR5          8.018253       -1.700182  ...  1.321143e-04  5.406649e-04
+
+[33538 rows x 6 columns]
+saved results to /scratch200/reutj/data/deseq2/deseq_results_Radial glia_Neuronal IPC
+length sig results:  929
+printing fisher exact results for Radial glia vs Neuronal IPC
+hsg genes results:  (['GYPE', 'PRKCB', 'FAM95B1', 'NBPF14', 'HYDIN', 'GYPC', 'CCDC74B', 'NBPF10', 'FAM182B', 'MICA', 'ZFP36L1', 'FANK1'], np.float64(0.888394254301391))
+har genes results:  (['COL27A1', 'CSMD2', 'CHL1', 'RHPN1-AS1', 'POU6F2', 'CRYL1', 'RSPO3', 'PAX3', 'S1PR1', 'FOLH1', 'CDH23', 'SHISA6', 'RPH3AL', 'NUDT7', 'PRDM16', 'ENKUR', 'ITGB4', 'ETV5', 'GLIS3', 'DCDC1', 'RSPH9', 'RHPN1', 'GSDMD', 'NPAS3', 'HES1', 'FAM86B1', 'CCDC24', 'ETV1', 'PACRG', 'LINC00982'], np.float64(0.05847121132657068))
+length sig results:  729
+printing fisher exact results for Neuronal IPC vs Radial glia
+hsg genes results:  (['TCF15', 'GADD45G', 'AC022679.2', 'SYT2', 'MIR137HG', 'GRIN3A', 'CD24', 'STRC', 'CCKAR', 'CORO1A', 'PCDHA2'], np.float64(0.8743530398917636))
+har genes results:  (['CHRNB4', 'SIM1', 'EOMES', 'CPLX2', 'LINC01088', 'ENOX1', 'LHX5', 'ADCYAP1', 'POU2F2', 'TBR1', 'CDH22', 'FGF13', 'SCRT2', 'NRXN1', 'LINC00599', 'NKX6-1', 'GBX2', 'ALK', 'PRMT8', 'GOLGA6L2', 'CCM2L', 'PRDM13', 'RAPGEF5', 'KLHL29', 'EDIL3', 'BHMT', 'KCNJ5', 'EBF3', 'SMOC1', 'MYH15', 'NFASC', 'LINC00470', 'CBFA2T3'], np.float64(0.00023790454994354835))
+finished analysis for pair ('Radial glia', 'Neuronal IPC') in 1.67 seconds
+starting analysis for comparison: ('Radial glia', 'Neuron')
+summarizing scores
+Log2 fold change & Wald test p-value: Cell-type Radial glia vs Neuron
+               baseMean  log2FoldChange  ...        pvalue          padj
+Gene                                     ...                            
+CFAP52        31.454798        2.434294  ...  1.064478e-02  1.945009e-02
+TP73         116.624706       -2.064130  ...  9.556400e-04  2.085694e-03
+LHX1         392.406063       -1.688598  ...  9.185326e-04  2.010362e-03
+CFAP126       90.005690        1.303849  ...  1.702809e-01  2.340442e-01
+BHMT          38.047415       -1.101792  ...  1.658143e-01  2.287206e-01
+...                 ...             ...  ...           ...           ...
+ADORA2A-AS1   18.782915       -1.405510  ...  3.235489e-08  1.159834e-07
+ENTPD4       889.160381       -0.267514  ...  2.038159e-04  4.883879e-04
+LINC01833     14.845579       -1.308049  ...  7.224962e-02  1.104448e-01
+C5orf46        1.225557        2.396598  ...  1.148293e-01  1.662293e-01
+LPAR5          8.018253       -1.997860  ...  1.301809e-05  3.591480e-05
+
+[33538 rows x 6 columns]
+saved results to /scratch200/reutj/data/deseq2/deseq_results_Radial glia_Neuron
+length sig results:  2494
+printing fisher exact results for Radial glia vs Neuron
+hsg genes results:  (['GYPE', 'FAM95B1', 'ARHGAP42', 'MICA', 'AR', 'FANK1', 'PRKCB', 'LINC02397', 'OXGR1', 'PDCD4', 'DDX11', 'RIBC2', 'NBPF10', 'FAM182B', 'PDGFD', 'PARP4', 'SEMA5B', 'ASPM', 'NBPF14', 'GADD45G', 'GYPC', 'FAM72B', 'CCDC74B', 'FOXP2', 'ZFP36L1', 'CD44', 'KIF18A', 'PMP2', 'ANKRD20A2', 'FAM72D', 'EIF1AY', 'ELN', 'SPAG5', 'CDH12', 'ZNF492', 'FAM72C', 'NEK2', 'ANKRD20A4', 'ARHGAP11A', 'GKAP1'], np.float64(0.4836985912087093))
+har genes results:  (['MAGI1', 'FSTL1', 'CEP112', 'RHPN1-AS1', 'FOXC1', 'SYT17', 'PKM', 'EGLN3', 'GLI2', 'NUDT7', 'PRDM16', 'FREM2', 'TLL2', 'RCN1', 'PRDM13', 'APCDD1', 'FANCA', 'DCDC1', 'IFIH1', 'MSI1', 'RRM1', 'ARHGAP11A', 'MND1', 'SOX1', 'RORA', 'COL27A1', 'ARHGAP42', 'ZBTB16', 'S1PR1', 'CDH23', 'PAX6', 'ENKUR', 'MELK', 'SMO', 'ITGB4', 'CYP26A1', 'ASAP3', 'SALL3', 'ETV5', 'THNSL2', 'DMRTA2', 'RPA1', 'GSDMD', 'GLI3', 'NUP210', 'HES1', 'SDSL', 'ZFHX4', 'LIFR', 'SLFN11', 'CLDN18', 'SKA3', 'CDT1', 'NFE2L2', 'NEUROG2', 'CNTLN', 'MYCBP', 'GLIS3', 'RAD51B', 'SUV39H1', 'MYH7', 'NXPH2', 'ZBTB20', 'STK33', 'FKBP5', 'SLC25A21', 'FAP', 'DOCK8', 'EOMES', 'TACC3', 'EMX2', 'RPA3', 'POU6F2', 'EMX2OS', 'ADAMTS17', 'BUB1', 'FOLH1', 'CASZ1', 'DAB2', 'GPRC5B', 'ASCL1', 'FOXP1', 'STK3', 'NPAS3', 'LINC01044', 'ETV1', 'NEDD4', 'LINC00982', 'SAMD5'], np.float64(3.719925712246981e-05))
+length sig results:  2336
+printing fisher exact results for Neuron vs Radial glia
+hsg genes results:  (['CXorf40A', 'STRC', 'ESPN', 'AC022679.2', 'OTUD7A', 'TPPP', 'PCDHB10', 'RGS6', 'CD24', 'NBEA', 'PCDHB12', 'PCDHA2', 'CD8A', 'PTPN20', 'MAL2', 'MIR137HG', 'LEPR', 'PCDH15', 'ST6GAL2', 'GPRIN2', 'TCAF2', 'CEP170', 'SH3PXD2A', 'SATB2-AS1', 'SLC12A5', 'PRKCH', 'OCM', 'PCDHB14', 'AC062028.1', 'OPRM1', 'FAM228A', 'AFF3', 'CORO1A', 'FMNL1', 'SLC29A4', 'SLC6A15', 'MAPT', 'RARA-AS1', 'ARHGAP15', 'NLN', 'C11orf80', 'SPANXA2-OT1', 'CNTNAP2', 'OBSCN', 'ADARB1'], np.float64(0.04729998222736184))
+har genes results:  (['CHRNB4', 'CPLX1', 'TPPP', 'GMDS', 'ZBTB18', 'ADCYAP1', 'CDH22', 'PPP2R2B', 'KIF26A', 'ZEB2', 'SCG5', 'CCDC136', 'ELFN1', 'PLA2G4C', 'SMIM22', 'FRMD4A', 'SLC45A1', 'ARRB1', 'MAFA', 'UCHL1', 'COL15A1', 'SPON2', 'CHL1', 'MDGA2', 'ANTXR2', 'POU2F2', 'TBR1', 'SHISA6', 'ABCG4', 'FGF13', 'CPS1', 'PRRT4', 'DGKQ', 'SIX3-AS1', 'NRXN1', 'SERP2', 'EFNA5', 'MLLT3', 'RAPGEF5', 'AUTS2', 'DSCAML1', 'MAGIX', 'LINC00637', 'CCDC24', 'SLC8A1-AS1', 'DOC2B', 'PRSS55', 'RGS17', 'REEP1', 'SGCZ', 'PPEF1', 'LEPR', 'ALK', 'ANKRD44', 'PRMT8', 'CDH13', 'CHL1-AS1', 'PCDH1', 'TMEM179', 'CTIF', 'RNF212', 'SLCO3A1', 'ARHGAP15', 'ABLIM1', 'SIX3', 'MYO5B', 'CALY', 'DTX1', 'CPLX2', 'ENOX1', 'FOXQ1', 'RGS6', 'ITGA10', 'LHX5', 'PPP1R13B', 'SLC4A10', 'LINGO1', 'GTDC1', 'KCTD12', 'BTNL9', 'SCRT2', 'LINC00599', 'CAMK2N1', 'CEP170', 'NFAM1', 'SLC8A1', 'CCM2L', 'KLHL29', 'MDGA1', 'AFF3', 'EDIL3', 'ARHGEF4', 'NTM', 'NFASC', 'CBFA2T3', 'SOBP'], np.float64(3.605608828455541e-08))
+finished analysis for pair ('Radial glia', 'Neuron') in 1.65 seconds
+starting analysis for comparison: ('Radial glia', 'Glioblast')
+summarizing scores
+Log2 fold change & Wald test p-value: Cell-type Radial glia vs Glioblast
+               baseMean  log2FoldChange     lfcSE      stat    pvalue      padj
+Gene                                                                           
+CFAP52        31.454798       -0.085502  0.966155 -0.088497  0.929482  0.967143
+TP73         116.624706       -1.008386  0.702800 -1.434811  0.151341  0.325002
+LHX1         392.406063        0.681669  0.565830  1.204724  0.228310  0.425766
+CFAP126       90.005690       -0.574215  1.014509 -0.566003  0.571392  0.746915
+BHMT          38.047415       -0.974297  0.858903 -1.134350  0.256648  0.458548
+...                 ...             ...       ...       ...       ...       ...
+ADORA2A-AS1   18.782915       -0.555263  0.277316 -2.002272  0.045255  0.141660
+ENTPD4       889.160381        0.293486  0.076311  3.845916  0.000120  0.001468
+LINC01833     14.845579       -0.053422  1.208133 -0.044219  0.964730  0.984045
+C5orf46        1.225557        0.711250  1.459208  0.487422  0.625959       NaN
+LPAR5          8.018253        0.095036  0.554533  0.171381  0.863924  0.932266
+
+[33538 rows x 6 columns]
+saved results to /scratch200/reutj/data/deseq2/deseq_results_Radial glia_Glioblast
+length sig results:  266
+printing fisher exact results for Radial glia vs Glioblast
+hsg genes results:  (['LINC02397', 'ASPM', 'GADD45G', 'FAM72D', 'FAM72B', 'NEK2', 'FAM72C', 'CNTNAP2', 'KIF18A'], np.float64(0.01580945493386454))
+har genes results:  (['CHRNB4', 'CDH22', 'NEUROG2', 'DPP4', 'GPRC5B', 'NFE2L3', 'SMOC1', 'UNCX', 'EOMES', 'TACC3', 'PRDM13', 'ZBTB16', 'ASCL1', 'SIX3', 'ADCYAP1', 'BUB1'], np.float64(0.00047746854864327555))
+length sig results:  288
+printing fisher exact results for Glioblast vs Radial glia
+hsg genes results:  (['HRH1', 'OPRM1', 'RGS6', 'FRMPD2'], 1.0)
+har genes results:  (['GSDMD', 'SKAP2', 'CYP26A1', 'MDGA2', 'ADAMTS17', 'GLIS3', 'LINC01141', 'PLD5', 'NRXN1', 'RGS6', 'SGCZ', 'FOLH1'], np.float64(0.044591309191599815))
+finished analysis for pair ('Radial glia', 'Glioblast') in 1.61 seconds
+starting analysis for comparison: ('Neuronal IPC', 'Neuron')
+summarizing scores
+Log2 fold change & Wald test p-value: Cell-type Neuronal IPC vs Neuron
+               baseMean  log2FoldChange     lfcSE      stat    pvalue      padj
+Gene                                                                           
+CFAP52        31.454798       -0.222196  1.007112 -0.220626  0.825383  0.875286
+TP73         116.624706        0.014280  0.588782  0.024253  0.980651  0.987049
+LHX1         392.406063        1.245305  0.502001  2.480685  0.013113  0.025590
+CFAP126       90.005690       -1.762407  0.996434 -1.768715  0.076941  0.124749
+BHMT          38.047415        0.955606  0.752168  1.270469  0.203918  0.289477
+...                 ...             ...       ...       ...       ...       ...
+ADORA2A-AS1   18.782915       -1.077719  0.243483 -4.426262  0.000010  0.000031
+ENTPD4       889.160381       -0.063071  0.072440 -0.870659  0.383940  0.487478
+LINC01833     14.845579       -1.607670  0.789121 -2.037291  0.041621  0.072225
+C5orf46        1.225557        1.997085  1.529055  1.306091  0.191522  0.274435
+LPAR5          8.018253       -0.297678  0.399911 -0.744360  0.456659  0.558046
+
+[33538 rows x 6 columns]
+saved results to /scratch200/reutj/data/deseq2/deseq_results_Neuronal IPC_Neuron
+length sig results:  1960
+printing fisher exact results for Neuronal IPC vs Neuron
+hsg genes results:  (['FAM95B1', 'ARHGAP42', 'KITLG', 'CCKAR', 'AR', 'KIF26B', 'LINC02397', 'PRIM2', 'COMMD4', 'OXGR1', 'DDX11', 'RIBC2', 'NBPF10', 'PDGFD', 'PARP4', 'ASPM', 'NBPF14', 'GADD45G', 'FAM72B', 'FOXP2', 'ZFP36L1', 'CD44', 'KIF18A', 'PMP2', 'FAM72D', 'EIF1AY', 'ELN', 'SPAG5', 'CDH12', 'ZNF492', 'FAM72C', 'NEK2', 'ANKRD20A4', 'ARHGAP11A', 'GKAP1'], np.float64(0.202562644323026))
+har genes results:  (['MAGI1', 'FSTL1', 'RHPN1-AS1', 'SVIL', 'THSD7B', 'FOXC1', 'SYT17', 'GLI2', 'PRDM16', 'NKX6-1', 'GBX2', 'FREM2', 'RCN1', 'PRDM13', 'APCDD1', 'FANCA', 'KCNJ5', 'IFIH1', 'RRM1', 'ARHGAP11A', 'MND1', 'SOX1', 'RORA', 'SIM1', 'LDLRAD3', 'COL27A1', 'ARHGAP42', 'ZBTB16', 'S1PR1', 'CDH23', 'PAX6', 'MELK', 'CYP26A1', 'SALL3', 'PLD5', 'DMRTA2', 'RPA1', 'GSDMD', 'EBF3', 'SMOC1', 'GLI3', 'NUP210', 'HES1', 'SDSL', 'ZFHX4', 'LINC01088', 'SLFN11', 'CLDN18', 'SKA3', 'PRIM2', 'UNCX', 'CDT1', 'BCL2L11', 'NEUROG2', 'CNTLN', 'RAD51B', 'SUV39H1', 'NXPH2', 'ZBTB20', 'STK33', 'FKBP5', 'SLC25A21', 'FAP', 'EOMES', 'TACC3', 'EMX2', 'RPA3', 'EMX2OS', 'BUB1', 'FOLH1', 'CASZ1', 'GPRC5B', 'GOLGA6L2', 'FLNC', 'ASCL1', 'STK3', 'NPAS3', 'BEND3', 'LINC00470', 'LINC01044', 'NEDD4', 'LINC00982'], np.float64(2.0395837733589867e-07))
+length sig results:  2101
+printing fisher exact results for Neuron vs Neuronal IPC
+hsg genes results:  (['CXorf40A', 'ESPN', 'AC022679.2', 'KANK1', 'TPPP', 'RGS6', 'NBEA', 'CAPN1', 'PCDHA2', 'CD8A', 'PTPN20', 'MAL2', 'HYDIN', 'MIR137HG', 'ST6GAL2', 'GPRIN2', 'TCAF2', 'SATB2-AS1', 'SLC12A5', 'PRKCH', 'PDE4DIP', 'OCM', 'AC062028.1', 'OPRM1', 'FAM228A', 'AFF3', 'FMNL1', 'MAPT', 'BTNL2', 'RARA-AS1', 'ARHGAP15', 'NLN', 'SULT1A1', 'SPANXA2-OT1', 'CNTNAP2', 'OBSCN', 'ADARB1'], np.float64(0.21751328859811453))
+har genes results:  (['THNSL1', 'MAFA', 'CALY', 'DOC2B', 'CPLX1', 'DTX1', 'GAS7', 'UCHL1', 'COL15A1', 'SPON2', 'CHL1', 'SMARCA2', 'TPPP', 'MDGA2', 'KCNF1', 'GMDS', 'ENOX1', 'FOXQ1', 'PRSS55', 'RGS6', 'MYO5B', 'RSPO3', 'MAFK', 'RGS17', 'SLC4A10', 'POU2F2', 'PPEF1', 'TBR1', 'LINGO1', 'SHISA6', 'ABCG4', 'PPP2R2B', 'KCTD12', 'KIF26A', 'CPS1', 'RPH3AL', 'PRRT4', 'BTNL9', 'ZEB2', 'LINC01141', 'NRXN1', 'LINC00599', 'CAMK2N1', 'ENKUR', 'SCG5', 'FGF14', 'NFAM1', 'CDH13', 'SLC8A1', 'EFNA5', 'TOP1MT', 'CHL1-AS1', 'PCDH1', 'PLA2G4C', 'SMIM22', 'AFF3', 'TANC2', 'EDIL3', 'ITPR1', 'SPEG', 'ARHGEF4', 'DSCAML1', 'RNF212', 'ROPN1B', 'NTM', 'NFASC', 'LINC00887', 'SLCO3A1', 'ARHGAP15', 'SLC45A1', 'CCDC24', 'ABLIM1', 'ARRB1', 'PACRG', 'RSPH9'], np.float64(0.00015696195538777167))
+finished analysis for pair ('Neuronal IPC', 'Neuron') in 1.64 seconds
+starting analysis for comparison: ('Neuronal IPC', 'Glioblast')
+summarizing scores
+Log2 fold change & Wald test p-value: Cell-type Neuronal IPC vs Glioblast
+               baseMean  log2FoldChange  ...        pvalue          padj
+Gene                                     ...                            
+CFAP52        31.454798       -2.741991  ...  7.041811e-03  1.665204e-02
+TP73         116.624706        1.070024  ...  1.086505e-01  1.793270e-01
+LHX1         392.406063        3.615572  ...  9.365321e-11  7.976118e-10
+CFAP126       90.005690       -3.640471  ...  5.717253e-04  1.731823e-03
+BHMT          38.047415        1.083101  ...  1.849732e-01  2.792959e-01
+...                 ...             ...  ...           ...           ...
+ADORA2A-AS1   18.782915       -0.227471  ...  3.938354e-01  5.089997e-01
+ENTPD4       889.160381        0.497929  ...  7.455941e-11  6.425995e-10
+LINC01833     14.845579       -0.353044  ...  7.761105e-01  8.421076e-01
+C5orf46        1.225557        0.311737  ...  8.314449e-01  8.838249e-01
+LPAR5          8.018253        1.795218  ...  3.898925e-04  1.223883e-03
+
+[33538 rows x 6 columns]
+saved results to /scratch200/reutj/data/deseq2/deseq_results_Neuronal IPC_Glioblast
+length sig results:  1096
+printing fisher exact results for Neuronal IPC vs Glioblast
+hsg genes results:  (['AC022679.2', 'TCF15', 'SYT2', 'CD24', 'CCKAR', 'PCDHA2', 'LINC02397', 'CNTNAP2', 'ASPM', 'SLC12A5', 'GADD45G', 'FAM72B', 'AFF3', 'CORO1A', 'KIF18A', 'FAM72D', 'SPAG5', 'GRIN3A', 'FAM72C', 'NEK2', 'GLRA1', 'ARHGAP11A'], np.float64(0.12025975193083704))
+har genes results:  (['CHRNB4', 'EOMES', 'TACC3', 'CPLX2', 'ENOX1', 'ZBTB16', 'ANTXR2', 'PPP1R13B', 'ZBTB18', 'PTPRT', 'ADCYAP1', 'SLC39A11', 'PAH', 'POU2F2', 'GREM1', 'CDH22', 'TBR1', 'BUB1', 'GPRC5B', 'FGF13', 'KIF26A', 'UNCX', 'SCRT2', 'LINC00599', 'NKX6-1', 'PLCB1', 'ALK', 'CCDC141', 'NEUROG2', 'PRMT8', 'GOLGA6L2', 'DPP4', 'CCM2L', 'MLLT3', 'PRDM13', 'ARHGAP11A', 'ASCL1', 'RAPGEF5', 'KLHL29', 'MDGA1', 'AFF3', 'LRP8', 'EDIL3', 'KCNJ5', 'EBF3', 'NFE2L3', 'SMOC1', 'MYH15', 'NFASC', 'BEND3', 'CBFA2T3', 'LINC00470', 'LINC00637', 'SIX3'], np.float64(1.777074300757608e-07))
+length sig results:  1851
+printing fisher exact results for Glioblast vs Neuronal IPC
+hsg genes results:  (['GYPE', 'FAM95B1', 'MAOA', 'OCLN', 'RGS6', 'C1orf61', 'MICA', 'DDR2', 'FANK1', 'HRH1', 'PRKCB', 'OXGR1', 'MAL2', 'HYDIN', 'NBPF10', 'FAM182B', 'PDGFD', 'NBPF14', 'OPRM1', 'GYPC', 'CCDC74B', 'ZFP36L1', 'CD44', 'PMP2', 'FRMPD2', 'BTNL2', 'NAT1', 'SPTSSB', 'SPANXA2-OT1'], np.float64(0.6156984969860144))
+har genes results:  (['COL27A1', 'CASC2', 'GAS7', 'OBSL1', 'SPON2', 'DOCK8', 'CHL1', 'CSMD2', 'MDGA2', 'POU6F2', 'LIFR', 'RGS6', 'CRYL1', 'ADAMTS17', 'RSPO3', 'MAFK', 'S1PR1', 'CLDN18', 'FOLH1', 'SHISA6', 'ABCG4', 'PRRT4', 'RPH3AL', 'NFE2L2', 'SYT17', 'LINC01141', 'NUDT7', 'BBS2', 'MYOZ1', 'PRDM16', 'ENKUR', 'FREM2', 'CDH13', 'CHL1-AS1', 'ITGB4', 'CYP26A1', 'ETV5', 'GLIS3', 'THNSL2', 'TCTN1', 'DCDC1', 'RSPH9', 'SPEG', 'RHPN1', 'GSDMD', 'ARHGEF4', 'GLI3', 'NPAS3', 'NAT1', 'HES1', 'SDSL', 'FAM86B1', 'CCDC24', 'ETV1', 'PACRG', 'LINC00982', 'SAMD5'], np.float64(0.02499853872019797))
+finished analysis for pair ('Neuronal IPC', 'Glioblast') in 1.58 seconds
+starting analysis for comparison: ('Neuron', 'Glioblast')
+summarizing scores
+Log2 fold change & Wald test p-value: Cell-type Neuron vs Glioblast
+               baseMean  log2FoldChange  ...        pvalue          padj
+Gene                                     ...                            
+CFAP52        31.454798       -2.519796  ...  1.601698e-02  2.886515e-02
+TP73         116.624706        1.055744  ...  1.258527e-01  1.827184e-01
+LHX1         392.406063        2.370267  ...  5.786448e-05  1.526923e-04
+CFAP126       90.005690       -1.878064  ...  7.976011e-02  1.224793e-01
+BHMT          38.047415        0.127495  ...  8.832586e-01  9.135135e-01
+...                 ...             ...  ...           ...           ...
+ADORA2A-AS1   18.782915        0.850247  ...  4.228776e-04  9.944296e-04
+ENTPD4       889.160381        0.561000  ...  9.755086e-13  5.323525e-12
+LINC01833     14.845579        1.254626  ...  2.603099e-01  3.418447e-01
+C5orf46        1.225557       -1.685348  ...  3.168606e-01  4.034162e-01
+LPAR5          8.018253        2.092896  ...  2.482680e-05  6.846445e-05
+
+[33538 rows x 6 columns]
+saved results to /scratch200/reutj/data/deseq2/deseq_results_Neuron_Glioblast
+length sig results:  2309
+printing fisher exact results for Neuron vs Glioblast
+hsg genes results:  (['PCDHB13', 'ESPN', 'AC022679.2', 'OTUD7A', 'SYT2', 'TPPP', 'PCDHB10', 'RGS6', 'CD24', 'NBEA', 'PCDHB12', 'PCDHA2', 'CD8A', 'MIR137HG', 'LEPR', 'PCDH15', 'ST6GAL2', 'GPRIN2', 'TCAF2', 'PCDHB6', 'CEP170', 'SH3PXD2A', 'SATB2-AS1', 'SLC12A5', 'PRKCH', 'GADD45G', 'OCM', 'PCDHB14', 'AC062028.1', 'FAM228A', 'SPRY3', 'AFF3', 'CORO1A', 'FMNL1', 'DUSP7', 'SLC29A4', 'SLC6A15', 'MAPT', 'ARHGAP15', 'NLN', 'CNTNAP2', 'OBSCN', 'ADARB1'], np.float64(0.0850274437568016))
+har genes results:  (['CHRNB4', 'CPLX1', 'TPPP', 'GMDS', 'ZBTB18', 'ADCYAP1', 'CDH22', 'PPP2R2B', 'KIF26A', 'ZEB2', 'PLCL2', 'SCG5', 'ELFN1', 'PLA2G4C', 'SMIM22', 'TENM3', 'FRMD4A', 'SLC45A1', 'ARRB1', 'MAFA', 'UCHL1', 'COL15A1', 'CHL1', 'ANTXR2', 'PTPRT', 'POU2F2', 'TBR1', 'FGF13', 'NRXN1', 'AKT3', 'EFNA5', 'MLLT3', 'RAPGEF5', 'AUTS2', 'DSCAML1', 'MAGIX', 'SMOC1', 'LINC00637', 'SLC8A1-AS1', 'DOC2B', 'RGS17', 'REEP1', 'PPEF1', 'GREM1', 'UNCX', 'LEPR', 'ANKRD44', 'PRMT8', 'NEUROG2', 'CDH13', 'CHL1-AS1', 'ARL9', 'PCDH1', 'TPBGL', 'LRP8', 'TMEM179', 'CTIF', 'RNF212', 'SLCO3A1', 'ARHGAP15', 'ABLIM1', 'SIX3', 'MYO5B', 'CALY', 'DTX1', 'CPLX2', 'ENOX1', 'FOXQ1', 'RGS6', 'ITGA10', 'LHX5', 'PPP1R13B', 'SLC4A10', 'LINGO1', 'GTDC1', 'KCTD12', 'BTNL9', 'SCRT2', 'LINC00599', 'CEP170', 'NFAM1', 'DPP4', 'SLC8A1', 'CCM2L', 'KLHL29', 'MDGA1', 'AFF3', 'EDIL3', 'NFE2L3', 'NTM', 'NFASC', 'CBFA2T3', 'SOBP'], np.float64(1.5787318587286966e-07))
+length sig results:  2803
+printing fisher exact results for Glioblast vs Neuron
+hsg genes results:  (['GYPE', 'FAM95B1', 'C21orf62-AS1', 'ARHGAP42', 'CSPG4', 'DHRS4L2', 'KITLG', 'C1orf61', 'MICA', 'DDR2', 'AR', 'FANK1', 'MSI2', 'HRH1', 'PRKCB', 'OXGR1', 'PDCD4', 'DDX11', 'RIBC2', 'TAPT1-AS1', 'NBPF10', 'FAM182B', 'PDGFD', 'PARP4', 'SEMA5B', 'ASPM', 'NBPF14', 'GYPC', 'FAM72B', 'CCDC74B', 'FKBP9', 'FOXP2', 'ZFP36L1', 'CD44', 'KIF18A', 'PMP2', 'ANKRD20A2', 'FGF7', 'FRMPD2', 'FAM72D', 'ELN', 'NAT1', 'SPAG5', 'CDH12', 'ZNF492', 'FAM72C', 'NEK2', 'ANKRD20A4', 'ARHGAP11A', 'GKAP1'], np.float64(0.1345412419314369))
+har genes results:  (['MAGI1', 'FSTL1', 'CEP112', 'RHPN1-AS1', 'CRYL1', 'RSPO3', 'FOXC1', 'PLXNC1', 'SYT17', 'EGLN3', 'GLI2', 'NUDT7', 'PRDM16', 'FREM2', 'RCN1', 'APCDD1', 'FANCA', 'DCDC1', 'IFIH1', 'MSI1', 'RRM1', 'ARHGAP11A', 'MND1', 'SOX1', 'RORA', 'COL27A1', 'CASC2', 'ARHGAP42', 'S1PR1', 'CDH23', 'PAX6', 'ENKUR', 'MELK', 'ITGB4', 'CYP26A1', 'ASAP3', 'SALL3', 'ETV5', 'THNSL2', 'PLD5', 'DMRTA2', 'RPA1', 'GSDMD', 'GLI3', 'MEIS1', 'NUP210', 'NAT1', 'HES1', 'SDSL', 'ZFHX4', 'OBSL1', 'LIFR', 'SLFN11', 'CLDN18', 'SKA3', 'CDT1', 'NFE2L2', 'KRCC1', 'CNTLN', 'MYCBP', 'GLIS3', 'RAD51B', 'SUV39H1', 'MYH7', 'NXPH2', 'ZBTB20', 'STK33', 'SLC25A21', 'FAP', 'DOCK8', 'CSMD2', 'TACC3', 'EMX2', 'RPA3', 'POU6F2', 'EMX2OS', 'ADAMTS17', 'BUB1', 'FOLH1', 'CASZ1', 'DAB2', 'MYOZ1', 'FLNC', 'SPRY4', 'STK3', 'RHPN1', 'NPAS3', 'LINC01044', 'ETV1', 'NEDD4', 'LINC00982', 'SAMD5'], np.float64(0.000576628024017716))
+finished analysis for pair ('Neuron', 'Glioblast') in 1.64 seconds
+starting deseq analysis on RG-or-not
+finished_creating_dds_obsect_for_RG-or-not in 15.49 seconds 
+starting analysis for comparison: ('other', 'RG')
+summarizing scores
+Log2 fold change & Wald test p-value: RG-or-not RG vs other
+               baseMean  log2FoldChange  ...        pvalue      padj
+Gene                                     ...                        
+CFAP52        31.454798        0.931099  ...  2.146271e-01  0.341261
+TP73         116.624706       -3.723920  ...  8.218240e-07  0.000023
+LHX1         392.406063       -2.981282  ...  9.510655e-07  0.000026
+CFAP126       90.005690        0.677900  ...  3.889761e-01  0.525480
+BHMT          38.047415       -1.886455  ...  1.042867e-03  0.006342
+...                 ...             ...  ...           ...       ...
+ADORA2A-AS1   18.782915       -0.791370  ...  3.414630e-03  0.015721
+ENTPD4       889.160381       -0.256152  ...  2.901229e-02  0.077965
+LINC01833     14.845579        0.157096  ...  7.225480e-01  0.809254
+C5orf46        1.225557        1.322473  ...  1.283956e-01  0.233443
+LPAR5          8.018253       -1.571387  ...  8.162320e-04  0.005242
+
+[33538 rows x 6 columns]
+saved results to /scratch200/reutj/data/deseq2/deseq_results_other_RG
+length sig results:  335
+printing fisher exact results for RG vs other
+hsg genes results:  (['GYPE', 'PRKCB', 'NBPF14', 'GYPC', 'NEK2', 'FANK1'], np.float64(0.4907968945106254))
+har genes results:  (['ENKUR', 'CDH23', 'FAP', 'GLI3', 'HES1', 'RHPN1-AS1', 'POU6F2', 'DCDC1', 'PRDM16', 'S1PR1', 'LINC00982'], np.float64(0.2002689297894251))
+finished analysis for pair ('other', 'RG') in 1.60 seconds
+starting deseq analysis on IPC-or-not
+finished_creating_dds_obsect_for_IPC-or-not in 15.45 seconds 
+starting analysis for comparison: ('other', 'IPC')
+summarizing scores
+Log2 fold change & Wald test p-value: IPC-or-not IPC vs other
+               baseMean  log2FoldChange     lfcSE      stat    pvalue      padj
+Gene                                                                           
+CFAP52        31.454798       -2.587620  0.774568 -3.340726  0.000836  0.005644
+TP73         116.624706       -1.384185  0.825811 -1.676153  0.093708  0.208863
+LHX1         392.406063        0.205444  0.722167  0.284483  0.776041  0.865355
+CFAP126       90.005690       -3.138839  0.729383 -4.303415  0.000017  0.000228
+BHMT          38.047415        0.903070  0.579562  1.558195  0.119187  0.248115
+...                 ...             ...       ...       ...       ...       ...
+ADORA2A-AS1   18.782915       -0.412655  0.315941 -1.306114  0.191514  0.346281
+ENTPD4       889.160381       -0.003005  0.130698 -0.022994  0.981655  0.989589
+LINC01833     14.845579       -0.269238  0.565060 -0.476477  0.633735  0.765108
+C5orf46        1.225557        0.580782  0.975469  0.595388  0.551584       NaN
+LPAR5          8.018253        0.311357  0.514442  0.605232  0.545025  0.697559
+
+[33538 rows x 6 columns]
+saved results to /scratch200/reutj/data/deseq2/deseq_results_other_IPC
+length sig results:  177
+printing fisher exact results for IPC vs other
+hsg genes results:  (['GADD45G', 'CCKAR', 'LINC02397'], np.float64(0.7447099235092831))
+har genes results:  (['SIM1', 'EOMES', 'CPLX2', 'PRDM13', 'ASCL1', 'LINC00470', 'NKX6-1', 'NXPH2'], np.float64(0.06845907759584882))
+finished analysis for pair ('other', 'IPC') in 1.65 seconds
+starting deseq analysis on Neuroblast-or-not
+finished_creating_dds_obsect_for_Neuroblast-or-not in 15.49 seconds 
+starting analysis for comparison: ('Neuroblast', 'other')
+summarizing scores
+Log2 fold change & Wald test p-value: Neuroblast-or-not Neuroblast vs other
+               baseMean  log2FoldChange  ...        pvalue          padj
+Gene                                     ...                            
+CFAP52        31.454798        1.922570  ...  8.562499e-03  3.017137e-02
+TP73         116.624706        4.205529  ...  2.185508e-17  5.586644e-14
+LHX1         392.406063        2.540127  ...  1.415201e-05  2.108687e-04
+CFAP126       90.005690        1.615299  ...  3.244449e-02  8.323487e-02
+BHMT          38.047415        1.206159  ...  3.313243e-02  8.453749e-02
+...                 ...             ...  ...           ...           ...
+ADORA2A-AS1   18.782915        0.281321  ...  3.382459e-01  4.773974e-01
+ENTPD4       889.160381        0.371641  ...  2.884896e-04  2.247407e-03
+LINC01833     14.845579       -0.643867  ...  1.672559e-01  2.847335e-01
+C5orf46        1.225557       -1.445633  ...  1.657629e-01           NaN
+LPAR5          8.018253        0.627187  ...  1.925866e-01  3.158431e-01
+
+[33538 rows x 6 columns]
+saved results to /scratch200/reutj/data/deseq2/deseq_results_Neuroblast_other
+length sig results:  441
+printing fisher exact results for Neuroblast vs other
+hsg genes results:  (['GRIN3A'], np.float64(0.024333435042142092))
+har genes results:  (['KCNJ5', 'MAFA', 'GOLGA6L2', 'EBF3', 'CCM2L', 'SHISA6', 'EDIL3', 'NFASC', 'ENOX1', 'SCRT2', 'NRXN1', 'LHX5', 'PTPRT', 'THSD7B', 'ADCYAP1', 'SGCZ', 'TBR1'], np.float64(0.035858051842294535))
+finished analysis for pair ('Neuroblast', 'other') in 1.61 seconds
+starting deseq analysis on Glioblast-or-not
+finished_creating_dds_obsect_for_Glioblast-or-not in 15.45 seconds 
+starting analysis for comparison: ('other', 'Glioblast')
+summarizing scores
+Log2 fold change & Wald test p-value: Glioblast-or-not Glioblast vs other
+               baseMean  log2FoldChange     lfcSE      stat    pvalue      padj
+Gene                                                                           
+CFAP52        31.454798        0.756550  1.014663  0.745617  0.455899  0.604402
+TP73         116.624706       -2.295243  1.136752 -2.019123  0.043474  0.118076
+LHX1         392.406063       -3.228383  0.902162 -3.578494  0.000346  0.003563
+CFAP126       90.005690        1.249543  1.029274  1.214004  0.224746  0.371636
+BHMT          38.047415       -0.555592  0.831714 -0.668008  0.504128  0.647348
+...                 ...             ...       ...       ...       ...       ...
+ADORA2A-AS1   18.782915       -0.212250  0.362252 -0.585917  0.557931  0.691971
+ENTPD4       889.160381       -0.537757  0.127988 -4.201632  0.000026  0.000528
+LINC01833     14.845579       -0.424416  1.110541 -0.382171  0.702335  0.803734
+C5orf46        1.225557        0.351509  1.333960  0.263508  0.792159  0.868260
+LPAR5          8.018253       -1.723701  0.578682 -2.978664  0.002895  0.016862
+
+[33538 rows x 6 columns]
+saved results to /scratch200/reutj/data/deseq2/deseq_results_other_Glioblast
+length sig results:  818
+printing fisher exact results for Glioblast vs other
+hsg genes results:  (['PRKCB', 'OXGR1', 'FRMPD2', 'OPRM1', 'NAT1', 'CCDC74B', 'OCLN', 'FAM182B', 'PARP4', 'PMP2', 'MICA', 'DDR2', 'CD44', 'HRH1'], np.float64(0.4585795671237177))
+har genes results:  (['DOCK8', 'CSMD2', 'POU6F2', 'LIFR', 'ADAMTS17', 'CRYL1', 'FOLH1', 'NUDT7', 'MYOZ1', 'FREM2', 'ITGB4', 'CYP26A1', 'GLIS3', 'THNSL2', 'RHPN1', 'GSDMD', 'NAT1', 'SDSL', 'SAMD5'], np.float64(0.9057782087312198))
+finished analysis for pair ('other', 'Glioblast') in 1.69 seconds
+starting deseq analysis on Neuron-or-not
+finished_creating_dds_obsect_for_Neuron-or-not in 15.45 seconds 
+starting analysis for comparison: ('other', 'Neuron')
+summarizing scores
+Log2 fold change & Wald test p-value: Neuron-or-not Neuron vs other
+               baseMean  log2FoldChange     lfcSE      stat    pvalue      padj
+Gene                                                                           
+CFAP52        31.454798       -2.093327  0.928247 -2.255141  0.024124  0.058295
+TP73         116.624706       -1.186037  1.017999 -1.165067       NaN       NaN
+LHX1         392.406063       -0.883466  0.876044 -1.008472  0.313228  0.435379
+CFAP126       90.005690       -1.081161  0.945886 -1.143014  0.253033  0.371240
+BHMT          38.047415       -0.479501  0.755923 -0.634325  0.525869  0.642056
+...                 ...             ...       ...       ...       ...       ...
+ADORA2A-AS1   18.782915        0.917829  0.262156  3.501081  0.000463  0.002458
+ENTPD4       889.160381        0.195856  0.151899  1.289379  0.197266  0.306312
+LINC01833     14.845579        1.503807  0.637674  2.358270  0.018360  0.046767
+C5orf46        1.225557       -1.708524  1.329114 -1.285461  0.198631  0.307922
+LPAR5          8.018253        0.912808  0.514989  1.772482  0.076315  0.145019
+
+[33538 rows x 6 columns]
+saved results to /scratch200/reutj/data/deseq2/deseq_results_other_Neuron
+length sig results:  967
+printing fisher exact results for Neuron vs other
+hsg genes results:  (['AC022679.2', 'TPPP', 'RGS6', 'NBEA', 'CD8A', 'MIR137HG', 'GPRIN2', 'SATB2-AS1', 'SLC12A5', 'PRKCH', 'OCM', 'AC062028.1', 'FAM228A', 'AFF3', 'FMNL1', 'MAPT', 'ARHGAP15', 'OBSCN', 'ADARB1'], np.float64(0.1693966553797461))
+har genes results:  (['CALY', 'DOC2B', 'CPLX1', 'COL15A1', 'TPPP', 'CHL1', 'MDGA2', 'GMDS', 'ENOX1', 'FOXQ1', 'MYO5B', 'RGS6', 'ZBTB18', 'RGS17', 'SLC4A10', 'POU2F2', 'PPEF1', 'LINGO1', 'ABCG4', 'KCTD12', 'CCDC24', 'BTNL9', 'ZEB2', 'LINC00599', 'SCG5', 'NFAM1', 'CDH13', 'SLC8A1', 'EFNA5', 'CHL1-AS1', 'PCDH1', 'PLA2G4C', 'SMIM22', 'KLHL29', 'AFF3', 'ARHGEF4', 'DSCAML1', 'RNF212', 'NTM', 'SLCO3A1', 'ARHGAP15', 'SLC45A1', 'LINC00637', 'ABLIM1', 'ARRB1'], np.float64(9.30505609353586e-06))
+finished analysis for pair ('other', 'Neuron') in 1.66 seconds
+starting deseq analysis on proliferating
+finished_creating_dds_obsect_for_proliferating in 15.61 seconds 
+starting analysis for comparison: ('differentiting', 'proliferating')
+summarizing scores
+Log2 fold change & Wald test p-value: proliferating differentiting vs proliferating
+               baseMean  log2FoldChange  ...        pvalue          padj
+Gene                                     ...                            
+CFAP52        31.454798        0.328328  ...  6.221784e-01  7.018887e-01
+TP73         116.624706        3.543953  ...  3.378603e-11  2.029812e-10
+LHX1         392.406063        1.862806  ...  8.112323e-04  1.938772e-03
+CFAP126       90.005690        0.387128  ...  5.699049e-01  6.542694e-01
+BHMT          38.047415        0.541308  ...  2.937485e-01  3.797903e-01
+...                 ...             ...  ...           ...           ...
+ADORA2A-AS1   18.782915        0.850865  ...  8.079581e-07  2.961761e-06
+ENTPD4       889.160381        0.388257  ...  1.082720e-06  3.895418e-06
+LINC01833     14.845579        0.130427  ...  7.671018e-01  8.221185e-01
+C5orf46        1.225557       -1.838754  ...  1.943534e-02  3.519425e-02
+LPAR5          8.018253        1.137025  ...  1.957512e-03  4.357578e-03
+
+[33538 rows x 6 columns]
+saved results to /scratch200/reutj/data/deseq2/deseq_results_differentiting_proliferating
+length sig results:  1587
+printing fisher exact results for differentiting vs proliferating
+hsg genes results:  (['ESPN', 'AC022679.2', 'OTUD7A', 'TPPP', 'PCDHB10', 'RGS6', 'NBEA', 'PCDHA2', 'CD8A', 'MIR137HG', 'PCDH15', 'ST6GAL2', 'TCAF2', 'SATB2-AS1', 'SLC12A5', 'PRKCH', 'OCM', 'PCDHB14', 'FAM228A', 'AFF3', 'FMNL1', 'MAPT', 'RARA-AS1', 'ARHGAP15', 'NLN', 'CNTNAP2', 'OBSCN', 'ADARB1'], np.float64(0.2788913175540759))
+har genes results:  (['MAFA', 'CALY', 'DOC2B', 'CPLX1', 'DTX1', 'COL15A1', 'TPPP', 'CHL1', 'ENOX1', 'FOXQ1', 'MYO5B', 'ANTXR2', 'ITGA10', 'RGS6', 'LHX5', 'ZBTB18', 'RGS17', 'THSD7B', 'ADCYAP1', 'POU2F2', 'PPEF1', 'TBR1', 'SGCZ', 'REEP1', 'SLC4A10', 'LINGO1', 'SHISA6', 'PPP2R2B', 'KCTD12', 'KIF26A', 'BTNL9', 'ZEB2', 'SCRT2', 'NRXN1', 'LINC00599', 'SCG5', 'NFAM1', 'CDH13', 'SLC8A1', 'CHL1-AS1', 'CCM2L', 'PCDH1', 'MLLT3', 'ELFN1', 'PLA2G4C', 'SMIM22', 'RAPGEF5', 'KLHL29', 'MDGA1', 'AFF3', 'EDIL3', 'KCNJ5', 'DSCAML1', 'NTM', 'NFASC', 'ARHGAP15', 'SLC45A1', 'CBFA2T3', 'CCDC24', 'ABLIM1', 'PPP1R13B', 'ARRB1'], np.float64(4.8655772555239725e-05))
+length sig results:  1915
+printing fisher exact results for proliferating vs differentiting
+hsg genes results:  (['GYPE', 'FAM95B1', 'MICA', 'AR', 'FANK1', 'PRKCB', 'LINC02397', 'OXGR1', 'DDX11', 'RIBC2', 'NBPF10', 'PDGFD', 'PARP4', 'ASPM', 'NBPF14', 'GADD45G', 'GYPC', 'FAM72B', 'CCDC74B', 'ZFP36L1', 'CD44', 'KIF18A', 'PMP2', 'ANKRD20A2', 'FAM72D', 'ELN', 'NAT1', 'SPAG5', 'CDH12', 'ZNF492', 'FAM72C', 'NEK2', 'ANKRD20A4', 'ARHGAP11A'], np.float64(0.23420565628848153))
+har genes results:  (['SOX1', 'SLC25A21', 'COL27A1', 'MAGI1', 'FAP', 'FSTL1', 'CSMD2', 'TACC3', 'RPA3', 'RHPN1-AS1', 'POU6F2', 'S1PR1', 'SLFN11', 'CLDN18', 'BUB1', 'SKA3', 'FOXC1', 'FOLH1', 'CDH23', 'PAX6', 'MND1', 'CDT1', 'SYT17', 'PKM', 'EGLN3', 'GLI2', 'NUDT7', 'PRDM16', 'MELK', 'FREM2', 'CNTLN', 'CYP26A1', 'ITGB4', 'MYCBP', 'RCN1', 'SALL3', 'PRDM13', 'ARHGAP11A', 'ETV5', 'APCDD1', 'GLIS3', 'RAD51B', 'DCDC1', 'SUV39H1', 'FANCA', 'ASCL1', 'DMRTA2', 'STK3', 'NXPH2', 'IFIH1', 'GSDMD', 'GLI3', 'NPAS3', 'NUP210', 'NAT1', 'HES1', 'SDSL', 'RRM1', 'LINC01044', 'ZFHX4', 'NEDD4', 'LINC00982', 'SAMD5', 'STK33'], np.float64(0.002731790394504464))
+finished analysis for pair ('differentiting', 'proliferating') in 1.62 seconds
+starting deseq analysis on NPCs-or-not
+finished_creating_dds_obsect_for_NPCs-or-not in 15.87 seconds 
+starting analysis for comparison: ('other', 'NPCs')
+summarizing scores
+Log2 fold change & Wald test p-value: NPCs-or-not NPCs vs other
+               baseMean  log2FoldChange     lfcSE      stat    pvalue      padj
+Gene                                                                           
+CFAP52        31.454798       -0.630994  0.666723 -0.946411  0.343939  0.476898
+TP73         116.624706       -2.888413  0.620298 -4.656492       NaN       NaN
+LHX1         392.406063       -1.156267  0.604101 -1.914029  0.055616  0.114817
+CFAP126       90.005690       -1.095145  0.665947 -1.644493  0.100074  0.183770
+BHMT          38.047415       -0.281741  0.530927 -0.530658  0.595656  0.709303
+...                 ...             ...       ...       ...       ...       ...
+ADORA2A-AS1   18.782915       -0.829258  0.204850 -4.048116  0.000052  0.000306
+ENTPD4       889.160381       -0.189237  0.106910 -1.770063  0.076717  0.148727
+LINC01833     14.845579       -0.044156  0.453009 -0.097472  0.922352  0.951883
+C5orf46        1.225557        1.581609  0.823289  1.921084  0.054721  0.113391
+LPAR5          8.018253       -0.570318  0.432152 -1.319715  0.186930  0.298639
+
+[33538 rows x 6 columns]
+saved results to /scratch200/reutj/data/deseq2/deseq_results_other_NPCs
+length sig results:  462
+printing fisher exact results for NPCs vs other
+hsg genes results:  (['LINC02397', 'ASPM', 'GADD45G', 'FAM72D', 'FAM72B', 'SPAG5', 'FAM72C', 'NEK2', 'ARHGAP11A', 'KIF18A'], np.float64(0.17066323514126341))
+har genes results:  (['FAP', 'LINC01044', 'TACC3', 'BUB1', 'SKA3', 'CDH23', 'CDT1', 'GLI2', 'MELK', 'NEUROG2', 'CNTLN', 'SALL3', 'PRDM13', 'ASCL1', 'SUV39H1', 'NXPH2', 'GLI3', 'RRM1', 'ARHGAP11A', 'NEDD4', 'MND1'], np.float64(0.004037383609416537))
+finished analysis for pair ('other', 'NPCs') in 1.76 seconds
+finished all in 392.69 seconds
+DONE

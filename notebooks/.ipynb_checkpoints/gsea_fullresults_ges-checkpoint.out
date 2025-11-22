@@ -1,0 +1,106 @@
+loading ...
+loaded conda.sh
+sh shell detected
+radialglia
+outpath:  /scratch200/reutj/data/ges_enrichment_results_radialglia/
+0.327
+hsg result for: radialglia is non significant
+0.247
+har result for: radialglia is non significant
+IPC
+outpath:  /scratch200/reutj/data/ges_enrichment_results_IPC/
+0.162
+hsg result for: IPC is non significant
+0.285
+har result for: IPC is non significant
+proliferating
+outpath:  /scratch200/reutj/data/ges_enrichment_results_proliferating/
+0.085
+hsg result for: proliferating is non significant
+0.048
+har result for: proliferating is significant!
+differentiating
+outpath:  /scratch200/reutj/data/ges_enrichment_results_differentiating/
+0.241
+hsg result for: differentiating is non significant
+0.112
+har result for: differentiating is non significant
+G1
+outpath:  /scratch200/reutj/data/ges_enrichment_results_G1/
+0.915
+hsg result for: G1 is non significant
+0.126
+har result for: G1 is non significant
+S
+outpath:  /scratch200/reutj/data/ges_enrichment_results_S/
+0.276
+hsg result for: S is non significant
+0.656
+har result for: S is non significant
+G2M
+outpath:  /scratch200/reutj/data/ges_enrichment_results_G2M/
+0.001
+hsg result for: G2M is significant!
+0.711
+har result for: G2M is non significant
+SG2M
+outpath:  /scratch200/reutj/data/ges_enrichment_results_SG2M/
+0.003
+hsg result for: SG2M is significant!
+0.627
+har result for: SG2M is non significant
+PostM
+outpath:  /scratch200/reutj/data/ges_enrichment_results_PostM/
+0.02
+hsg result for: PostM is significant!
+0.237
+har result for: PostM is non significant
+Neuron
+outpath:  /scratch200/reutj/data/ges_enrichment_results_Neuron/
+0.125
+hsg result for: Neuron is non significant
+0.003
+har result for: Neuron is significant!
+Glioblast
+outpath:  /scratch200/reutj/data/ges_enrichment_results_Glioblast/
+0.711
+hsg result for: Glioblast is non significant
+0.255
+har result for: Glioblast is non significant
+F
+outpath:  /scratch200/reutj/data/ges_enrichment_results_F/
+0.8032290615539859
+hsg result for: F is non significant
+0.4
+har result for: F is non significant
+M
+outpath:  /scratch200/reutj/data/ges_enrichment_results_M/
+0.09432048681541583
+hsg result for: M is non significant
+0.7467467467467468
+har result for: M is non significant
+1
+outpath:  /scratch200/reutj/data/ges_enrichment_results_1/
+0.67
+hsg result for: 1 is non significant
+0.023
+har result for: 1 is significant!
+3
+outpath:  /scratch200/reutj/data/ges_enrichment_results_3/
+0.048
+hsg result for: 3 is significant!
+0.488
+har result for: 3 is non significant
+5
+outpath:  /scratch200/reutj/data/ges_enrichment_results_5/
+0.565
+hsg result for: 5 is non significant
+0.934
+har result for: 5 is non significant
+NPCs
+outpath:  /scratch200/reutj/data/ges_enrichment_results_NPCs/
+0.02
+hsg result for: NPCs is significant!
+0.237
+har result for: NPCs is non significant
+DONE
