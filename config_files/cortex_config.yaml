@@ -1,0 +1,34 @@
+data_type: "cortex"
+
+data_path: "/miridan-data/annaludmir/ndd_gene_modules/data/Cortex_EMX1_louvain3_passedQC_PostM_rev1.h5ad"
+
+output_folder: "/miridan-data/annaludmir/ndd_gene_modules/data/ges_results_1/"
+
+column_conditions:
+  CellClass:
+    - "Radial glia"
+    - "Neuronal IPC"
+    - "Neuron"
+    - "Glioblast"
+    - "Neuroblast"
+
+  CellCyclePhase:
+    - "G1"
+    - "S"
+    - "G2M"
+    - "PostM"
+
+  # Uncomment these blocks if/when you want to include them:
+  # Proliferation:
+  #   - "proliferating"
+  #   - "differentiating"
+  #   - "differentiating_non_cycling"
+  #   - "proliferating_non_cycling"
+  #
+  # NPCs:
+  #   - "NPCs"
+
+expression_threshold: 0.05
+chemistry: "v3"
+permutations: false
+# n_permutations: 500  # optional

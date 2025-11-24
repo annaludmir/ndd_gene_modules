@@ -1,0 +1,111 @@
+{
+  "version": "1",
+  "metadata": {
+    "marimo_version": "0.17.8"
+  },
+  "cells": [
+    {
+      "id": "vhwZ",
+      "code_hash": "9e43cfedba4e39be78e4dd9b1e818d71",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><span class=\"paragraph\">The current notebook directory is: <strong>/miridan-data/annaludmir/ndd_gene_modules/modules</strong></span></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "Hbol",
+      "code_hash": "7c8ed21b4878d00e24eb6ca24c6bf3e3",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "MJUe",
+      "code_hash": "d2f2a6f67d47f5a2072d74288a78a857",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": [
+        {
+          "type": "stream",
+          "name": "stdout",
+          "text": "\n==============================\n  Loading GES YAML config\n==============================\n\u2022 Data type:            cortex\n\u2022 Data path:            /miridan-data/annaludmir/ndd_gene_modules/data/Cortex_EMX1_louvain3_passedQC_PostM_rev1.h5ad\n\u2022 Output folder:        /miridan-data/annaludmir/ndd_gene_modules/data/ges_results_1/\n\u2022 Column\u2192conditions map:{'CellClass': ['Radial glia', 'Neuronal IPC', 'Neuron', 'Glioblast', 'Neuroblast'], 'CellCyclePhase': ['G1', 'S', 'G2M', 'PostM']}\n\u2022 Chemistry:            v3\n\u2022 Expression threshold: 0.05\n\u2022 Permutations:         False\n==============================\n\nUploading data...\ncortex data uploaded\ndata copied to v3 array\ndata loaded in 5.90 seconds.\n",
+          "mimetype": "text/plain"
+        },
+        {
+          "type": "stream",
+          "name": "stderr",
+          "text": "/miridan-data/annaludmir/conda-envs/jupyter-scanpy_new/lib/python3.10/site-packages/scanpy/preprocessing/_simple.py:170: ImplicitModificationWarning: Trying to modify attribute `.obs` of view, initializing view as actual.\n  adata.obs[\"n_genes\"] = number\n",
+          "mimetype": "text/plain"
+        },
+        {
+          "type": "stream",
+          "name": "stdout",
+          "text": "preprocessing done in 51.17 seconds\n\n=== Column: CellClass ===\nAvailable conditions: ['Neuroblast', 'Radial glia', 'Neuronal IPC', 'Neuron', 'Glioblast']\nRequested conditions: ['Radial glia', 'Neuronal IPC', 'Neuron', 'Glioblast', 'Neuroblast']\n\n\u2192 Processing target: Radial glia\nfinished_ges_caculations in 15.18 seconds\n\u2714 Saved GES results \u2192 /miridan-data/annaludmir/ndd_gene_modules/data/ges_results_1/ges_spec_cortex_v3_CellClass_Radial glia.csv\n\n\u2192 Processing target: Neuronal IPC\nfinished_ges_caculations in 15.81 seconds\n\u2714 Saved GES results \u2192 /miridan-data/annaludmir/ndd_gene_modules/data/ges_results_1/ges_spec_cortex_v3_CellClass_Neuronal IPC.csv\n\n\u2192 Processing target: Neuron\nfinished_ges_caculations in 14.93 seconds\n\u2714 Saved GES results \u2192 /miridan-data/annaludmir/ndd_gene_modules/data/ges_results_1/ges_spec_cortex_v3_CellClass_Neuron.csv\n\n\u2192 Processing target: Glioblast\nfinished_ges_caculations in 15.72 seconds\n\u2714 Saved GES results \u2192 /miridan-data/annaludmir/ndd_gene_modules/data/ges_results_1/ges_spec_cortex_v3_CellClass_Glioblast.csv\n\n\u2192 Processing target: Neuroblast\nfinished_ges_caculations in 15.48 seconds\n\u2714 Saved GES results \u2192 /miridan-data/annaludmir/ndd_gene_modules/data/ges_results_1/ges_spec_cortex_v3_CellClass_Neuroblast.csv\n\n=== Column: CellCyclePhase ===\nAvailable conditions: ['Non-cycling', 'PostM', 'S', 'G1', 'G2M']\nRequested conditions: ['G1', 'S', 'G2M', 'PostM']\n\n\u2192 Processing target: G1\nfinished_ges_caculations in 15.62 seconds\n\u2714 Saved GES results \u2192 /miridan-data/annaludmir/ndd_gene_modules/data/ges_results_1/ges_spec_cortex_v3_CellCyclePhase_G1.csv\n\n\u2192 Processing target: S\nfinished_ges_caculations in 15.44 seconds\n\u2714 Saved GES results \u2192 /miridan-data/annaludmir/ndd_gene_modules/data/ges_results_1/ges_spec_cortex_v3_CellCyclePhase_S.csv\n\n\u2192 Processing target: G2M\nfinished_ges_caculations in 15.94 seconds\n\u2714 Saved GES results \u2192 /miridan-data/annaludmir/ndd_gene_modules/data/ges_results_1/ges_spec_cortex_v3_CellCyclePhase_G2M.csv\n\n\u2192 Processing target: PostM\nfinished_ges_caculations in 16.11 seconds\n\u2714 Saved GES results \u2192 /miridan-data/annaludmir/ndd_gene_modules/data/ges_results_1/ges_spec_cortex_v3_CellCyclePhase_PostM.csv\n\n\ud83c\udf89 DONE \u2014 GES pipeline completed.\n\n",
+          "mimetype": "text/plain"
+        }
+      ]
+    },
+    {
+      "id": "vblA",
+      "code_hash": "607f3e962d8e502f4731366820ef245d",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": [
+        {
+          "type": "stream",
+          "name": "stdout",
+          "text": "Uploading data...\ncortex data uploaded\ndata copied to v3 array\ndata loaded in 5.99 seconds.\n",
+          "mimetype": "text/plain"
+        },
+        {
+          "type": "stream",
+          "name": "stderr",
+          "text": "/miridan-data/annaludmir/conda-envs/jupyter-scanpy_new/lib/python3.10/site-packages/scanpy/preprocessing/_simple.py:170: ImplicitModificationWarning: Trying to modify attribute `.obs` of view, initializing view as actual.\n  adata.obs[\"n_genes\"] = number\n",
+          "mimetype": "text/plain"
+        },
+        {
+          "type": "stream",
+          "name": "stdout",
+          "text": "preprocessing done in 51.42 seconds\n",
+          "mimetype": "text/plain"
+        }
+      ]
+    },
+    {
+      "id": "bkHC",
+      "code_hash": "0cc175b9c0f1b6a831c399e269772661",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/html": "<pre style='font-size: 12px'>AnnData object with n_obs \u00d7 n_vars = 117756 \u00d7 25765\n    obs: &#x27;Age&#x27;, &#x27;Agetext&#x27;, &#x27;Ageunit&#x27;, &#x27;All_fc_analysis_id&#x27;, &#x27;Analysis&#x27;, &#x27;CellCycle&#x27;, &#x27;CellCycle_G1&#x27;, &#x27;CellCycle_G2M&#x27;, &#x27;CellCycle_S&#x27;, &#x27;Cellconc&#x27;, &#x27;Chemistry&#x27;, &#x27;Clusters&#x27;, &#x27;ClustersModularity&#x27;, &#x27;ClustersSurprise&#x27;, &#x27;Cmobarcodes&#x27;, &#x27;Comment&#x27;, &#x27;CreationDate&#x27;, &#x27;Datecaptured&#x27;, &#x27;Donor&#x27;, &#x27;DoubletFinderFlag&#x27;, &#x27;DoubletFinderScore&#x27;, &#x27;Editat&#x27;, &#x27;Editby&#x27;, &#x27;Id&#x27;, &#x27;IsCycling&#x27;, &#x27;Label&#x27;, &#x27;MT_ratio&#x27;, &#x27;MeanTotalUMI&#x27;, &#x27;Method&#x27;, &#x27;NGenes&#x27;, &#x27;Name&#x27;, &#x27;Neuronprop&#x27;, &#x27;Numpooledanimals&#x27;, &#x27;Outliers&#x27;, &#x27;OutliersModularity&#x27;, &#x27;OutliersSurprise&#x27;, &#x27;PassedQC&#x27;, &#x27;PassedQC_MT_ratio&#x27;, &#x27;PassedQC_TotalUMI&#x27;, &#x27;PassedQC_UMIPerGene&#x27;, &#x27;PassedQC_UnsplicedRatio&#x27;, &#x27;Plugdate&#x27;, &#x27;Project&#x27;, &#x27;Roi&#x27;, &#x27;SampleID&#x27;, &#x27;Sampleok&#x27;, &#x27;Sex&#x27;, &#x27;Shortname&#x27;, &#x27;Species&#x27;, &#x27;Strain&#x27;, &#x27;Subset&#x27;, &#x27;Targetnumcells&#x27;, &#x27;Tissue&#x27;, &#x27;TotalRNA&#x27;, &#x27;TotalUMI&#x27;, &#x27;Transcriptome&#x27;, &#x27;_X&#x27;, &#x27;_Y&#x27;, &#x27;passedQC&#x27;, &#x27;unspliced_ratio&#x27;, &#x27;velocyto.__version__&#x27;, &#x27;velocyto.logic&#x27;, &#x27;batch&#x27;, &#x27;_scvi_batch&#x27;, &#x27;_scvi_labels&#x27;, &#x27;leiden_scVI&#x27;, &#x27;louvain&#x27;, &#x27;classes&#x27;, &#x27;mark&#x27;, &#x27;CellID&#x27;, &#x27;CellCycleFraction&#x27;, &#x27;Cycling&#x27;, &#x27;CellCyclePhase&#x27;, &#x27;CellClass&#x27;, &#x27;n_genes&#x27;\n    var: &#x27;Chromosome&#x27;, &#x27;Accession&#x27;, &#x27;Start&#x27;, &#x27;End&#x27;, &#x27;n_cells&#x27;\n    uns: &#x27;CellCyclePhase_colors&#x27;, &#x27;CellCycle_phase_colors&#x27;, &#x27;_scvi_manager_uuid&#x27;, &#x27;_scvi_uuid&#x27;, &#x27;leiden&#x27;, &#x27;leiden_scVI_colors&#x27;, &#x27;louvain&#x27;, &#x27;louvain_colors&#x27;, &#x27;neighbors&#x27;, &#x27;new_classes_colors&#x27;, &#x27;try_colors&#x27;, &#x27;umap&#x27;, &#x27;log1p&#x27;\n    obsm: &#x27;PCA&#x27;, &#x27;TSNE&#x27;, &#x27;UMAP&#x27;, &#x27;UMAP3D&#x27;, &#x27;X_scVI&#x27;, &#x27;X_umap&#x27;, &#x27;nhoods&#x27;\n    layers: &#x27;ambiguous&#x27;, &#x27;matrix&#x27;, &#x27;spliced&#x27;, &#x27;unspliced&#x27;\n    obsp: &#x27;connectivities&#x27;, &#x27;distances&#x27;</pre>"
+          }
+        }
+      ],
+      "console": []
+    }
+  ]
+}
