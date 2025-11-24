@@ -123,6 +123,36 @@ def _():
         return adata
 
 
+    def compute_derived_column(adata, column_name, derived_spec):
+        """
+        Create a new column in adata.obs from logical rules defined in the YAML.
+        Example:
+           derived_spec = {
+             "type": "categorical",
+             "rules": {
+                 "RG": "CellType == 'Radial glia'",
+                 "IPCs": "CellType == 'Neuronal IPC'"
+             }
+           }
+        """
+        rules = derived_spec["rules"]
+        new_col = []
+
+        # Build the new column row-by-row
+        for idx in range(adata.n_obs):
+            row = adata.obs.iloc[idx]
+
+            assigned = None
+            for label, expr in rules.items():
+                # Safely evaluate expression using row namespace
+                if eval(expr, {}, dict(row)):
+                    assigned = label
+                    break
+
+            new_col.append(assigned)
+
+        adata.obs[column_name] = new_col
+
     # -------------------------------------------------------------------
     # Core GES functions (logic kept the same as original)
     # -------------------------------------------------------------------
@@ -313,32 +343,51 @@ def _():
         """
         Entry point: run the GES pipeline using a YAML configuration file.
 
-        The YAML must define:
-            - data_type
-            - data_path
-            - output_folder
-            - column_conditions  (dict: column -> list of conditions)
+        YAML structure supports two column types:
+    
+        1. Normal columns:
+            column_name:
+              conditions: ["RG", "IPC", ...]
 
-        Optional:
-            - chemistry
-            - expression_threshold
-            - permutations
-            - n_permutations
+        2. Derived boolean columns:
+            column_name:
+              derived:
+                boolean_expr: "CellClass == 'RG' or CellClass == 'IPC'"
+              conditions:
+                - True
         """
 
-        # ------------------------------
-        # Load YAML config
-        # ------------------------------
+        # -------------------------------------------------------
+        # Helper for boolean derived columns
+        # -------------------------------------------------------
+        def compute_boolean_column(adata, column_name: str, expr: str):
+            """
+            Create adata.obs[column_name] as a boolean mask evaluated from expr.
+            Example expr:
+                "(CellClass == 'RG') or (CellClass == 'IPC')"
+            """
+            print(f"    Evaluating boolean expression for '{column_name}': {expr}")
+
+            mask = adata.obs.eval(expr)
+
+            # Ensure boolean dtype, no NaN
+            mask = mask.fillna(False).astype(bool)
+
+            adata.obs[column_name] = mask
+            print(f"    → Derived boolean column '{column_name}' created ({mask.sum()} True cells)")
+
+        # -------------------------------------------------------
+        # Load config
+        # -------------------------------------------------------
         config = load_config(config_path)
 
         data_type = config["data_type"]
         data_path = config["data_path"]
         output_folder = config["output_folder"]
-        column_conditions = config["column_conditions"]  # dict: {column: [conditions, ...]}
+        column_conditions = config["column_conditions"]
 
         chemistry = config.get("chemistry", "v3")
         expression_threshold = config.get("expression_threshold", 0.05)
-
         permutations = config.get("permutations", False)
         n_permutations = config.get("n_permutations", 500)
 
@@ -348,57 +397,97 @@ def _():
         print(f"• Data type:            {data_type}")
         print(f"• Data path:            {data_path}")
         print(f"• Output folder:        {output_folder}")
-        print(f"• Column→conditions map:{column_conditions}")
         print(f"• Chemistry:            {chemistry}")
         print(f"• Expression threshold: {expression_threshold}")
         print(f"• Permutations:         {permutations}")
-        if permutations:
-            print(f"• Num permutations:     {n_permutations}")
         print("==============================\n")
 
         os.makedirs(output_folder, exist_ok=True)
 
-        # ------------------------------
-        # Load & preprocess data
-        # ------------------------------
+        # -------------------------------------------------------
+        # Load ANNData
+        # -------------------------------------------------------
         adata = load_and_preprocess_adata(
             data_type=data_type,
             path_all=data_path,
             path_cortex=data_path,
         )
 
-        # ------------------------------
-        # Process each column with its own conditions
-        # ------------------------------
-        for condition_col, condition_list in column_conditions.items():
-
-            # extract categories present in this obs column
-            column_values = adata.obs[condition_col].unique().tolist()
-
+        # -------------------------------------------------------
+        # Process each column (normal or derived)
+        # -------------------------------------------------------
+        for condition_col, spec in column_conditions.items():
             print(f"\n=== Column: {condition_col} ===")
-            print(f"Available conditions: {column_values}")
-            print(f"Requested conditions: {condition_list}")
 
+            # Handle dictionary-based spec
+            if isinstance(spec, dict):
+
+                # -------- BOOLEAN DERIVED COLUMN -------
+                if "derived" in spec:
+
+                    if "boolean_expr" not in spec["derived"]:
+                        raise ValueError(
+                            f"Derived column '{condition_col}' requires 'boolean_expr' in YAML."
+                        )
+
+                    boolean_expr = spec["derived"]["boolean_expr"]
+
+                    print(f"  Detected BOOLEAN derived column: {condition_col}")
+                    compute_boolean_column(adata, condition_col, boolean_expr)
+
+                    condition_list = [True]   # always run on True only
+
+                # -------- NORMAL COLUMN -------
+                else:
+                    condition_list = spec.get("conditions", [])
+                    if not condition_list:
+                        raise ValueError(
+                            f"Column '{condition_col}' has no 'conditions' list in YAML."
+                        )
+
+            else:
+                # Legacy support: spec is just a list
+                condition_list = spec
+
+            # Extract present values
+            column_values = adata.obs[condition_col].unique().tolist()
+            print(f"  Available values:   {column_values}")
+            print(f"  Requested targets:  {condition_list}")
+
+            # -------------------------------------------------------
+            # Run GES for each requested condition
+            # -------------------------------------------------------
             for target in condition_list:
 
+                # Boolean columns: target = True/False
                 if target not in column_values:
-                    print(f"⚠️  '{target}' NOT FOUND in column '{condition_col}' → skipping")
+                    print(f"  ⚠️ '{target}' NOT FOUND in column '{condition_col}' → skipping")
                     continue
 
-                print(f"\n→ Processing target: {target}")
+                print(f"\n  → Processing target: {target}")
 
                 target_mask = adata.obs[condition_col] == target
                 target_data = adata[target_mask]
 
-                # Filter genes by expression
+                # Empty population? Skip
+                if target_data.n_obs == 0:
+                    print(f"  ⚠️ target '{target}' has zero cells → skipping")
+                    continue
+
+                # Filter genes by minimal expression
                 gene_expression_num = (target_data.X > 0).sum(axis=0).A1
                 expressed_mask = gene_expression_num >= (
                     target_data.shape[0] * expression_threshold
                 )
 
+                # Avoid zero genes issue
+                if expressed_mask.sum() == 0:
+                    print(f"  ⚠️ No genes pass expression threshold → skipping")
+                    continue
+
                 filtered_adata = adata[:, expressed_mask]
 
-                # Compute GES
+                # Run GES
                 ges_results = calculate_ges(
                     filtered_adata,
                     condition_col,
@@ -408,19 +497,20 @@ def _():
                 )
 
                 ges_results = ges_results.sort_values("ges_score", ascending=False)
+
                 target_name = normalize_label(target)
 
-                ges_path = os.path.join(
+                out_path = os.path.join(
                     output_folder,
                     f"ges_spec_{data_type}_{chemistry}_{condition_col}_{target_name}.csv",
                 )
 
-                ges_results.to_csv(ges_path)
-                print(f"✔ Saved GES results → {ges_path}")
+                ges_results.to_csv(out_path)
+                print(f"  ✔ Saved GES results → {out_path}")
 
-                # --------- permutations (optional) ----------
+                # Optional permutations
                 if permutations:
-                    print(f"🔁 Running {n_permutations} permutations for {target_name}")
+                    print(f"  🔁 Running {n_permutations} permutations for {target_name}")
 
                     perm_results = calculate_ges_with_permutations(
                         filtered_adata,
@@ -438,10 +528,9 @@ def _():
                     )
 
                     perm_results.to_csv(perm_path)
-                    print(f"✔ Saved permutation results → {perm_path}")
+                    print(f"  ✔ Saved permutation results → {perm_path}")
 
         print("\n🎉 DONE — GES pipeline completed.\n")
-
 
 
     # -------------------------------------------------------------------

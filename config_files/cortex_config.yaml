@@ -5,29 +5,49 @@ data_path: "/miridan-data/annaludmir/ndd_gene_modules/data/Cortex_EMX1_louvain3_
 output_folder: "/miridan-data/annaludmir/ndd_gene_modules/data/ges_results_1/"
 
 column_conditions:
-  CellClass:
-    - "Radial glia"
-    - "Neuronal IPC"
-    - "Neuron"
-    - "Glioblast"
-    - "Neuroblast"
+#  CellClass:
+#    - "Radial glia"
+#    - "Neuronal IPC"
+#    - "Neuron"
+#    - "Glioblast"
+#    - "Neuroblast"
+#
+#  CellCyclePhase:
+#    - "G1"
+#    - "S"
+#    - "G2M"
+#    - "PostM"
 
-  CellCyclePhase:
-    - "G1"
-    - "S"
-    - "G2M"
-    - "PostM"
+  NPCs:
+    derived:
+      boolean_expr: "CellClass in ['Radial glia', 'Neuronal IPC']"
+    conditions:
+      - True
 
-  # Uncomment these blocks if/when you want to include them:
-  # Proliferation:
-  #   - "proliferating"
-  #   - "differentiating"
-  #   - "differentiating_non_cycling"
-  #   - "proliferating_non_cycling"
-  #
-  # NPCs:
-  #   - "NPCs"
+  Proliferating:
+    derived:
+      boolean_expr: "(CellClass in ['Radial glia', 'Neuronal IPC']) and (CellCycleFraction > 0.4)"
+    conditions:
+      - True
 
+  Differentiating:
+    derived:
+      boolean_expr: "(CellClass in ['Neuroblast', 'Neuron', 'Glioblast']) and (CellCycleFraction > 0.4)"
+    conditions:
+      - True
+
+  Proliferating_NonCycling:
+    derived:
+      boolean_expr: "(CellClass in ['Radial glia', 'Neuronal IPC']) and (CellCycleFraction <= 0.4)"
+    conditions:
+      - True
+
+  Differentiating_NonCycling:
+    derived:
+      boolean_expr: "(CellClass in ['Neuroblast', 'Neuron', 'Glioblast']) and (CellCycleFraction <= 0.4)"
+    conditions:
+      - True
+      
 expression_threshold: 0.05
 chemistry: "v3"
 permutations: false
