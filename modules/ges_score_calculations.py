@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.17.8"
+__generated_with = "0.16.5"
 app = marimo.App()
 
 
@@ -41,15 +41,18 @@ def _():
             config = yaml.safe_load(f)
 
         # Basic validation
-        required = ["data_type", "data_path", "output_folder", "column_conditions"]
+        required = ["ndd_gene_modules_folder_root", "data_type", "data_path", "output_folder", "column_conditions"]
         for key in required:
             if key not in config:
                 raise ValueError(f"Missing required parameter in config: {key}")
 
-        if not os.path.exists(config["data_path"]):
-            raise FileNotFoundError(f"Data file not found: {config['data_path']}")
+        root_folder = config["ndd_gene_modules_folder_root"]
+        data_path_absolute = os.path.join(root_folder, config["data_path"])
+        if not os.path.exists(data_path_absolute):
+            raise FileNotFoundError(f"Data file not found: {data_path_absolute}")
 
-        os.makedirs(config["output_folder"], exist_ok=True)
+        output_folder_absolute = os.path.join(root_folder, config["output_folder"])
+        os.makedirs(output_folder_absolute, exist_ok=True)
 
         return config
 
@@ -344,7 +347,7 @@ def _():
         Entry point: run the GES pipeline using a YAML configuration file.
 
         YAML structure supports two column types:
-    
+
         1. Normal columns:
             column_name:
               conditions: ["RG", "IPC", ...]
@@ -386,7 +389,7 @@ def _():
         output_folder = config["output_folder"]
         column_conditions = config["column_conditions"]
 
-        chemistry = config.get("chemistry", "v3")
+        chemistry = config.get("chemistry", "Unknown")  # no default
         expression_threshold = config.get("expression_threshold", 0.05)
         permutations = config.get("permutations", False)
         n_permutations = config.get("n_permutations", 500)

@@ -1,0 +1,56 @@
+data_type: "cortex"
+
+ndd_gene_modules_folder_root: "/Users/anyaden/Git/ndd_gene_modules/"
+
+data_path: "data/Cortex_EMX1_louvain3_passedQC_PostM_rev1.h5ad"
+
+output_folder: "data/ges_results_1/"
+
+column_conditions:
+  CellClass:
+    - "Radial glia"
+    - "Neuronal IPC"
+    - "Neuron"
+    - "Glioblast"
+    - "Neuroblast"
+
+  CellCyclePhase:
+    - "G1"
+    - "S"
+    - "G2M"
+    - "PostM"
+
+  NPCs:
+    derived:
+      boolean_expr: "CellClass in ['Radial glia', 'Neuronal IPC']"
+    conditions:
+      - True
+
+  Proliferating:
+    derived:
+      boolean_expr: "(CellClass in ['Radial glia', 'Neuronal IPC']) and (CellCycleFraction > 0.4)"
+    conditions:
+      - True
+
+  Differentiating:
+    derived:
+      boolean_expr: "(CellClass in ['Neuroblast', 'Neuron', 'Glioblast']) and (CellCycleFraction > 0.4)"
+    conditions:
+      - True
+
+  Proliferating_NonCycling:
+    derived:
+      boolean_expr: "(CellClass in ['Radial glia', 'Neuronal IPC']) and (CellCycleFraction <= 0.4)"
+    conditions:
+      - True
+
+  Differentiating_NonCycling:
+    derived:
+      boolean_expr: "(CellClass in ['Neuroblast', 'Neuron', 'Glioblast']) and (CellCycleFraction <= 0.4)"
+    conditions:
+      - True
+      
+expression_threshold: 0.05
+chemistry: "v3"
+permutations: false
+# n_permutations: 500  # optional

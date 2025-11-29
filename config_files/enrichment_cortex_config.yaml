@@ -1,22 +1,31 @@
-data_type: "cortex"
+ndd_gene_modules_folder_root: "/Users/anyaden/Git/ndd_gene_modules/"
 
-data_path: "/miridan-data/annaludmir/ndd_gene_modules/data/Cortex_EMX1_louvain3_passedQC_PostM_rev1.h5ad"
+data_type: cortex                # or data_all
+output_folder: "data/enrichment_results/"
+gmt_folder: "data/ges_results_1/"
 
-output_folder: "/miridan-data/annaludmir/ndd_gene_modules/data/ges_results_1/"
+gsea:
+  enabled: true
+  min_ges_score_threshold: 3
 
-column_conditions:
-#  CellClass:
-#    - "Radial glia"
-#    - "Neuronal IPC"
-#    - "Neuron"
-#    - "Glioblast"
-#    - "Neuroblast"
-#
-#  CellCyclePhase:
-#    - "G1"
-#    - "S"
-#    - "G2M"
-#    - "PostM"
+deseq:
+  enabled: false
+  pseudobulk_folder: "data/.../psb/"
+  gene_names: "data/.../genes_100cells.txt"
+
+column_conditions_for_gsea:
+  CellClass:
+    - "Radial glia"
+    - "Neuronal IPC"
+    - "Neuron"
+    - "Glioblast"
+    - "Neuroblast"
+
+  CellCyclePhase:
+    - "G1"
+    - "S"
+    - "G2M"
+    - "PostM"
 
   NPCs:
     derived:
@@ -47,8 +56,3 @@ column_conditions:
       boolean_expr: "(CellClass in ['Neuroblast', 'Neuron', 'Glioblast']) and (CellCycleFraction <= 0.4)"
     conditions:
       - True
-      
-expression_threshold: 0.05
-chemistry: "v3"
-permutations: false
-# n_permutations: 500  # optional

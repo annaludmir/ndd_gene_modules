@@ -3,26 +3,5 @@
   "metadata": {
     "marimo_version": "0.17.8"
   },
-  "cells": [
-    {
-      "id": "Hbol",
-      "code_hash": "e672dbfe680817c34a115c001ac905f6",
-      "outputs": [
-        {
-          "type": "error",
-          "ename": "exception",
-          "evalue": "attempted relative import with no known parent package",
-          "traceback": []
-        }
-      ],
-      "console": [
-        {
-          "type": "stream",
-          "name": "stderr",
-          "text": "<span class=\"codehilite\"><div class=\"highlight\"><pre><span></span><span class=\"gt\">Traceback (most recent call last):</span>\n  File <span class=\"nb\">&quot;/tmp/marimo_2054853/__marimo__cell_Hbol_.py&quot;</span>, line <span class=\"m\">1</span>, in <span class=\"n\">&lt;module&gt;</span>\n<span class=\"w\">    </span><span class=\"kn\">from</span><span class=\"w\"> </span><span class=\"nn\">.ndd_gene_modules.modules</span><span class=\"w\"> </span><span class=\"kn\">import</span> <span class=\"n\">ges_score_calculations</span>\n<span class=\"gr\">ImportError</span>: <span class=\"n\">attempted relative import with no known parent package</span>\n</pre></div>\n</span>",
-          "mimetype": "application/vnd.marimo+traceback"
-        }
-      ]
-    }
-  ]
+  "cells": []
 }

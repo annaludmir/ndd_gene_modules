@@ -5,106 +5,54 @@
   },
   "cells": [
     {
-      "id": "vhwZ",
-      "code_hash": "9e43cfedba4e39be78e4dd9b1e818d71",
+      "id": "mYlf",
+      "code_hash": "008fcc749705a5d5a80568523d70960f",
       "outputs": [
         {
-          "type": "data",
-          "data": {
-            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><span class=\"paragraph\">The current notebook directory is: <strong>/miridan-data/annaludmir/ndd_gene_modules/modules</strong></span></span>"
-          }
+          "type": "error",
+          "ename": "syntax",
+          "evalue": "line 1\n    !python --version\n    ^\nSyntaxError: invalid syntax\n",
+          "traceback": []
         }
       ],
       "console": []
     },
     {
       "id": "Hbol",
-      "code_hash": "a1ea0180ab9a338a079cc69d5e8c8e60",
+      "code_hash": "6c351706c35cf4d7cea4111fd3176072",
       "outputs": [
         {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
+          "type": "error",
+          "ename": "exception",
+          "evalue": "No module named 'scanpy'",
+          "traceback": []
         }
       ],
-      "console": []
+      "console": [
+        {
+          "type": "stream",
+          "name": "stderr",
+          "text": "<span class=\"codehilite\"><div class=\"highlight\"><pre><span></span><span class=\"gt\">Traceback (most recent call last):</span>\n  File <span class=\"nb\">&quot;/var/folders/vj/cl9h7w7n5c563ykm_6jd_wmh0000gn/T/marimo_75313/__marimo__cell_Hbol_.py&quot;</span>, line <span class=\"m\">18</span>, in <span class=\"n\">&lt;module&gt;</span>\n<span class=\"w\">    </span><span class=\"kn\">import</span><span class=\"w\"> </span><span class=\"nn\">scanpy</span><span class=\"w\"> </span><span class=\"k\">as</span><span class=\"w\"> </span><span class=\"nn\">sc</span>\n<span class=\"gr\">ModuleNotFoundError</span>: <span class=\"n\">No module named &#39;scanpy&#39;</span>\n</pre></div>\n</span>",
+          "mimetype": "application/vnd.marimo+traceback"
+        }
+      ]
     },
     {
       "id": "MJUe",
       "code_hash": "d2f2a6f67d47f5a2072d74288a78a857",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
-      "console": [
-        {
-          "type": "stream",
-          "name": "stdout",
-          "text": "\n==============================\n  Loading GES YAML config\n==============================\n\u2022 Data type:            cortex\n\u2022 Data path:            /miridan-data/annaludmir/ndd_gene_modules/data/Cortex_EMX1_louvain3_passedQC_PostM_rev1.h5ad\n\u2022 Output folder:        /miridan-data/annaludmir/ndd_gene_modules/data/ges_results_1/\n\u2022 Chemistry:            v3\n\u2022 Expression threshold: 0.05\n\u2022 Permutations:         False\n==============================\n\nUploading data...\ncortex data uploaded\ndata copied to v3 array\ndata loaded in 5.94 seconds.\n",
-          "mimetype": "text/plain"
-        },
-        {
-          "type": "stream",
-          "name": "stderr",
-          "text": "/miridan-data/annaludmir/conda-envs/jupyter-scanpy_new/lib/python3.10/site-packages/scanpy/preprocessing/_simple.py:170: ImplicitModificationWarning: Trying to modify attribute `.obs` of view, initializing view as actual.\n  adata.obs[\"n_genes\"] = number\n",
-          "mimetype": "text/plain"
-        },
-        {
-          "type": "stream",
-          "name": "stdout",
-          "text": "preprocessing done in 51.18 seconds\n\n=== Column: NPCs ===\n  Detected BOOLEAN derived column: NPCs\n    Evaluating boolean expression for 'NPCs': CellClass in ['Radial glia', 'Neuronal IPC']\n    \u2192 Derived boolean column 'NPCs' created (38290 True cells)\n  Available values:   [False, True]\n  Requested targets:  [True]\n\n  \u2192 Processing target: True\nfinished_ges_caculations in 8.46 seconds\n  \u2714 Saved GES results \u2192 /miridan-data/annaludmir/ndd_gene_modules/data/ges_results_1/ges_spec_cortex_v3_NPCs_True.csv\n\n=== Column: Proliferating ===\n  Detected BOOLEAN derived column: Proliferating\n    Evaluating boolean expression for 'Proliferating': (CellClass in ['Radial glia', 'Neuronal IPC']) and (CellCycleFraction > 0.4)\n    \u2192 Derived boolean column 'Proliferating' created (0 True cells)\n  Available values:   [False]\n  Requested targets:  [True]\n  \u26a0\ufe0f 'True' NOT FOUND in column 'Proliferating' \u2192 skipping\n\n=== Column: Differentiating ===\n  Detected BOOLEAN derived column: Differentiating\n    Evaluating boolean expression for 'Differentiating': (CellClass in ['Neuroblast', 'Neuron', 'Glioblast']) and (CellCycleFraction > 0.4)\n    \u2192 Derived boolean column 'Differentiating' created (0 True cells)\n  Available values:   [False]\n  Requested targets:  [True]\n  \u26a0\ufe0f 'True' NOT FOUND in column 'Differentiating' \u2192 skipping\n\n=== Column: Proliferating_NonCycling ===\n  Detected BOOLEAN derived column: Proliferating_NonCycling\n    Evaluating boolean expression for 'Proliferating_NonCycling': (CellClass in ['Radial glia', 'Neuronal IPC']) and (CellCycleFraction <= 0.4)\n    \u2192 Derived boolean column 'Proliferating_NonCycling' created (38290 True cells)\n  Available values:   [False, True]\n  Requested targets:  [True]\n\n  \u2192 Processing target: True\nfinished_ges_caculations in 8.36 seconds\n  \u2714 Saved GES results \u2192 /miridan-data/annaludmir/ndd_gene_modules/data/ges_results_1/ges_spec_cortex_v3_Proliferating_NonCycling_True.csv\n\n=== Column: Differentiating_NonCycling ===\n  Detected BOOLEAN derived column: Differentiating_NonCycling\n    Evaluating boolean expression for 'Differentiating_NonCycling': (CellClass in ['Neuroblast', 'Neuron', 'Glioblast']) and (CellCycleFraction <= 0.4)\n    \u2192 Derived boolean column 'Differentiating_NonCycling' created (79466 True cells)\n  Available values:   [True, False]\n  Requested targets:  [True]\n\n  \u2192 Processing target: True\nfinished_ges_caculations in 7.49 seconds\n  \u2714 Saved GES results \u2192 /miridan-data/annaludmir/ndd_gene_modules/data/ges_results_1/ges_spec_cortex_v3_Differentiating_NonCycling_True.csv\n\n\ud83c\udf89 DONE \u2014 GES pipeline completed.\n\n",
-          "mimetype": "text/plain"
-        }
-      ]
+      "outputs": [],
+      "console": []
     },
     {
       "id": "vblA",
       "code_hash": "607f3e962d8e502f4731366820ef245d",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
-      "console": [
-        {
-          "type": "stream",
-          "name": "stdout",
-          "text": "Uploading data...\ncortex data uploaded\ndata copied to v3 array\ndata loaded in 5.89 seconds.\n",
-          "mimetype": "text/plain"
-        },
-        {
-          "type": "stream",
-          "name": "stderr",
-          "text": "/miridan-data/annaludmir/conda-envs/jupyter-scanpy_new/lib/python3.10/site-packages/scanpy/preprocessing/_simple.py:170: ImplicitModificationWarning: Trying to modify attribute `.obs` of view, initializing view as actual.\n  adata.obs[\"n_genes\"] = number\n",
-          "mimetype": "text/plain"
-        },
-        {
-          "type": "stream",
-          "name": "stdout",
-          "text": "preprocessing done in 51.15 seconds\n",
-          "mimetype": "text/plain"
-        }
-      ]
+      "outputs": [],
+      "console": []
     },
     {
       "id": "bkHC",
       "code_hash": "194f5c234fab08632fe8b4ac4f618071",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/html": "<marimo-ui-element object-id='bkHC-0' random-id='48eb17c1-29f0-f621-aa57-a4e88fb8f1de'><marimo-table data-initial-value='[]' data-label='null' data-data='&quot;[{&#92;&quot;CellID&#92;&quot;:&#92;&quot;10X298_1:TGTGATGGTCCAGCAC&#92;&quot;,&#92;&quot;CellCycleFraction&#92;&quot;:0.001663597,&#92;&quot;CellCycle&#92;&quot;:0.0020367982},{&#92;&quot;CellID&#92;&quot;:&#92;&quot;10X298_1:ATGCATGGTTAAAGTG&#92;&quot;,&#92;&quot;CellCycleFraction&#92;&quot;:0.0025933974,&#92;&quot;CellCycle&#92;&quot;:0.0028915663},{&#92;&quot;CellID&#92;&quot;:&#92;&quot;10X298_1:TTGGGCGTCACGTAGT&#92;&quot;,&#92;&quot;CellCycleFraction&#92;&quot;:0.0023387906,&#92;&quot;CellCycle&#92;&quot;:0.0026697178},{&#92;&quot;CellID&#92;&quot;:&#92;&quot;10X298_1:TACGCTCTCCCGAGGT&#92;&quot;,&#92;&quot;CellCycleFraction&#92;&quot;:0.0031217481,&#92;&quot;CellCycle&#92;&quot;:0.0033171571},{&#92;&quot;CellID&#92;&quot;:&#92;&quot;10X298_1:TTGCCTGCAAGTTGGG&#92;&quot;,&#92;&quot;CellCycleFraction&#92;&quot;:0.0038774351,&#92;&quot;CellCycle&#92;&quot;:0.0043878894},{&#92;&quot;CellID&#92;&quot;:&#92;&quot;10X298_1:CTAGGTAAGGTTCATC&#92;&quot;,&#92;&quot;CellCycleFraction&#92;&quot;:0.0049638054,&#92;&quot;CellCycle&#92;&quot;:0.005471797},{&#92;&quot;CellID&#92;&quot;:&#92;&quot;10X298_1:CAAAGAAGTCCGAAGA&#92;&quot;,&#92;&quot;CellCycleFraction&#92;&quot;:0.002283816,&#92;&quot;CellCycle&#92;&quot;:0.0026637607},{&#92;&quot;CellID&#92;&quot;:&#92;&quot;10X178_1:TGTCCCATCTCGTTTA&#92;&quot;,&#92;&quot;CellCycleFraction&#92;&quot;:0.0035608308,&#92;&quot;CellCycle&#92;&quot;:0.0038943447},{&#92;&quot;CellID&#92;&quot;:&#92;&quot;10X298_2:TTAATCCTCTACAGGT&#92;&quot;,&#92;&quot;CellCycleFraction&#92;&quot;:0.0015881709,&#92;&quot;CellCycle&#92;&quot;:0.0016324063},{&#92;&quot;CellID&#92;&quot;:&#92;&quot;10X298_2:TTCCTAAAGGAATGTT&#92;&quot;,&#92;&quot;CellCycleFraction&#92;&quot;:0.0022021458,&#92;&quot;CellCycle&#92;&quot;:0.0023181505}]&quot;' data-total-rows='117756' data-total-columns='2' data-max-columns='50' data-banner-text='&quot;&quot;' data-pagination='true' data-page-size='10' data-field-types='[[&quot;CellCycleFraction&quot;,[&quot;number&quot;,&quot;float32&quot;]],[&quot;CellCycle&quot;,[&quot;number&quot;,&quot;float64&quot;]]]' data-show-filters='true' data-show-download='true' data-show-column-summaries='true' data-show-data-types='true' data-show-page-size-selector='true' data-show-column-explorer='true' data-show-chart-builder='true' data-row-headers='[[&quot;CellID&quot;,[&quot;string&quot;,&quot;object&quot;]]]' data-has-stable-row-id='false' data-lazy='false' data-preload='false'></marimo-table></marimo-ui-element>"
-          }
-        }
-      ],
+      "outputs": [],
       "console": []
     }
   ]

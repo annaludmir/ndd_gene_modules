@@ -1,0 +1,38 @@
+ndd_gene_modules_folder_root: "/Users/anyaden/Git/ndd_gene_modules/"
+
+data_type: all_layers #or data_all
+output_folder: "data/enrichment_results/"
+gmt_folder: "data/ges_results_1/"
+
+gsea:
+  enabled: true
+  min_ges_score_threshold: 3
+
+deseq:
+  enabled: false
+  pseudobulk_folder: "data/.../psb/"
+  gene_names: "data/.../genes_100cells.txt"
+
+column_conditions_for_gsea:
+  region_general
+    - "Radial Glia"
+    - "Cerebellum"
+    - "Diencephalon"
+    - "Fibroblast"
+    - "Glioblast"
+    - "Forebrain_general"
+    - "hindbrain_general"
+    - "Immune"
+    - "Midbrain_general"
+    - "Neural_crest"
+    - "IPC"
+    - "Neuroblast"
+    - "Neuron"
+    - "Oligo"
+    - "Forebrain"
+    - "Hindbrain"
+    - "Placodes"
+    - "Pons"
+    - "Medulla"
+    - "Telencephalon"
+    - "Vascular"
