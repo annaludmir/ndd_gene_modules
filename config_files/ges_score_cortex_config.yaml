@@ -4,7 +4,7 @@ ndd_gene_modules_folder_root: "/Users/anyaden/Git/ndd_gene_modules/"
 
 data_path: "data/Cortex_EMX1_louvain3_passedQC_PostM_rev1.h5ad"
 
-output_folder: "data/ges_results_1/"
+output_folder: "results/ges_results/"
 
 column_conditions:
   CellClass:

@@ -1,4 +1,3 @@
-print('11e31 ')
 import scanpy as sc
 import numpy as np
 import pandas as pd
@@ -197,7 +196,6 @@ def check_ges_path(condition,data_type):
 
 
 if __name__=="__main__":
-  print('1')
   #add ges_results so the results will go to the specifies folder
   out_folder=out_folder+f"ges_results_above{GES_THRESHOLD}"+"/"+data_type+"/"
   gene_list_name=gene_list.split("/")[-1][:-4]

@@ -1,15 +1,16 @@
 ndd_gene_modules_folder_root: "/Users/anyaden/Git/ndd_gene_modules/"
 
-data_type: all_layers #or data_all
 output_folder: "data/enrichment_results/"
-gmt_folder: "data/ges_results_1/"
+ges_results_folder: "results/ges_results/"
+gmt_folder: "data/genes/"
+
+data_type: data_all                # or data_all
+analysis_mode: "gsea"     # or "deseq" or "both"
 
 gsea:
-  enabled: true
   min_ges_score_threshold: 3
-
+  
 deseq:
-  enabled: false
   pseudobulk_folder: "data/.../psb/"
   gene_names: "data/.../genes_100cells.txt"
 
