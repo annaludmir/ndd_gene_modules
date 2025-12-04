@@ -5,53 +5,14 @@
   },
   "cells": [
     {
-      "id": "mYlf",
-      "code_hash": "008fcc749705a5d5a80568523d70960f",
-      "outputs": [
-        {
-          "type": "error",
-          "ename": "syntax",
-          "evalue": "line 1\n    !python --version\n    ^\nSyntaxError: invalid syntax\n",
-          "traceback": []
-        }
-      ],
-      "console": []
-    },
-    {
       "id": "Hbol",
-      "code_hash": "6c351706c35cf4d7cea4111fd3176072",
-      "outputs": [
-        {
-          "type": "error",
-          "ename": "exception",
-          "evalue": "No module named 'scanpy'",
-          "traceback": []
-        }
-      ],
-      "console": [
-        {
-          "type": "stream",
-          "name": "stderr",
-          "text": "<span class=\"codehilite\"><div class=\"highlight\"><pre><span></span><span class=\"gt\">Traceback (most recent call last):</span>\n  File <span class=\"nb\">&quot;/var/folders/vj/cl9h7w7n5c563ykm_6jd_wmh0000gn/T/marimo_75313/__marimo__cell_Hbol_.py&quot;</span>, line <span class=\"m\">18</span>, in <span class=\"n\">&lt;module&gt;</span>\n<span class=\"w\">    </span><span class=\"kn\">import</span><span class=\"w\"> </span><span class=\"nn\">scanpy</span><span class=\"w\"> </span><span class=\"k\">as</span><span class=\"w\"> </span><span class=\"nn\">sc</span>\n<span class=\"gr\">ModuleNotFoundError</span>: <span class=\"n\">No module named &#39;scanpy&#39;</span>\n</pre></div>\n</span>",
-          "mimetype": "application/vnd.marimo+traceback"
-        }
-      ]
+      "code_hash": "623292046932a201c74089618160db2e",
+      "outputs": [],
+      "console": []
     },
     {
       "id": "MJUe",
-      "code_hash": "d2f2a6f67d47f5a2072d74288a78a857",
-      "outputs": [],
-      "console": []
-    },
-    {
-      "id": "vblA",
-      "code_hash": "607f3e962d8e502f4731366820ef245d",
-      "outputs": [],
-      "console": []
-    },
-    {
-      "id": "bkHC",
-      "code_hash": "194f5c234fab08632fe8b4ac4f618071",
+      "code_hash": "4b14a7b55f45eba82e9cea75364b82b7",
       "outputs": [],
       "console": []
     }

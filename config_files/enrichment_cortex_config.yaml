@@ -1,10 +1,10 @@
-ndd_gene_modules_folder_root: "/Users/anyaden/Git/ndd_gene_modules/"
+ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules/"
 
-output_folder: "data/enrichment_results/"
-ges_results_folder: "results/ges_results/"
+output_folder: "results/gsea_enrichment_results/"
+ges_results_folder: "results/ges_score_results/ges_score_for_cortex_20251202"
+# Missing here the gene list
 gmt_folder: "data/genes/"
 
-data_type: cortex                # or data_all
 analysis_mode: "gsea"     # or "deseq" or "both"
 
 gsea:
