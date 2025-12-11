@@ -3,6 +3,7 @@ from pathlib import Path
 import os
 import shutil
 import datetime
+import pandas as pd
 
 from get_gmt import save_to_gmt
 from search_enrichment_gsea import run_gsea
@@ -80,7 +81,7 @@ def run_gsea_enrichment(config, gmt_file: Path, enr_results_dir, figs_folder) ->
     print(f"→ Output folder        {enr_results_dir}")
     print(f"→ GES score threshold  {config['gsea']['min_ges_score_threshold']}\n")
 
-    run_gsea(
+    full_results_csv_path = run_gsea(
         ges_score_path = config["ges_results_folder"],
         gmt_file = str(gmt_file),
         column_conditions = config.get("column_conditions_for_gsea", {}),
@@ -89,17 +90,22 @@ def run_gsea_enrichment(config, gmt_file: Path, enr_results_dir, figs_folder) ->
         figs_folder = figs_folder)
 
     print("✅ GSEA enrichment finished.")
-    return enr_results_dir
+    return full_results_csv_path
 
 
-def run_gsea_plots(results_folder: str | Path, output_folder):
+def run_gsea_plots(results_path: str, output_folder, run_name):
     """
     Run GSEA plotting only, given a results folder.
     This is intended to be called as a separate Nextflow process.
     """
-    results_folder = Path(results_folder)
-    print(f"\n📊 Generating GSEA plots from: {results_folder}")
-    plot_ges(results_folder=str(results_folder) + "/" + output_folder)
+    print(f"\n📊 Generating GSEA plots from: {results_path}")
+    ges_results_df=pd.read_csv(results_path)
+    #divide into different columns and run each file saparatly with the barplot
+    different_columns_dfs = [d for _, d in ges_results_df.groupby("column")]
+    for df in different_columns_dfs:
+      column_name = df.get("column").iat[0]
+      output_path = str(output_folder) + f"/GSEA/{column_name}_enrichment.png"
+      plot_ges(df, output_path, run_name, column_name)
 
 # =============================================================
 # STEP C — DESEQ enrichment run (NO PLOTTING)
@@ -157,6 +163,7 @@ def run_gene_list_pipeline(config_path: str):
     print("\n===================================================")
     print(" 🔥 GENE LIST PIPELINE — CONFIGURATION SUMMARY")
     print("===================================================")
+    print(f"Run name:              {config['run_name']}")
     print(f"Root directory:        {config['ndd_gene_modules_folder_root']}")
     print(f"Output folder:         {config['output_folder']}")
     print(f"Gene list:             {config['gene_list_path']}")
@@ -175,10 +182,9 @@ def run_gene_list_pipeline(config_path: str):
     # --------------------------
     # Build top-level run folder
     # --------------------------
-    gene_list_name = Path(gene_list_name).stem     # folder name without extension
     date_str = datetime.datetime.now().strftime("%Y%m%d")
 
-    run_name = f"{gene_list_name}_threshold_{ges_score_threshold}_{date_str}"
+    run_name = f"{config['run_name']}_threshold_{ges_score_threshold}_{date_str}"
     run_dir = Path(config['output_folder']) / run_name
 
     metadata_dir = run_dir / "metadata"
@@ -210,7 +216,8 @@ def run_gene_list_pipeline(config_path: str):
     # ---------- Step C: DESEQ ----------
     deseq_out = run_deseq_enrichment(config, config['gene_list_path'], enr_results_dir)
 
-    # ---------- Step B: GSEA Plots ----------
-    # run_gsea_plots(enr_results_dir + 'GSEA', fig_dir)
+    # ---------- Step D: GSEA Plots ----------
+    run_gsea_plots(gsea_out, fig_dir, config['run_name'])
+  
     print("\n🎉 PIPELINE COMPLETE — enrichment steps finished.")
     

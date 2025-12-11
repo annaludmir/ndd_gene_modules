@@ -5,18 +5,18 @@ import pandas as pd
 import os
 
 def plot_bar_chart(ges_results_df, output_file, gene_list_name,comparison):
-    colors = ['#1f77b4' if v >= 0 else '#d62728' for v in ges_results_df.nes_score]
+    colors = ['#1f77b4' if v >= 0 else '#d62728' for v in ges_results_df["NES"]]
     x_pos = np.arange(len(ges_results_df)) * 0.9
 
     #adjust the plot size that if values are bigger than 2 we will add the significane line
-    add_legend=max(ges_results_df.nes_score)>=2
+    add_legend=max(ges_results_df["NES"])>=2
     fig_width = 4 if not add_legend else 6
     fig, ax = plt.subplots(figsize=(fig_width,4))
     
-    ax.bar(x_pos,ges_results_df.nes_score,color=colors,edgecolor='black',linewidth=0.7,width=0.7, alpha=0.8)
+    ax.bar(x_pos,ges_results_df["NES"],color=colors,edgecolor='black',linewidth=0.7,width=0.7, alpha=0.8)
     ax.set_xticks(x_pos)
     ax.set_xticklabels(ges_results_df.condition, fontsize=10,rotation=80)
-    ax.set_ylim(min(ges_results_df.nes_score) - 0.2, max(ges_results_df.nes_score) + 0.2)
+    ax.set_ylim(min(ges_results_df["NES"]) - 0.2, max(ges_results_df["NES"]) + 0.2)
     ax.axhline(y = 0, color = 'black', linestyle = '-',linewidth=1)
     #significance lines
     if add_legend:

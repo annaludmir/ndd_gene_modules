@@ -8,7 +8,6 @@ import sys
 import time
 import os
 import statsmodels.stats.multitest as smm
-print('imports done')
 
 #fisher exact function for computing fisher of hsg list interction with sig deseq2 gene table
 def fisher_test_hsg(hsg_genes,sig_table,n_hsg,n_genes):

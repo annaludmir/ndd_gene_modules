@@ -1,3 +1,4 @@
+run_name: "ID_AFS_HM_all_layers"
 ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules/"
 
 output_folder: "results/enrichment_results/"

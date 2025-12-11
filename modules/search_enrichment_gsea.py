@@ -97,6 +97,10 @@ def run_gsea(ges_score_path,
     
     results_folder.mkdir(parents=True, exist_ok=True)
     fig_dir.mkdir(parents=True, exist_ok=True)
+
+    # storage for final combined results
+    summary_rows = []
+
   
     # --------------------------
     # Extract GMT name
@@ -149,15 +153,58 @@ def run_gsea(ges_score_path,
             gsea_res.res2d.to_csv(out_csv)
             print(f"  ✔ Saved GSEA table to {out_csv}")
 
+            # Collect summary row (first term only, like old script)
+            top = gsea_res.res2d.iloc[0]
+
+            summary_rows.append({
+                "column": column,
+                "condition": condition,
+                "term": top["Term"],
+                "NES": top["NES"],
+                "NOM p-val": top["NOM p-val"],
+                "FDR q-val": top["FDR q-val"],
+                "FWER p-val": top["FWER p-val"],
+                "Tag %": top["Tag %"],
+                "Gene %": top["Gene %"],
+                "Lead_genes": top["Lead_genes"]
+            })
+          
             # Save plot (first term)
             term = gsea_res.res2d.Term.iloc[0]
             if term in gsea_res.results:
-                fig = gsea_res.plot(term)
-                plot_out = fig_dir / f"GSEA_{column}_{condition}.png"
-                fig.savefig(plot_out, dpi=300, bbox_inches="tight")
+                plot_out = plot_enhanced_gsea(gsea_res, term, condition, raw_dir)
                 print(f"  ✔ Saved plot to {plot_out}")
+                # fig = gsea_res.plot(term)
+                # plot_out = fig_dir / f"GSEA_{column}_{condition}.png"
+                # fig.savefig(plot_out, dpi=300, bbox_inches="tight")
+                # print(f"  ✔ Saved plot to {plot_out}")
             else:
                 print(f"⚠️ Term '{term}' not found in GSEA result dictionary; skipping plot.")
 
-    print("\n🎉 GSEA pipeline finished successfully!")
-    print(f"All files saved under:\n{results_folder}\n")
+
+      # --------------------------------
+    # SAVE FINAL SUMMARY
+    # --------------------------------
+    if summary_rows:
+        final_summary = pd.DataFrame(summary_rows)
+
+        # adjust p-values (as old script did)
+        reject, pvals_corr = smm.multipletests(
+            final_summary["FDR q-val"].astype(float),
+            method="fdr_bh"
+        )[:2]
+
+        final_summary["FDR q-val (BH corrected)"] = pvals_corr
+
+        final_summary_path = results_folder / "GSEA_final_summary.csv"
+        final_summary.to_csv(final_summary_path, index=False)
+
+        print("\n📄 Final summary file created:")
+        print(final_summary_path)
+        print("\n🎉 GSEA pipeline finished successfully!")
+        print(f"All files saved under:\n{results_folder}\n")
+        return final_summary_path
+    else:
+        print("\n⚠️ No GSEA results found — skipping final summary table.")
+    
+    
