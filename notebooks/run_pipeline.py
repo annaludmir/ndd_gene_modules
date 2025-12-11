@@ -6,8 +6,9 @@ app = marimo.App()
 with app.setup:
     # Initialization code that runs before all other cells
     import marimo as mo
-    import importlib
     import sys
+    from importlib import reload
+    from types import ModuleType
     sys.path.append('/miridan-data/annaludmir/ndd_gene_modules')
 
 
@@ -22,13 +23,13 @@ def _():
 @app.cell
 def _():
     import modules.ges_score_calculations as gsc
-    importlib.reload(gsc)
+    reload(gsc)
     return (gsc,)
 
 
 @app.cell
 def _(gsc):
-    gsc.run_ges_pipeline(config_path='/miridan-data/annaludmir/ndd_gene_modules/config_files/ges_score_all_config.yaml')
+    gsc.run_ges_pipeline(config_path='/miridan-data/annaludmir/ndd_gene_modules/config_files/ges_score_cortex_cell_phase_config.yaml')
     return
 
 
@@ -42,9 +43,10 @@ def _():
 
 @app.cell
 def _():
-    from modules.enrichment_pipeline_for_gene_list import run_gene_list_pipeline
+    import modules.enrichment_pipeline_for_gene_list as epfgl 
+    reload(epfgl)
 
-    run_gene_list_pipeline(config_path='/miridan-data/annaludmir/ndd_gene_modules/config_files/enrichment_cortex_config.yaml')
+    epfgl.run_gene_list_pipeline(config_path='/miridan-data/annaludmir/ndd_gene_modules/config_files/enrichment_all_layers_config.yaml')
     return
 
 

@@ -6,10 +6,6 @@ import os
 import gseapy as gp
 import statsmodels.stats.multitest as smm
 
-conditions=sys.argv[1].strip('[]').split(',')
-gmt_folder=sys.argv[2]
-out_folder=sys.argv[3]
-
 #gsea function..
 def run_gsea(gmt_file,conditions,out_folder):
     condition_cell,gsea_result,num_lead,per_lead,NES=[],[],[],[],[]

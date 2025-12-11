@@ -1,0 +1,17 @@
+name_of_run: "ges_score_for_cortex_cell_cycle"
+ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules/"
+data_path: "data/Cortex_EMX1_louvain3_passedQC_PostM_rev1.h5ad"
+output_folder: "results/ges_score_results/"
+
+column_conditions:
+  CellCyclePhase:
+    - "G1"
+    - "S"
+    - "G2M"
+    - "PostM"
+
+expression_threshold: 0.05
+normalize_data: false
+chemistry: "v3"
+permutations: false
+# n_permutations: 500  # optional

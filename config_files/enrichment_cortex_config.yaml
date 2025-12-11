@@ -1,14 +1,14 @@
 ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules/"
 
-output_folder: "results/gsea_enrichment_results/"
-ges_results_folder: "results/ges_score_results/ges_score_for_cortex_20251202"
-# Missing here the gene list
+output_folder: "results/enrichment_results/"
+ges_results_folder: "results/ges_score_results/ges_score_for_cortex_20251204"
+gene_list_path: "data/genes/sysndd_id_abnormal_facial_shape_abnormal_heart_morphology_for_pipeline.csv"
 gmt_folder: "data/genes/"
 
 analysis_mode: "gsea"     # or "deseq" or "both"
 
 gsea:
-  min_ges_score_threshold: 3
+  min_ges_score_threshold: 2
 
 deseq:
   pseudobulk_folder: "data/.../psb/"

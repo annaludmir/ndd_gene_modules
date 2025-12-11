@@ -4,11 +4,6 @@ import numpy as np
 import pandas as pd
 import os
 
-
-hsg_list=sys.argv[1]
-output_path=sys.argv[2]
-data_type=sys.argv[3]
-
 def plot_bar_chart(deseq_results_df, output_file, gene_list_name,comparison_criteria):
     x_pos = np.arange(len(deseq_results_df)) * 0.9
 

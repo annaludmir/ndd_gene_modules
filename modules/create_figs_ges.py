@@ -4,10 +4,6 @@ import numpy as np
 import pandas as pd
 import os
 
-gene_list=sys.argv[1]
-output_path=sys.argv[2]
-data_type=sys.argv[3]
-
 def plot_bar_chart(ges_results_df, output_file, gene_list_name,comparison):
     colors = ['#1f77b4' if v >= 0 else '#d62728' for v in ges_results_df.nes_score]
     x_pos = np.arange(len(ges_results_df)) * 0.9

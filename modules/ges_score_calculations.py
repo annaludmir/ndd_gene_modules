@@ -1,12 +1,14 @@
 import time
 import yaml
 import os
+import re
 import h5py
 from tqdm import tqdm
 import datetime
 import hashlib
 import shutil
 from pathlib import Path
+from mygene import MyGeneInfo
 from typing import Iterable, List, Optional, Any
 
 import numpy as np
@@ -25,8 +27,6 @@ def load_config(config_path: str) -> dict:
         - data_path          (relative or absolute)
         - output_folder      (relative or absolute)
         - column_conditions  (mapping: column -> spec)
-
-    data_type is optional; if missing, defaults to 'cortex'.
     """
     config_path = Path(config_path).resolve()
 
@@ -54,10 +54,6 @@ def load_config(config_path: str) -> dict:
     config["data_path"] = resolve(config["data_path"])
     config["output_folder"] = resolve(config["output_folder"])
     config["config_path"] = str(config_path)  # keep for metadata copy
-
-    # Optional: allow data_type to be omitted
-    if "data_type" not in config:
-        config["data_type"] = "cortex"
 
     # We only make sure the base output folder exists;
     # the per-run subfolder is created inside run_ges_pipeline.
@@ -154,6 +150,79 @@ def compute_file_hash(path: str, algorithm: str = "sha256") -> str:
 # Utility helpers
 # -------------------------------------------------------------------
 
+mg = MyGeneInfo()
+
+def make_unique_gene_symbols(symbols):
+    """
+    Ensure gene symbols are unique by appending _dupN where necessary.
+    """
+    seen = {}
+    unique_symbols = []
+
+    for s in symbols:
+        if s not in seen:
+            seen[s] = 0
+            unique_symbols.append(s)
+        else:
+            seen[s] += 1
+            unique_symbols.append(f"{s}_dup{seen[s]}")
+
+    return unique_symbols
+  
+def looks_like_ensembl(x: str) -> bool:
+    return bool(re.match(r"^ENS[A-Z0-9]+G\d+", x))
+
+def convert_ensembl_to_symbol(gene_list):
+    ensembls = [g for g in gene_list if looks_like_ensembl(g)]
+    if not ensembls:
+        return gene_list
+
+    res = mg.querymany(
+        ensembls,
+        scopes="ensembl.gene",
+        fields="symbol",
+        species="human",
+        as_dataframe=True
+    )
+
+    # Fill missing with original IDs
+    res["symbol"] = res["symbol"].fillna(res["query"])
+
+    # Build mapping dict
+    mapping = res["symbol"].to_dict()
+
+    # Apply mapping
+    converted = [mapping.get(g, g) for g in gene_list]
+
+    # Make symbols unique
+    converted = make_unique_gene_symbols(converted)
+
+    return converted
+
+
+def get_gene_names(adata):
+    """
+    Safely extract gene names from an AnnData object.
+    Detects if genes are Ensembl IDs and converts them to symbols.
+    """
+    possible_columns = ["gene_symbol", "gene_symbols", "Gene", "gene", "name", "names"]
+
+    # 1. Try var columns
+    for col in possible_columns:
+        if col in adata.var.columns:
+            genes = adata.var[col].astype(str).tolist()
+            break
+    else:
+        # fallback
+        genes = adata.var_names.astype(str).tolist()
+
+    # 2. Auto-detect Ensembl and convert
+    if any(looks_like_ensembl(g) for g in genes):
+        print("Detected Ensembl IDs — converting to gene symbols...")
+        genes = convert_ensembl_to_symbol(genes)
+
+    return genes
+
 def normalize_label(label) -> str:
     """
     Normalize cell-type labels for safe file naming.
@@ -172,7 +241,7 @@ def normalize_label(label) -> str:
     return label_str
 
 
-def load_and_preprocess_adata(data_path: str, chemistry: str | None = "v3"):
+def load_and_preprocess_adata(data_path: str, chemistry: str | None = "v3", normalize = True):
     """
     Generic adata loader + preprocessing.
     Works for any dataset — no cortex/all-layers branching.
@@ -217,8 +286,10 @@ def load_and_preprocess_adata(data_path: str, chemistry: str | None = "v3"):
     sc.pp.filter_cells(adata, min_genes=200)
     sc.pp.filter_genes(adata, min_cells=3)
 
-    sc.pp.normalize_total(adata)
-    sc.pp.log1p(adata)
+    if normalize:
+      print('Normalizing data...')
+      sc.pp.normalize_total(adata)
+      sc.pp.log1p(adata)
 
     print(f"Preprocessing done in {time.time() - prepro_time:.2f} seconds.")
     print(f"Final adata: {adata.n_obs} cells, {adata.n_vars} genes")
@@ -265,8 +336,7 @@ def calculate_ges(
     adata,
     condition_col: str,
     target_cell_type,
-    chemistry: str,
-    data_type: str,
+    chemistry: str
 ):
     """
     Calculate the Generalized Expression Specificity (GES) score.
@@ -281,8 +351,6 @@ def calculate_ges(
         Cell type to calculate specificity for.
     chemistry : str
         A label used only for file naming/logging (kept for compatibility).
-    data_type : {'cortex', 'data_all', ...}
-        Used to decide how to get gene names.
 
     Returns
     -------
@@ -330,13 +398,7 @@ def calculate_ges(
     percent_expressed_target = (filtered_data.X > 0).mean(axis=0).A1
     percent_expressed_other = (filtered_other_data.X > 0).mean(axis=0).A1
 
-    # TODO: maybe make it more generic
-    if data_type == "cortex":
-        genes = adata.var_names
-    else:
-        # in the big data gene symbols are in var["Gene"]
-        genes = adata.var["Gene"]
-
+    genes = get_gene_names(adata)
     # Create DataFrame with results
     results_df = pd.DataFrame(
         {
@@ -351,7 +413,7 @@ def calculate_ges(
 
     if len(per_exp_other) > 0:
         per_expressed_df = pd.DataFrame.from_dict(per_exp_other)
-        per_expressed_df["gene"] = adata.var_names
+        per_expressed_df["gene"] = genes
         results_df = results_df.merge(per_expressed_df, on="gene")
 
     print(f"finished_ges_caculations in {time.time() - ges_time:.2f} seconds")
@@ -364,7 +426,6 @@ def calculate_ges_with_permutations(
     condition_col: str,
     target_cell_type,
     chemistry: str,
-    data_type: str,
     expression_threshold: float = 0.05,
     n_permutations: int = 500,
 ):
@@ -401,7 +462,7 @@ def calculate_ges_with_permutations(
     filtered_adata = adata[:, expressed_genes_mask]
 
     actual_results = calculate_ges(
-        filtered_adata, condition_col, target_cell_type, chemistry, data_type
+        filtered_adata, condition_col, target_cell_type, chemistry
     )
     actual_results.to_csv(f"ges_only_{chemistry}_{normalize_label(target_cell_type)}.csv")
     actual_scores = actual_results["ges_score"].values
@@ -479,11 +540,11 @@ def run_ges_pipeline(config_path: str):
     config = load_config(config_path)
 
     name_of_run = config["name_of_run"]
-    data_type = config["data_type"]
     data_path = config["data_path"]
     output_root = Path(config["output_folder"])
     column_conditions = config["column_conditions"]  # dict: {column: spec}
 
+    normalize = config.get("normalize_data", True)
     chemistry = config.get("chemistry")
     expression_threshold = config.get("expression_threshold", 0.05)
     permutations = config.get("permutations", False)
@@ -519,6 +580,7 @@ def run_ges_pipeline(config_path: str):
     print(f"• Data path:            {data_path}")
     print(f"• Output root:          {output_root}")
     print(f"• Run directory:        {run_dir}")
+    print(f"• Normalize data:       {normalize}")
     print(f"• Column_conditions:    {column_conditions}")
     if chemistry is not None:
         print(f"• Chemistry:            {chemistry}")
@@ -544,7 +606,7 @@ def run_ges_pipeline(config_path: str):
     adata = load_and_preprocess_adata(
     data_path = data_path,
     chemistry = chemistry,
-)
+    normalize = normalize)
 
     # ------------------------------
     # Process each (possibly derived) column
@@ -607,9 +669,7 @@ def run_ges_pipeline(config_path: str):
                 filtered_adata,
                 condition_col,
                 target,
-                chemistry if chemistry is not None else "",
-                data_type,
-            )
+                chemistry if chemistry is not None else "")
 
             ges_results = ges_results.sort_values("ges_score", ascending=False)
             target_name = normalize_label(target)
@@ -629,9 +689,7 @@ def run_ges_pipeline(config_path: str):
                     filtered_adata,
                     condition_col,
                     target,
-                    chemistry if chemistry is not None else "",
-                    data_type,
-                    expression_threshold=expression_threshold,
+                    chemistry if chemistry is not None else "",                    expression_threshold=expression_threshold,
                     n_permutations=n_permutations,
                 )
 

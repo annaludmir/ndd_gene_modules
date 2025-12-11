@@ -5,19 +5,6 @@
   },
   "cells": [
     {
-      "id": "setup",
-      "code_hash": "f810587bf2aadcfe3f32beddada306a9",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
-      "console": []
-    },
-    {
       "id": "Hbol",
       "code_hash": "12c654958696554ac82bb4d4560accd4",
       "outputs": [
@@ -31,52 +18,7 @@
       "console": []
     },
     {
-      "id": "MJUe",
-      "code_hash": "ff9d4d03638c939577899dc6fd87f53a",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/html": "<pre style='font-size: 12px'>&lt;module &#x27;modules.ges_score_calculations&#x27; from &#x27;/miridan-data/annaludmir/ndd_gene_modules/modules/ges_score_calculations.py&#x27;&gt;</pre>"
-          }
-        }
-      ],
-      "console": []
-    },
-    {
-      "id": "vblA",
-      "code_hash": "dc6897c9b7a409210f282d967796aa83",
-      "outputs": [
-        {
-          "type": "error",
-          "ename": "exception",
-          "evalue": "Cannot save file into a non-existent directory: '/miridan-data/annaludmir/ndd_gene_modules/results/ges_score_results/ges_score_for_all_layers_20251204/data'",
-          "traceback": []
-        }
-      ],
-      "console": [
-        {
-          "type": "stream",
-          "name": "stdout",
-          "text": "\n==============================\n  Loading GES YAML config\n==============================\n\u2022 Name of run:          ges_score_for_all_layers\n\u2022 Data path:            /miridan-data/annaludmir/ndd_gene_modules/data/human_dev_GRCh38-3.0.0_all_layers_cleaned.h5ad\n\u2022 Output root:          /miridan-data/annaludmir/ndd_gene_modules/results/ges_score_results\n\u2022 Run directory:        /miridan-data/annaludmir/ndd_gene_modules/results/ges_score_results/ges_score_for_all_layers_20251204\n\u2022 Column_conditions:    {'Region': ['Radial Glia', 'Cerebellum', 'Diencephalon', 'Fibroblast', 'Glioblast', 'Forebrain_general', 'hindbrain_general', 'Immune', 'Midbrain_general', 'Neural_crest', 'IPC', 'Neuroblast', 'Neuron', 'Oligo', 'Forebrain', 'Hindbrain', 'Placodes', 'Pons', 'Medulla', 'Telencephalon', 'Vascular']}\n\u2022 Expression threshold: 0.05\n\u2022 Permutations:         False\n==============================\n\n\nAvailable columns in .obs:\n['Age', 'CellClass', 'CellID', 'Region', 'Subdivision', 'Subregion', 'Tissue', 'TopLevelCluster', 'assay_ontology_term_id', 'cluster_id', 'development_stage_ontology_term_id', 'disease_ontology_term_id', 'dissection', 'donor_id', 'organism_ontology_term_id', 'sample_id', 'self_reported_ethnicity_ontology_term_id', 'sex_ontology_term_id', 'suspension_type']\n",
-          "mimetype": "text/plain"
-        },
-        {
-          "type": "stream",
-          "name": "stderr",
-          "text": "/miridan-data/annaludmir/ndd_gene_modules/modules/ges_score_calculations.py:139: FutureWarning: unique with argument that is not not a Series, Index, ExtensionArray, or np.ndarray is deprecated and will raise in a future version.\n  return sorted(pd.unique(data).tolist())\n",
-          "mimetype": "text/plain"
-        },
-        {
-          "type": "stream",
-          "name": "stdout",
-          "text": "In column Region, there are the following unique values:\n['Brain', 'Cerebellum', 'Diencephalon', 'Forebrain', 'Head', 'Hindbrain', 'Medulla', 'Midbrain', 'Pons', 'Telencephalon']\nUploading data from: /miridan-data/annaludmir/ndd_gene_modules/data/human_dev_GRCh38-3.0.0_all_layers_cleaned.h5ad\nData loaded (1665937 cells, 33538 genes) in 26.95 seconds.\nStarting data preprocessing...\n",
-          "mimetype": "text/plain"
-        }
-      ]
-    },
-    {
-      "id": "lEQa",
+      "id": "bkHC",
       "code_hash": "c9dbed759a05b9d9df53963de90e232f",
       "outputs": [
         {
@@ -90,12 +32,6 @@
     },
     {
       "id": "PKri",
-      "code_hash": "fdba68c0f0390b4fd25292a28c549652",
-      "outputs": [],
-      "console": []
-    },
-    {
-      "id": "Xref",
       "code_hash": "a1148a6c43877a8988f3cc060ff41e24",
       "outputs": [
         {
@@ -108,7 +44,7 @@
       "console": []
     },
     {
-      "id": "SFPL",
+      "id": "Xref",
       "code_hash": "51c3f0b5e2f2cb08158b479b50aaa813",
       "outputs": [
         {
@@ -119,6 +55,87 @@
         }
       ],
       "console": []
+    },
+    {
+      "id": "setup",
+      "code_hash": "c03378b77ebf4f272e5cb4859c340405",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "MJUe",
+      "code_hash": "36c4bc80ba1853653472ce25c2c077bc",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "vblA",
+      "code_hash": "b18c262f5b4bbdd34d363fcc60f9850e",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "lEQa",
+      "code_hash": "46b870c337f52e45bec06be149fe24b7",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": [
+        {
+          "type": "stream",
+          "name": "stdout",
+          "text": "\n===================================================\n \ud83d\udd25 GENE LIST PIPELINE \u2014 CONFIGURATION SUMMARY\n===================================================\nRoot directory:        /miridan-data/annaludmir/ndd_gene_modules/\nOutput folder:         /miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results\nGene list:             /miridan-data/annaludmir/ndd_gene_modules/data/genes/sysndd_id_abnormal_facial_shape_abnormal_heart_morphology_for_pipeline.csv\nGMT folder:            /miridan-data/annaludmir/ndd_gene_modules/data/genes\nGES Score results:     /miridan-data/annaludmir/ndd_gene_modules/results/ges_score_results/ges_score_for_all_layers_20251205\nAnalysis mode:         gsea\nGES score threshold:   1\nColumn conditions:     {'Region': ['Cerebellum', 'Diencephalon', 'Midbrain', 'Forebrain', 'Hindbrain', 'Pons', 'Medulla', 'Telencephalon', 'Head', 'Brain']}\n===================================================\n\n\ud83d\udcc2 GMT already exists: /miridan-data/annaludmir/ndd_gene_modules/data/genes/sysndd_id_abnormal_facial_shape_abnormal_heart_morphology_for_pipeline.gmt\n\n\ud83d\udd25 Running GSEA enrichment\n\u2192 GMT file:            /miridan-data/annaludmir/ndd_gene_modules/data/genes/sysndd_id_abnormal_facial_shape_abnormal_heart_morphology_for_pipeline.gmt\n\u2192 Output folder        /miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/sysndd_id_abnormal_facial_shape_abnormal_heart_morphology_for_pipeline_threshold_1_20251211/data/enrichment_results\n\u2192 GES score threshold  1\n\n\nUsing GMT set: sysndd_id_abnormal_facial_shape_abnormal_heart_morphology_for_pipeline\n\n\nRunning GSEA for Region \u2192 Cerebellum\n  \u2714 Saved GSEA table to /miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/sysndd_id_abnormal_facial_shape_abnormal_heart_morphology_for_pipeline_threshold_1_20251211/data/enrichment_results/GSEA/Region/Cerebellum/gsea_results.csv\n  \u2714 Saved plot to /miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/sysndd_id_abnormal_facial_shape_abnormal_heart_morphology_for_pipeline_threshold_1_20251211/data/enrichment_figures/GSEA/GSEA_Region_Cerebellum.png\n\nRunning GSEA for Region \u2192 Diencephalon\n  \u2714 Saved GSEA table to /miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/sysndd_id_abnormal_facial_shape_abnormal_heart_morphology_for_pipeline_threshold_1_20251211/data/enrichment_results/GSEA/Region/Diencephalon/gsea_results.csv\n  \u2714 Saved plot to /miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/sysndd_id_abnormal_facial_shape_abnormal_heart_morphology_for_pipeline_threshold_1_20251211/data/enrichment_figures/GSEA/GSEA_Region_Diencephalon.png\n\nRunning GSEA for Region \u2192 Midbrain\n  \u2714 Saved GSEA table to /miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/sysndd_id_abnormal_facial_shape_abnormal_heart_morphology_for_pipeline_threshold_1_20251211/data/enrichment_results/GSEA/Region/Midbrain/gsea_results.csv\n  \u2714 Saved plot to /miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/sysndd_id_abnormal_facial_shape_abnormal_heart_morphology_for_pipeline_threshold_1_20251211/data/enrichment_figures/GSEA/GSEA_Region_Midbrain.png\n\nRunning GSEA for Region \u2192 Forebrain\n  \u2714 Saved GSEA table to /miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/sysndd_id_abnormal_facial_shape_abnormal_heart_morphology_for_pipeline_threshold_1_20251211/data/enrichment_results/GSEA/Region/Forebrain/gsea_results.csv\n  \u2714 Saved plot to /miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/sysndd_id_abnormal_facial_shape_abnormal_heart_morphology_for_pipeline_threshold_1_20251211/data/enrichment_figures/GSEA/GSEA_Region_Forebrain.png\n\nRunning GSEA for Region \u2192 Hindbrain\n",
+          "mimetype": "text/plain"
+        },
+        {
+          "type": "stream",
+          "name": "stderr",
+          "text": "2025-12-11 15:56:23,561 [WARNING] Duplicated values found in preranked stats: 0.02% of genes\nThe order of those genes will be arbitrary, which may produce unexpected results.\n",
+          "mimetype": "text/plain"
+        },
+        {
+          "type": "stream",
+          "name": "stdout",
+          "text": "  \u2714 Saved GSEA table to /miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/sysndd_id_abnormal_facial_shape_abnormal_heart_morphology_for_pipeline_threshold_1_20251211/data/enrichment_results/GSEA/Region/Hindbrain/gsea_results.csv\n  \u2714 Saved plot to /miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/sysndd_id_abnormal_facial_shape_abnormal_heart_morphology_for_pipeline_threshold_1_20251211/data/enrichment_figures/GSEA/GSEA_Region_Hindbrain.png\n\nRunning GSEA for Region \u2192 Pons\n  \u2714 Saved GSEA table to /miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/sysndd_id_abnormal_facial_shape_abnormal_heart_morphology_for_pipeline_threshold_1_20251211/data/enrichment_results/GSEA/Region/Pons/gsea_results.csv\n  \u2714 Saved plot to /miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/sysndd_id_abnormal_facial_shape_abnormal_heart_morphology_for_pipeline_threshold_1_20251211/data/enrichment_figures/GSEA/GSEA_Region_Pons.png\n\nRunning GSEA for Region \u2192 Medulla\n  \u2714 Saved GSEA table to /miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/sysndd_id_abnormal_facial_shape_abnormal_heart_morphology_for_pipeline_threshold_1_20251211/data/enrichment_results/GSEA/Region/Medulla/gsea_results.csv\n  \u2714 Saved plot to /miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/sysndd_id_abnormal_facial_shape_abnormal_heart_morphology_for_pipeline_threshold_1_20251211/data/enrichment_figures/GSEA/GSEA_Region_Medulla.png\n\nRunning GSEA for Region \u2192 Telencephalon\n  \u2714 Saved GSEA table to /miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/sysndd_id_abnormal_facial_shape_abnormal_heart_morphology_for_pipeline_threshold_1_20251211/data/enrichment_results/GSEA/Region/Telencephalon/gsea_results.csv\n  \u2714 Saved plot to /miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/sysndd_id_abnormal_facial_shape_abnormal_heart_morphology_for_pipeline_threshold_1_20251211/data/enrichment_figures/GSEA/GSEA_Region_Telencephalon.png\n\nRunning GSEA for Region \u2192 Head\n",
+          "mimetype": "text/plain"
+        },
+        {
+          "type": "stream",
+          "name": "stderr",
+          "text": "2025-12-11 15:56:25,960 [WARNING] Duplicated values found in preranked stats: 0.03% of genes\nThe order of those genes will be arbitrary, which may produce unexpected results.\n",
+          "mimetype": "text/plain"
+        },
+        {
+          "type": "stream",
+          "name": "stdout",
+          "text": "  \u2714 Saved GSEA table to /miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/sysndd_id_abnormal_facial_shape_abnormal_heart_morphology_for_pipeline_threshold_1_20251211/data/enrichment_results/GSEA/Region/Head/gsea_results.csv\n  \u2714 Saved plot to /miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/sysndd_id_abnormal_facial_shape_abnormal_heart_morphology_for_pipeline_threshold_1_20251211/data/enrichment_figures/GSEA/GSEA_Region_Head.png\n\nRunning GSEA for Region \u2192 Brain\n",
+          "mimetype": "text/plain"
+        },
+        {
+          "type": "stream",
+          "name": "stderr",
+          "text": "2025-12-11 15:56:26,579 [WARNING] Duplicated values found in preranked stats: 0.01% of genes\nThe order of those genes will be arbitrary, which may produce unexpected results.\n",
+          "mimetype": "text/plain"
+        },
+        {
+          "type": "stream",
+          "name": "stdout",
+          "text": "  \u2714 Saved GSEA table to /miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/sysndd_id_abnormal_facial_shape_abnormal_heart_morphology_for_pipeline_threshold_1_20251211/data/enrichment_results/GSEA/Region/Brain/gsea_results.csv\n  \u2714 Saved plot to /miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/sysndd_id_abnormal_facial_shape_abnormal_heart_morphology_for_pipeline_threshold_1_20251211/data/enrichment_figures/GSEA/GSEA_Region_Brain.png\n\n\ud83c\udf89 GSEA pipeline finished successfully!\nAll files saved under:\n/miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/sysndd_id_abnormal_facial_shape_abnormal_heart_morphology_for_pipeline_threshold_1_20251211/data/enrichment_results/GSEA\n\n\u2705 GSEA enrichment finished.\n\ud83d\udd15 DESeq disabled in config\n\n\ud83c\udf89 PIPELINE COMPLETE \u2014 enrichment steps finished.\n",
+          "mimetype": "text/plain"
+        }
+      ]
     }
   ]
 }

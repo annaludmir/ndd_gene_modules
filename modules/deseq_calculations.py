@@ -10,12 +10,6 @@ import os
 import statsmodels.stats.multitest as smm
 print('imports done')
 
-hsg_file=sys.argv[1]
-psb_data_folder=sys.argv[2]
-gene_names=sys.argv[3]
-out_path=sys.argv[4]
-data_type=sys.argv[5]
-
 #fisher exact function for computing fisher of hsg list interction with sig deseq2 gene table
 def fisher_test_hsg(hsg_genes,sig_table,n_hsg,n_genes):
     hsg_intersection=list(set(sig_table.index) & set(hsg_genes))

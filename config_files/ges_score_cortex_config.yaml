@@ -48,6 +48,7 @@ column_conditions:
       - True
       
 expression_threshold: 0.05
+normalize_data: true
 chemistry: "v3"
 permutations: false
 # n_permutations: 500  # optional

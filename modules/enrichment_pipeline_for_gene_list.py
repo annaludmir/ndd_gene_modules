@@ -1,6 +1,8 @@
 import yaml
 from pathlib import Path
 import os
+import shutil
+import datetime
 
 from get_gmt import save_to_gmt
 from search_enrichment_gsea import run_gsea
@@ -26,6 +28,8 @@ def load_config(config_path: str):
 
     config["output_folder"] = resolve(config["output_folder"])
     config["gmt_folder"] = resolve(config["gmt_folder"])
+    config["gene_list_path"] = resolve(config["gene_list_path"])
+    config["ges_results_folder"] = resolve(config["ges_results_folder"])
 
     if config["deseq"].get("enabled", False):
         config["deseq"]["pseudobulk_folder"] = resolve(config["deseq"]["pseudobulk_folder"])
@@ -54,62 +58,58 @@ def create_gmt_file(gmt_folder: Path, gene_list_file: str, make: bool = True) ->
         raise FileNotFoundError("GMT creation disabled, but GMT file does not exist.")
 
     print(f"🧬 Creating GMT: {gmt_out}")
-    save_to_gmt(gene_list_file, gmt_out.stem, gmt_out)
+    save_to_gmt(gene_list_file, gmt_out)
     return gmt_out
 
 
 # =============================================================
 # STEP B — GSEA enrichment run (NO PLOTTING)
 # =============================================================
-def run_gsea_enrichment(config, gmt_file: Path) -> Path:
+def run_gsea_enrichment(config, gmt_file: Path, enr_results_dir, figs_folder) -> Path:
     """
     Run GSEA enrichment only (no plots).
     Returns the folder where GSEA results were written.
     """
-    if not config["gsea"]["enabled"]:
+    if config["analysis_mode"] not in ["gsea","both"]:
         print("🔕 GSEA disabled in config")
         return None
 
-    out = config["output_folder"] / f"GSEA_minScore_{config['gsea']['min_ges_score_threshold']}"
-    out.mkdir(parents=True, exist_ok=True)
 
     print("\n🔥 Running GSEA enrichment")
-    print(f"→ GMT file:     {gmt_file}")
-    print(f"→ Output folder {out}")
-    print(f"→ Threshold     {config['gsea']['min_ges_score_threshold']}\n")
+    print(f"→ GMT file:            {gmt_file}")
+    print(f"→ Output folder        {enr_results_dir}")
+    print(f"→ GES score threshold  {config['gsea']['min_ges_score_threshold']}\n")
 
-    # NOTE: signature of run_gsea should match what you implemented there.
     run_gsea(
-        gmt_file=str(gmt_file),
-        out_folder=str(out) + "/",
-        data_type=config["data_type"],
-        min_score=config["gsea"]["min_ges_score_threshold"],
-        column_conditions=config.get("column_conditions_for_gsea", {})
-    )
+        ges_score_path = config["ges_results_folder"],
+        gmt_file = str(gmt_file),
+        column_conditions = config.get("column_conditions_for_gsea", {}),
+        ges_score_threshold = config["gsea"]["min_ges_score_threshold"],
+        out_folder = enr_results_dir,
+        figs_folder = figs_folder)
 
     print("✅ GSEA enrichment finished.")
-    return out
+    return enr_results_dir
 
 
-def run_gsea_plots(results_folder: str | Path):
+def run_gsea_plots(results_folder: str | Path, output_folder):
     """
     Run GSEA plotting only, given a results folder.
     This is intended to be called as a separate Nextflow process.
     """
     results_folder = Path(results_folder)
     print(f"\n📊 Generating GSEA plots from: {results_folder}")
-    plot_ges(results_folder=str(results_folder) + "/")
-
+    plot_ges(results_folder=str(results_folder) + "/" + output_folder)
 
 # =============================================================
 # STEP C — DESEQ enrichment run (NO PLOTTING)
 # =============================================================
-def run_deseq_enrichment(config, gene_list_file: str) -> Path | None:
+def run_deseq_enrichment(config, gene_list_file: str, enr_results_dir) -> Path | None:
     """
     Run DESeq2 enrichment (no plots).
     Returns the folder where DESeq results were written.
     """
-    if not config["deseq"]["enabled"]:
+    if config["analysis_mode"] not in ["deseq","both"]:
         print("🔕 DESeq disabled in config")
         return None
 
@@ -143,7 +143,7 @@ def run_deseq_plots(results_folder: str | Path):
 # =============================================================
 # MAIN CONVENIENCE FUNCTION (still runs everything in Python)
 # =============================================================
-def run_gene_list_pipeline(config_path: str, gene_list_file: str):
+def run_gene_list_pipeline(config_path: str):
     """
     Convenience function to run the whole pipeline from Python:
     - load config
@@ -157,23 +157,60 @@ def run_gene_list_pipeline(config_path: str, gene_list_file: str):
     print("\n===================================================")
     print(" 🔥 GENE LIST PIPELINE — CONFIGURATION SUMMARY")
     print("===================================================")
-    print(f"Root directory:  {config['ndd_gene_modules_folder_root']}")
-    print(f"Data type:       {config['data_type']}")
-    print(f"Output folder:   {config['output_folder']}")
-    print(f"GMT folder:      {config['gmt_folder']}")
+    print(f"Root directory:        {config['ndd_gene_modules_folder_root']}")
+    print(f"Output folder:         {config['output_folder']}")
+    print(f"Gene list:             {config['gene_list_path']}")
+    print(f"GMT folder:            {config['gmt_folder']}")
+    print(f"GES Score results:     {config['ges_results_folder']}")
+    print(f"Analysis mode:         {config['analysis_mode']}")
+    if config['analysis_mode'] in ('gsea', 'both'):
+      print(f"GES score threshold:   {config['gsea']['min_ges_score_threshold']}")
+      print(f"Column conditions:     {config['column_conditions_for_gsea']}")
     print("===================================================\n")
 
+    ges_results_folder = config['ges_results_folder']
+    gene_list_name = config['gene_list_path']
+    ges_score_threshold = config['gsea']['min_ges_score_threshold']
+  
+    # --------------------------
+    # Build top-level run folder
+    # --------------------------
+    gene_list_name = Path(gene_list_name).stem     # folder name without extension
+    date_str = datetime.datetime.now().strftime("%Y%m%d")
+
+    run_name = f"{gene_list_name}_threshold_{ges_score_threshold}_{date_str}"
+    run_dir = Path(config['output_folder']) / run_name
+
+    metadata_dir = run_dir / "metadata"
+    data_dir = run_dir / "data"
+    enr_results_dir = data_dir / "enrichment_results"
+    fig_dir = data_dir / "enrichment_figures"
+    add_fig_dir = data_dir / "additional_figures"
+
+    # create all necessary folders
+    run_dir.mkdir(parents=True, exist_ok=True)
+    metadata_dir.mkdir(parents=True, exist_ok=True)
+    enr_results_dir.mkdir(parents=True, exist_ok=True)
+    fig_dir.mkdir(parents=True, exist_ok=True)
+    add_fig_dir.mkdir(parents=True, exist_ok=True)
+
+    # Copy YAML config to metadata
+    if config_path is not None:
+        shutil.copy2(config_path, metadata_dir / Path(config_path).name)
+      
     # ---------- Step A: GMT ----------
     gmt_file = create_gmt_file(
         gmt_folder=config["gmt_folder"],
-        gene_list_file=gene_list_file,
+        gene_list_file=config['gene_list_path']
     )
 
-    # ---------- Step B: GSEA (NO plots) ----------
-    gsea_out = run_gsea_enrichment(config, gmt_file)
+    # ---------- Step B: GSEA ----------
+    gsea_out = run_gsea_enrichment(config, gmt_file, enr_results_dir, fig_dir)
 
-    # ---------- Step C: DESEQ (NO plots) ----------
-    deseq_out = run_deseq_enrichment(config, gene_list_file)
+    # ---------- Step C: DESEQ ----------
+    deseq_out = run_deseq_enrichment(config, config['gene_list_path'], enr_results_dir)
 
+    # ---------- Step B: GSEA Plots ----------
+    # run_gsea_plots(enr_results_dir + 'GSEA', fig_dir)
     print("\n🎉 PIPELINE COMPLETE — enrichment steps finished.")
-    print("   For plots, call run_gsea_plots(...) and/or run_deseq_plots(...) separately.\n")
+    

@@ -6,14 +6,8 @@ import os
 import gseapy as gp
 import statsmodels.stats.multitest as smm 
 import matplotlib.pyplot as plt
+from pathlib import Path
 
-gene_list=sys.argv[1]
-gmt_folder=sys.argv[2]
-conditions=sys.argv[3].strip('[]').split(',')
-out_folder=sys.argv[4]
-data_type=sys.argv[5]
-
-GES_THRESHOLD=3
 
 
 def plot_enhanced_gsea(gsea_res, term, cell_type, output_dir):
@@ -90,116 +84,80 @@ def plot_enhanced_gsea(gsea_res, term, cell_type, output_dir):
     
     return fig_path
 
-#gsea function..
-def run_gsea(gmt_file,conditions,out_folder,data_type):
-    condition_cell,gsea_result,num_lead,per_lead,NES,lead_genes=[],[],[],[],[],[]
-    gmt_name=gmt_file.split("/")[-1][:-4]
-    for i in conditions:
-        print(f"testing condition {i} on {gmt_name} list")
-        ges_df=pd.read_csv(check_ges_path(i,data_type))
-        print("uploaded ges file")
-        #prepare table for gsea
-        ges_df=ges_df[ges_df.ges_score>GES_THRESHOLD]
-        print(f"number of genes in {i} ges table with ges>{GES_THRESHOLD} is {ges_df.shape[0]}")
-        #prepare ges list
-        ges_scores_en=ges_df.ges_score
-        ges_scores_en.index=ges_df.gene
-        #prepare paths
-        outpath=out_folder+gmt_name+"/"+i+"/"
-        print("outpath: ",outpath)
-        outraw=outpath+"gsea_raw"
-        outgsea=outpath+"gsea_results.csv"
-        #gsea                
-        gsea_res = gp.prerank(rnk=ges_scores_en,
-               gene_sets=gmt_file,  
-               outdir=outraw,  # Output directory
-               min_size=5,
-               max_size=2500,
-               seed=6,
-               permutation_type='geneset',
-               permutation_num=10000,
-               format='pdf')
-        #make a plot for the enrichment and save to file
-        # Extract term (ensure it's a valid term)
-        term = gsea_res.res2d.Term.iloc[0]  # Get the first term from res2d
-        # Check if the term exists in results
-        if term in gsea_res.results:
-            print(term)
-            fig_path = plot_enhanced_gsea(gsea_res, term, i,outraw)
-            print(f"Plot saved to: {fig_path}")
+def run_gsea(ges_score_path,
+             gmt_file,
+             column_conditions,
+             ges_score_threshold,
+             out_folder,
+             figs_folder):
+
+    # create resuls folder
+    results_folder = out_folder / "GSEA"
+    fig_dir = figs_folder / "GSEA"
     
-            #other plotting options- gseaplot - does not work
-            # Call the plotting function directly gseaplot... (dont forget import gseaplot for that)
-            #gseaplot(rank_metric=gsea_res.ranking,
-             #term=term, 
-             #hits=enrichment_results.get('hits'),
-             #nes=enrichment_results.get('nes'),
-             #pval=enrichment_results.get('pval'),
-             #fdr=enrichment_results.get('fdr'),
-             #RES=enrichment_results.get('RES'),
-             #figsize=(8, 6))
+    results_folder.mkdir(parents=True, exist_ok=True)
+    fig_dir.mkdir(parents=True, exist_ok=True)
+  
+    # --------------------------
+    # Extract GMT name
+    # --------------------------
+    gmt_name = Path(gmt_file).stem
+    print(f"\nUsing GMT set: {gmt_name}\n")
 
-            #simple gsea plot - does not work
-            #gsea_plot= gsea_res.plot(term)
-            #print(f"Plot object: {gsea_plot}")  #
-            #fig=plt.gcf()
-            #plt.tight_layout()
-            #plt.draw()
-            #plt.pause(1)
-            #fig=plt.gcf()
-            #print(plt.get_fignums())
-            #print(f"Figure dimensions: {fig.get_size_inches()}") 
-            #fig_path = f"{outraw}/gseaplot_{term}.png"
-            #fig.savefig(fig_path, dpi=300, bbox_inches='tight')
-            #plt.close()
-        else:
-            print(f"Term {term} not found in the results.")
-        #use the other results to build the final dataframe..
-        condition_cell.append(i)
-        gsea_result.append(gsea_res.res2d.loc[0,"FDR q-val"])
-        num_lead.append(gsea_res.res2d.loc[0,"Tag %"])
-        lead_genes.append(gsea_res.res2d.loc[0,"Lead_genes"])
-        per_lead.append(gsea_res.res2d.loc[0,"Gene %"])
-        NES.append(gsea_res.res2d.loc[0,"NES"])
-        print(gsea_res.res2d.loc[0,"FDR q-val"])
-        gsea_res.res2d.to_csv(outgsea)
-        if gsea_res.res2d.loc[0,"FDR q-val"]<0.05:
-            print(f"gene list result for: {i} is significant!")
-        else:
-            print(f"gene list result for: {i} is non significant")
-        #except: #was written before with try statement
-            #print(f"could not find enrichment in this gene set for condition {i}")
-    results=pd.DataFrame(data={"condition":condition_cell,"lead_genes":lead_genes,"num_genes_in_lead":num_lead,"%genes_in_lead":per_lead,"nes_score":NES,"gsea_pval":gsea_result})
-    reject, pvals_corr = smm.multipletests(gsea_result, method='fdr_bh')[:2]
-    results["p-adj"]= pvals_corr
-    final_outpath=out_folder+gmt_name+"/"+"full_results.csv"
-    print("final outpath: ", final_outpath)
-    results.to_csv(final_outpath)
+    # --------------------------
+    # Run GSEA per column + condition
+    # --------------------------
+    for column, condition_list in column_conditions.items():
 
-def check_ges_path(condition,data_type):
-    if data_type=="cortex":
-          if os.path.exists(f"/miridan-data/annaludmir/data/ges_spec_v3_{condition}.csv"):
-            path=f"/miridan-data/annaludmir/data/ges_results/ges_spec_v3_{condition}.csv"
-        else:
-            print(f"condition {condition} is not a valid condition name")
-            sys.exit()
-    elif data_type=="data_all":
-        if os.path.exists(f"/miridan-data/annaludmir/data/spec_tables_new/ges_spec_big_{condition}.csv"):
-            path=f"/miridan-data/annaludmir/data/spec_tables_new/ges_spec_big_{condition}.csv"
-        else:
-            print(f"condition {condition} is not a valid condition name")
-            sys.exit()
-    else:
-        print("data_type is not correct give one of this values: data_all or cortex")
-        sys.exit()
-    return path
+        for condition in condition_list:
+            print(f"\nRunning GSEA for {column} → {condition}")
 
+            # locate the matching GES CSV file
+            ges_path = Path(ges_score_path) / "data" / f"ges_spec_{column}_{condition}.csv"
+            if not ges_path.exists():
+                print(f"⚠️ Missing GES file for {column}/{condition}, skipping.")
+                continue
 
-if __name__=="__main__":
-  #add ges_results so the results will go to the specifies folder
-  out_folder=out_folder+f"ges_results_above{GES_THRESHOLD}"+"/"+data_type+"/"
-  gene_list_name=gene_list.split("/")[-1][:-4]
-  gmt_file=gmt_folder+f"{gene_list_name}.gmt"
-  print(f"starting ges enrichment analysis on {gmt_file}")
-  run_gsea(gmt_file,conditions,out_folder,data_type)
-  print('DONE')
+            ges_df = pd.read_csv(ges_path)
+            ges_df = ges_df[ges_df["ges_score"] > ges_score_threshold]
+
+            if ges_df.empty:
+                print(f"⚠️ No genes pass threshold {ges_score_threshold} for {column}/{condition}")
+                continue
+
+            # Prepare ranking
+            ranking = ges_df["ges_score"]
+            ranking.index = ges_df["gene"]
+
+            # Folder for this exact GSEA run
+            cond_dir = results_folder / column / str(condition)
+            raw_dir = cond_dir / "gsea_raw"
+            cond_dir.mkdir(parents=True, exist_ok=True)
+
+            # Run GSEA
+            gsea_res = gp.prerank(
+                rnk=ranking,
+                gene_sets=gmt_file,
+                outdir=str(raw_dir),      # keep GSEApy default raw output
+                min_size=3,
+                max_size=2500,
+                seed=6
+            )
+
+            # Save main results
+            out_csv = cond_dir / "gsea_results.csv"
+            gsea_res.res2d.to_csv(out_csv)
+            print(f"  ✔ Saved GSEA table to {out_csv}")
+
+            # Save plot (first term)
+            term = gsea_res.res2d.Term.iloc[0]
+            if term in gsea_res.results:
+                fig = gsea_res.plot(term)
+                plot_out = fig_dir / f"GSEA_{column}_{condition}.png"
+                fig.savefig(plot_out, dpi=300, bbox_inches="tight")
+                print(f"  ✔ Saved plot to {plot_out}")
+            else:
+                print(f"⚠️ Term '{term}' not found in GSEA result dictionary; skipping plot.")
+
+    print("\n🎉 GSEA pipeline finished successfully!")
+    print(f"All files saved under:\n{results_folder}\n")

@@ -1,39 +1,28 @@
-ndd_gene_modules_folder_root: "/Users/anyaden/Git/ndd_gene_modules/"
+ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules/"
 
-output_folder: "data/enrichment_results/"
-ges_results_folder: "results/ges_results/"
+output_folder: "results/enrichment_results/"
+ges_results_folder: "results/ges_score_results/ges_score_for_all_layers_20251205"
+gene_list_path: "data/genes/sysndd_id_abnormal_facial_shape_abnormal_heart_morphology_for_pipeline.csv"
 gmt_folder: "data/genes/"
 
-data_type: data_all                # or data_all
 analysis_mode: "gsea"     # or "deseq" or "both"
 
 gsea:
-  min_ges_score_threshold: 3
+  min_ges_score_threshold: 1
   
 deseq:
   pseudobulk_folder: "data/.../psb/"
   gene_names: "data/.../genes_100cells.txt"
 
 column_conditions_for_gsea:
-  region_general
-    - "Radial Glia"
+  Region:
     - "Cerebellum"
     - "Diencephalon"
-    - "Fibroblast"
-    - "Glioblast"
-    - "Forebrain_general"
-    - "hindbrain_general"
-    - "Immune"
-    - "Midbrain_general"
-    - "Neural_crest"
-    - "IPC"
-    - "Neuroblast"
-    - "Neuron"
-    - "Oligo"
+    - "Midbrain"
     - "Forebrain"
     - "Hindbrain"
-    - "Placodes"
     - "Pons"
     - "Medulla"
     - "Telencephalon"
-    - "Vascular"
+    - "Head"
+    - "Brain"
