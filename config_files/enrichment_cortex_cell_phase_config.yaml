@@ -1,4 +1,4 @@
-run_name: "ID_AFS_HM_cortex"
+run_name: "ID_AFS_HM_cortex_cell_phase"
 ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules/"
 
 output_folder: "results/enrichment_results/"
@@ -9,26 +9,15 @@ gmt_folder: "data/genes/"
 analysis_mode: "gsea"     # or "deseq" or "both"
 
 gsea:
-  min_ges_score_threshold: 0
+  min_ges_score_threshold: 1
 
 deseq:
   pseudobulk_folder: "data/.../psb/"
   gene_names: "data/.../genes_100cells.txt"
 
 column_conditions_for_gsea:
-  CellClass:
-    - "Radial glia"
-    - "Neuronal IPC"
-    - "Neuron"
-    - "Glioblast"
-    - "Neuroblast"
-
-  NPCs:
-    - True
-    - False
-
-  Proliferation_CellCycle:
-    - Proliferating_Cycling
-    - Differentiating_Cycling
-    - Proliferating_NonCycling
-    - Differentiating_NonCycling
+  CellCyclePhase:
+    - "G1"
+    - "S"
+    - "G2M"
+    - "PostM"

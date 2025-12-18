@@ -123,14 +123,14 @@ def run_gsea(ges_score_path,
                 continue
 
             ges_df = pd.read_csv(ges_path)
-            ges_df = ges_df[ges_df["ges_score"] > ges_score_threshold]
+            ges_df = ges_df[ges_df["ges_zscore"] > ges_score_threshold]
 
             if ges_df.empty:
                 print(f"⚠️ No genes pass threshold {ges_score_threshold} for {column}/{condition}")
                 continue
 
             # Prepare ranking
-            ranking = ges_df["ges_score"]
+            ranking = ges_df["ges_zscore"]
             ranking.index = ges_df["gene"]
 
             # Folder for this exact GSEA run
@@ -143,7 +143,7 @@ def run_gsea(ges_score_path,
                 rnk=ranking,
                 gene_sets=gmt_file,
                 outdir=str(raw_dir),      # keep GSEApy default raw output
-                min_size=3,
+                min_size=2,
                 max_size=2500,
                 seed=6
             )

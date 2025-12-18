@@ -9,6 +9,7 @@ column_conditions:
     - "S"
     - "G2M"
     - "PostM"
+    - "Non-cycling"
 
 expression_threshold: 0.05
 normalize_data: false

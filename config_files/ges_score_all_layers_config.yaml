@@ -5,16 +5,23 @@ output_folder: "results/ges_score_results/"
 
 column_conditions:
   Region:
-    - "Cerebellum"
-    - "Diencephalon"
-    - "Midbrain"
-    - "Forebrain"
+    #- "Cerebellum"
+    #- "Diencephalon"
+    #- "Midbrain"
+    #- "Forebrain"
     - "Hindbrain"
     - "Pons"
     - "Medulla"
     - "Telencephalon"
     - "Head"
     - "Brain"
+    
+  CellClass:
+    - "Radial glia"
+    - "Neuronal IPC"
+    - "Neuron"
+    - "Glioblast"
+    - "Neuroblast"
 
 expression_threshold: 0.05
 # chemistry: "v3"

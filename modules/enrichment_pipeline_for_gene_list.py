@@ -145,7 +145,6 @@ def run_deseq_plots(results_folder: str | Path):
     print(f"\n📊 Generating DESeq plots from: {results_folder}")
     plot_deseq(results_folder=str(results_folder) + "/")
 
-
 # =============================================================
 # MAIN CONVENIENCE FUNCTION (still runs everything in Python)
 # =============================================================

@@ -11,41 +11,21 @@ column_conditions:
     - "Glioblast"
     - "Neuroblast"
 
-  CellCyclePhase:
-    - "G1"
-    - "S"
-    - "G2M"
-    - "PostM"
-
   NPCs:
     derived:
       boolean_expr: "CellClass in ['Radial glia', 'Neuronal IPC']"
     conditions:
       - True
+      - False
 
-  Proliferating:
+  Proliferation_CellCycle:
     derived:
-      boolean_expr: "(CellClass in ['Radial glia', 'Neuronal IPC']) and (CellCycleFraction > 0.4)"
-    conditions:
-      - True
-
-  Differentiating:
-    derived:
-      boolean_expr: "(CellClass in ['Neuroblast', 'Neuron', 'Glioblast']) and (CellCycleFraction > 0.4)"
-    conditions:
-      - True
-
-  Proliferating_NonCycling:
-    derived:
-      boolean_expr: "(CellClass in ['Radial glia', 'Neuronal IPC']) and (CellCycleFraction <= 0.4)"
-    conditions:
-      - True
-
-  Differentiating_NonCycling:
-    derived:
-      boolean_expr: "(CellClass in ['Neuroblast', 'Neuron', 'Glioblast']) and (CellCycleFraction <= 0.4)"
-    conditions:
-      - True
+      rules:
+        Proliferating_Cycling: "(CellClass in ['Radial glia', 'Neuronal IPC']) and (CellCycleFraction > 0.4)"
+        Differentiating_Cycling: "(CellClass in ['Neuroblast', 'Neuron', 'Glioblast']) and (CellCycleFraction > 0.4)"
+        Proliferating_NonCycling: "(CellClass in ['Radial glia', 'Neuronal IPC']) and (CellCycleFraction <= 0.4)"
+        Differentiating_NonCycling: "(CellClass in ['Neuroblast', 'Neuron', 'Glioblast']) and (CellCycleFraction <= 0.4)"
+    conditions: ["Proliferating_Cycling", "Differentiating_Cycling", "Proliferating_NonCycling", "Differentiating_NonCycling"]
       
 expression_threshold: 0.05
 normalize_data: true

@@ -29,7 +29,7 @@ def _():
 
 @app.cell
 def _(gsc):
-    gsc.run_ges_pipeline(config_path='/miridan-data/annaludmir/ndd_gene_modules/config_files/ges_score_cortex_cell_phase_config.yaml')
+    gsc.run_ges_pipeline(config_path='/miridan-data/annaludmir/ndd_gene_modules/config_files/ges_score_all_layers_config.yaml')
     return
 
 
@@ -46,7 +46,7 @@ def _():
     import modules.enrichment_pipeline_for_gene_list as epfgl 
     reload(epfgl)
 
-    epfgl.run_gene_list_pipeline(config_path='/miridan-data/annaludmir/ndd_gene_modules/config_files/enrichment_all_layers_config.yaml')
+    epfgl.run_gene_list_pipeline(config_path='/miridan-data/annaludmir/ndd_gene_modules/config_files/enrichment_cortex_config.yaml')
     return
 
 
@@ -58,11 +58,32 @@ def _():
     return
 
 
+@app.cell
+def _():
+    import modules.tsne_plots as tsne
+    reload(tsne)
+    tsne.plot_tsne_for_gene_list("/miridan-data/annaludmir/ndd_gene_modules/data/Cortex_EMX1_louvain3_passedQC_PostM_rev1.h5ad", "/miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/ID_AFS_HM_cortex_threshold_1_20251211/data/enrichment_results/GSEA/GSEA_final_summary.csv", "/miridan-data/annaludmir/ndd_gene_modules/results/ges_score_results/ges_score_for_cortex_20251211/","/miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/ID_AFS_HM_cortex_threshold_1_20251211/data/additional_figures/","TSNE_for_GSEA")
+    return
+
+
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
     ##Plotting dot plots
     """)
+    return
+
+
+@app.cell
+def _():
+    import modules.dot_plots as dot
+    reload(dot)
+    dot.plot_dots_for_gene_list("/miridan-data/annaludmir/ndd_gene_modules/data/Cortex_EMX1_louvain3_passedQC_PostM_rev1.h5ad", "/miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/ID_AFS_HM_cortex_threshold_1_20251211/data/enrichment_results/GSEA/GSEA_final_summary.csv","/miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/ID_AFS_HM_cortex_threshold_1_20251211/data/additional_figures/","Dots_for_GSEA")
+    return
+
+
+@app.cell
+def _():
     return
 
 
