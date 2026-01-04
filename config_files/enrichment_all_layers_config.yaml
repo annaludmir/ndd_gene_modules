@@ -1,9 +1,9 @@
-run_name: "ID_AFS_HM_all_layers"
+run_name: "ID_microcephaly_behvioral_all_layers"
 ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules/"
 
 output_folder: "results/enrichment_results/"
-ges_results_folder: "results/ges_score_results/ges_score_for_all_layers_20251205"
-gene_list_path: "data/genes/sysndd_id_abnormal_facial_shape_abnormal_heart_morphology_for_pipeline.csv"
+ges_results_folder: "results/ges_score_results/ges_score_for_all_layers_20251225"
+gene_list_path: "data/genes/ID_microcephaly_behvioral.csv"
 gmt_folder: "data/genes/"
 
 analysis_mode: "gsea"     # or "deseq" or "both"
@@ -25,5 +25,18 @@ column_conditions_for_gsea:
     - "Pons"
     - "Medulla"
     - "Telencephalon"
-    - "Head"
-    - "Brain"
+    
+  CellClass:
+    - "Radial glia"
+    - "Neuronal IPC"
+    - "Neuron"
+    - "Glioblast"
+    - "Neuroblast"
+
+  RegionsGeneral:
+    - "Forebrain_General"
+    - "Hindbrain_General"
+    - "Midbrain_General"
+
+keep_only_significant: true
+nes_keep_threshold: 1.5

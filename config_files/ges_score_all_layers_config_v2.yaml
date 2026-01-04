@@ -1,4 +1,4 @@
-name_of_run: "ges_score_for_all_layers"
+name_of_run: "ges_score_for_all_layers_v2"
 ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules"
 data_path: "data/human_dev_GRCh38-3.0.0_all_layers_cleaned.h5ad"
 output_folder: "results/ges_score_results/"
@@ -30,7 +30,7 @@ column_conditions:
     conditions: ["Brain", "Head"]
 
 expression_threshold: 0.05
-# chemistry: "v3"
+chemistry: "v2"
 permutations: false
 normalize_data: true
 # n_permutations: 500  # optional

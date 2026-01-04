@@ -1,9 +1,9 @@
-run_name: "ID_AFS_HM_cortex_cell_phase"
+run_name: "ID_microcephaly_behvioral_cortex_cell_phase_v2"
 ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules/"
 
 output_folder: "results/enrichment_results/"
-ges_results_folder: "results/ges_score_results/ges_score_for_cortex_20251218"
-gene_list_path: "data/genes/sysndd_id_abnormal_facial_shape_abnormal_heart_morphology_for_pipeline.csv"
+ges_results_folder: "results/ges_score_results/ges_score_for_cortex_cell_cycle_v2_20251231"
+gene_list_path: "data/genes/ID_microcephaly_behvioral.csv"
 gmt_folder: "data/genes/"
 
 analysis_mode: "gsea"     # or "deseq" or "both"
@@ -21,3 +21,7 @@ column_conditions_for_gsea:
     - "S"
     - "G2M"
     - "PostM"
+    - "Non-cycling"
+
+keep_only_significant: true
+nes_keep_threshold: 1.5

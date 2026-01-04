@@ -1,15 +1,15 @@
-run_name: "ID_AFS_HM_cortex"
+run_name: "autism_strong_cortex"
 ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules/"
 
 output_folder: "results/enrichment_results/"
-ges_results_folder: "results/ges_score_results/ges_score_for_cortex_20251218"
-gene_list_path: "data/genes/sysndd_id_abnormal_facial_shape_abnormal_heart_morphology_for_pipeline.csv"
+ges_results_folder: "results/ges_score_results/ges_score_for_cortex_20251221"
+gene_list_path: "data/genes/autism_strong.csv"
 gmt_folder: "data/genes/"
 
 analysis_mode: "gsea"     # or "deseq" or "both"
 
 gsea:
-  min_ges_score_threshold: 0
+  min_ges_score_threshold: 1
 
 deseq:
   pseudobulk_folder: "data/.../psb/"
@@ -32,3 +32,6 @@ column_conditions_for_gsea:
     - Differentiating_Cycling
     - Proliferating_NonCycling
     - Differentiating_NonCycling
+
+keep_only_significant: false
+nes_keep_threshold: 1.5

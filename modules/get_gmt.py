@@ -25,7 +25,7 @@ def save_to_gmt(gene_list_path: str, output_path: str) -> str:
 
     # Load gene list
     df = pd.read_csv(gene_list_path)
-    genes = df['gene'].astype(str).tolist()
+    genes = df['gene'].dropna().astype(str).unique().tolist()
 
     if len(genes) == 0:
         raise ValueError(f"❌ Gene list is empty: {gene_list_path}")

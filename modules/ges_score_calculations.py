@@ -12,6 +12,7 @@ from typing import List, Optional, Any, Dict
 import numpy as np
 import pandas as pd
 import scanpy as sc
+import scipy.sparse as sp
 from statsmodels.stats.multitest import multipletests
 
 # Optional dependency: mygene for Ensembl->symbol conversion
@@ -345,6 +346,18 @@ def apply_derived_columns(adata: sc.AnnData, column_conditions: dict) -> None:
 # -------------------------------------------------------------------
 # Core GES functions
 # -------------------------------------------------------------------
+def _count_nonzero_per_gene(X) -> np.ndarray:
+    """
+    Return (#cells expressing gene) for each gene.
+    Works for dense or sparse matrices.
+    Expression is defined as X > 0.
+    """
+    if sp.issparse(X):
+        # (X > 0) stays sparse boolean; sum over rows gives counts per gene
+        return np.asarray((X > 0).sum(axis=0)).ravel()
+    else:
+        return np.asarray((X > 0).sum(axis=0)).ravel()
+
 def normalize_ges_zscore(df):
     """
     Takes a GES result DataFrame with a column 'ges_score'
@@ -360,37 +373,95 @@ def calculate_ges(
     condition_col: str,
     target_cell_type: Any,
     genes: List[str],
+    min_cells_global: int = 5,
+    target_expr_frac: float = 0.05,
 ) -> pd.DataFrame:
-    """Compute GES scores for a specific target cell type."""
-    ges_time = time.time()
-    total_cells = adata.n_obs
+    """
+    Compute GES scores for a specific target cell type, with built-in filtering:
 
-    target_idx = adata.obs[condition_col] == target_cell_type
-    target_fraction = float(target_idx.sum()) / float(total_cells)
-    filtered_data = adata[target_idx]
+    1) Keep genes expressed in >= min_cells_global cells globally.
+    2) From those, keep genes expressed in >= target_expr_frac fraction of TARGET cells.
+
+    Notes:
+    - "expressed" means X > 0.
+    - Returns a DataFrame only for genes that pass both filters.
+    """
+    ges_time = time.time()
+
+    total_cells = adata.n_obs
+    target_idx = (adata.obs[condition_col] == target_cell_type).to_numpy()
+    n_target = int(target_idx.sum())
+
+    if n_target == 0:
+        raise ValueError(f"Target '{target_cell_type}' has 0 cells in column '{condition_col}'.")
+
+    target_fraction = float(n_target) / float(total_cells)
+
+    # -------------------------------
+    # Filtering
+    # -------------------------------
+    global_counts = _count_nonzero_per_gene(adata.X)  # length = adata.n_vars
+    global_mask = global_counts >= min_cells_global
+
+    target_X = adata.X[target_idx, :]
+    target_counts = _count_nonzero_per_gene(target_X)
+    target_mask = target_counts >= (target_expr_frac * n_target)
+
+    keep_mask = global_mask & target_mask
+
+    n_keep = int(keep_mask.sum())
+    if n_keep == 0:
+        # Return empty, but with correct columns
+        return pd.DataFrame(
+            columns=[
+                "gene",
+                "ges_score",
+                "mean_expression_target",
+                "mean_expression_other",
+                "per_expressed_target",
+                "per_expressed_other",
+            ]
+        )
+
+    # Subset adata and genes to kept genes
+    adata_f = adata[:, keep_mask]
+    genes_f = [g for g, keep in zip(genes, keep_mask) if keep]
+
+    # -------------------------------
+    # Compute GES on filtered genes
+    # -------------------------------
+    filtered_data = adata_f[target_idx, :]
 
     # Mean expression in the target cell type
     mean_target_expr = np.asarray(filtered_data.X.mean(axis=0)).ravel()
     weighted_target_expr = (1.0 - target_fraction) * mean_target_expr
 
     # Weighted mean expression in other cell types
-    cell_types = adata.obs[condition_col].unique()
+    cell_types = adata_f.obs[condition_col].unique()
     other_cell_types = [ct for ct in cell_types if ct != target_cell_type]
-    weighted_sum = np.zeros(adata.n_vars, dtype=float)
+
+    weighted_sum = np.zeros(adata_f.n_vars, dtype=float)
     per_exp_other = {}
+    
+    print("Group sizes:")
+    print(adata_f.obs[condition_col].value_counts(dropna=False).head(30))
 
     for ct in other_cell_types:
-        ct_idx = (adata.obs[condition_col] == ct).to_numpy()
+        ct_idx = (adata_f.obs[condition_col] == ct).to_numpy()
         ct_fraction = float(ct_idx.sum()) / float(total_cells)
-        ct_mean_expr = np.asarray(adata[ct_idx].X.mean(axis=0)).ravel()
+
+        ct_mean_expr = np.asarray(adata_f[ct_idx].X.mean(axis=0)).ravel()
         weighted_sum += ct_fraction * ct_mean_expr
+
         if len(other_cell_types) > 1:
-            per_exp_other[f"per_exp_{normalize_label(ct)}"] = np.asarray((adata.X[ct_idx] > 0).mean(axis=0)).ravel()
+            per_exp_other[f"per_exp_{normalize_label(ct)}"] = np.asarray(
+                (adata_f.X[ct_idx] > 0).mean(axis=0)
+            ).ravel()
 
     epsilon = 1e-10
     ges_scores = weighted_target_expr / (weighted_sum + epsilon)
 
-    filtered_other_data = adata[~target_idx]
+    filtered_other_data = adata_f[~target_idx, :]
     mean_expression_other = np.asarray(filtered_other_data.X.mean(axis=0)).ravel()
 
     percent_expressed_target = np.asarray((filtered_data.X > 0).mean(axis=0)).ravel()
@@ -398,7 +469,7 @@ def calculate_ges(
 
     results_df = pd.DataFrame(
         {
-            "gene": genes,
+            "gene": genes_f,
             "ges_score": ges_scores,
             "mean_expression_target": mean_target_expr,
             "mean_expression_other": mean_expression_other,
@@ -409,10 +480,14 @@ def calculate_ges(
 
     if per_exp_other:
         per_expressed_df = pd.DataFrame(per_exp_other)
-        per_expressed_df["gene"] = genes
+        per_expressed_df["gene"] = genes_f
         results_df = results_df.merge(per_expressed_df, on="gene", how="left")
 
-    print(f"finished_ges_calculations in {time.time() - ges_time:.2f}s")
+    print(
+        f"finished_ges_calculations in {time.time() - ges_time:.2f}s | "
+        f"kept {n_keep}/{adata.n_vars} genes "
+        f"(global>= {min_cells_global} cells AND target>= {target_expr_frac:.3f} of target cells)"
+    )
     return results_df
 
 
@@ -423,10 +498,15 @@ def calculate_ges_with_permutations(
     condition_col: str,
     target_cell_type: Any,
     genes: List[str],
-    expression_threshold: float = 0.05,
+    expression_threshold: float = 0,
     n_permutations: int = 500,
+    min_cells_global = 5
 ) -> pd.DataFrame:
     """Permutation-based p-values for GES scores."""
+    global_counts = np.asarray((adata.X > 0).sum(axis=0)).ravel()
+    mask = global_counts >= min_cells_global   # e.g. 20
+    adata = adata[:, mask].copy()
+
     target_mask = adata.obs[condition_col] == target_cell_type
     target_data = adata[target_mask]
 
@@ -565,7 +645,10 @@ def run_ges_pipeline(config_path: str):
         # (handles bytes and "b'X'" strings)
         adata.obs[condition_col] = adata.obs[condition_col].apply(normalize_label)
 
-        column_values = sorted(pd.unique(adata.obs[condition_col]).tolist())
+        col_series = adata.obs[condition_col]
+
+        # remove NaNs before sorting
+        column_values = sorted(pd.unique(col_series.dropna()).tolist())
         print(f"  Available values (sample): {column_values[:25]}{' ...' if len(column_values) > 25 else ''}")
         print(f"  Requested targets:         {condition_list}")
 

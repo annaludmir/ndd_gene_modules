@@ -200,8 +200,14 @@ def run_gene_list_pipeline(config_path: str):
     add_fig_dir.mkdir(parents=True, exist_ok=True)
 
     # Copy YAML config to metadata
-    if config_path is not None:
-        shutil.copy2(config_path, metadata_dir / Path(config_path).name)
+    src = Path(config_path).resolve()
+    dst = (metadata_dir / src.name).resolve()
+    
+    # Only copy if different paths (or if you want: if different inode)
+    if src != dst:
+        shutil.copy2(src, dst)
+    else:
+        print(f"Config already in metadata: {dst} (skipping copy)")
       
     # ---------- Step A: GMT ----------
     gmt_file = create_gmt_file(

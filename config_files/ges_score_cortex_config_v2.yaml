@@ -1,4 +1,4 @@
-name_of_run: "ges_score_for_cortex"
+name_of_run: "ges_score_for_cortex_v2"
 ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules/"
 data_path: "data/Cortex_EMX1_louvain3_passedQC_PostM_rev1.h5ad"
 output_folder: "results/ges_score_results/"
@@ -29,6 +29,6 @@ column_conditions:
       
 expression_threshold: 0.05
 normalize_data: true
-chemistry: "v3"
+chemistry: "v2"
 permutations: false
 # n_permutations: 500  # optional
