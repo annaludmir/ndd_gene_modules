@@ -45,8 +45,19 @@ def _(mo):
 @app.cell
 def _(sc):
     #upload data
-    adata=sc.read_h5ad("/miridan-data/annaludmir/data/updated_cortex_data_hg38.h5ad", backed="r")
+    adata=sc.read_h5ad("/miridan-data/annaludmir/ndd_gene_modules/data/human_dev-GRCh38-3.0.0_all_layers_from_github_with_chemistry_no_bytes.h5ad")
     return (adata,)
+
+
+@app.cell
+def _(adata):
+    adata.obs
+    return
+
+
+@app.cell
+def _():
+    return
 
 
 @app.cell

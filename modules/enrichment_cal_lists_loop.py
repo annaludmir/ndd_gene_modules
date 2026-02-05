@@ -7,6 +7,69 @@ from pathlib import Path
 
 import yaml
 import pandas as pd
+import numpy as np
+
+def _read_gene_list_size(gene_list_csv: Path) -> int:
+    """Return number of genes in gene list file (unique, non-empty)."""
+    df = pd.read_csv(gene_list_csv)
+    # be tolerant: accept 'gene' or first column
+    col = "gene" if "gene" in df.columns else df.columns[0]
+    genes = (
+        df[col]
+        .astype(str)
+        .str.strip()
+        .replace({"nan": np.nan, "None": np.nan})
+        .dropna()
+        .tolist()
+    )
+    return len(set(genes))
+
+
+def _find_qval_column(df: pd.DataFrame) -> str | None:
+    candidates = [
+        "FDR q-val (BH corrected)",
+        "FDR q-val (BH corrected) ",
+        "FDR q-val",
+        "FDR q-val (BH)",
+    ]
+    for c in candidates:
+        if c in df.columns:
+            return c
+    # fallback: case-insensitive contains
+    for c in df.columns:
+        if "fdr" in c.lower() and "q" in c.lower():
+            return c
+    return None
+
+
+def _locate_ges_config_in_folder(ges_results_folder: Path) -> str | None:
+    """
+    Best-effort: find a config yaml under the GES results folder.
+    (Adjust if your GES pipeline uses a known filename.)
+    """
+    # common places
+    candidates = [
+        ges_results_folder / "metadata",
+        ges_results_folder,
+    ]
+    for d in candidates:
+        if d.exists() and d.is_dir():
+            ymls = sorted(list(d.glob("*.yaml")) + list(d.glob("*.yml")))
+            if ymls:
+                return str(ymls[0])
+    return None
+
+
+def _conditions_compared_to(base_cfg: dict, column: str, condition_value: str) -> list[str]:
+    """
+    From base config (column_conditions_for_gsea), return other condition values for this column.
+    """
+    cc = base_cfg.get("column_conditions_for_gsea", {})
+    vals = cc.get(column, [])
+    # normalize to strings for stable comparisons
+    vals = [str(v) for v in vals]
+    cond = str(condition_value)
+    return [v for v in vals if v != cond]
 
 def _extract_context_suffix(run_name: str) -> str:
     """
@@ -158,6 +221,11 @@ def main(base_cfg_path, gene_lists_folder):
     print(f"Found {len(csv_files)} gene lists in: {gene_lists_folder}")
     print(f"keep_only_significant={keep_only_significant} | nes_keep_threshold={nes_keep_threshold}")
 
+    summary_rows = []
+
+    # where to save the final batch summary:
+    batch_summary_path = out_root / f"batch_summary_{today}.csv"
+
     for csv_path in csv_files:
         gene_list_name = csv_path.stem  # filename only, no extension
 
@@ -184,22 +252,72 @@ def main(base_cfg_path, gene_lists_folder):
         print("============================================================")
 
         # Run the pipeline using the saved temp config
-        try:
-          epfgl.run_gene_list_pipeline(config_path=str(tmp_cfg_path))
+        epfgl.run_gene_list_pipeline(config_path=str(tmp_cfg_path))
 
-          # Decide keep/delete
-          if keep_only_significant:
-              keep = _is_significant_run(run_dir, nes_keep_threshold)
-              if not keep:
-                  print(f"🧹 No NES > {nes_keep_threshold}. Deleting: {run_dir}")
-                  shutil.rmtree(run_dir, ignore_errors=True)
-              else:
-                  print(f"✅ Significant (NES > {nes_keep_threshold}). Keeping: {run_dir}")
-          else:
-              print("ℹ️ keep_only_significant=false -> keeping run folder")
-        except LookupError:
-          print("Probably not enough relevant genes were found for encrichment.")
+        # --- Build summary rows for THIS run (significant or not) ---
+        summary_path = run_dir / "data" / "enrichment_results" / "GSEA" / "GSEA_final_summary.csv"
+        enrichment_cfg_in_metadata = run_dir / "metadata" / "config_used.yaml"
 
+        ges_cfg_folder_path = Path(base_cfg["ndd_gene_modules_folder_root"]) / Path(cfg.get("ges_results_folder", ""))
+        ges_cfg_folder_path = ges_cfg_folder_path.resolve()
+        # Find “GES config used” best-effort
+        ges_cfg_path = _locate_ges_config_in_folder(ges_cfg_folder_path)
+        
+        gene_list_n = _read_gene_list_size(csv_path)
+        
+        if summary_path.exists() and summary_path.is_file():
+            df_sum = pd.read_csv(summary_path)
+        
+            nes_col = _find_nes_column(df_sum)
+            q_col = _find_qval_column(df_sum)
+        
+            # ensure required columns exist
+            if "column" not in df_sum.columns or "condition" not in df_sum.columns or nes_col is None:
+                print(f"⚠️ Summary file missing required columns: {summary_path}")
+            else:
+                for _, r in df_sum.iterrows():
+                    col_name = str(r["column"])
+                    cond_val = str(r["condition"])
+                    nes_val = r[nes_col]
+                    lead_genes = r["Lead_genes"]
+                    q_val = r[q_col] if q_col is not None and q_col in df_sum.columns else np.nan
+        
+                    summary_rows.append({
+                        "run_name": run_name,
+                        "enrichment_config_path": str(enrichment_cfg_in_metadata) if enrichment_cfg_in_metadata.exists() else str(tmp_cfg_path),
+                        "ges_config_path": ges_cfg_path,
+                        "gene_list_file_name": csv_path.name,
+                        "num_genes_in_gene_list": gene_list_n,
+                        "column_condition_title": col_name,
+                        "column_condition_value": cond_val,
+                        "condition_compared_to": ";".join(_conditions_compared_to(base_cfg, col_name, cond_val)),
+                        "NES": nes_val,
+                        "FDR_qval_BH": q_val,
+                        "is_significant": True if (nes_val > 1.5 or nes_val < -1.5) and q_val <= 0.05 else False,
+                        "lead_genes": lead_genes,
+                        "num_of_lead_genes": len(lead_genes.split(';'))
+                    })
+        else:
+            print(f"⚠️ No GSEA_final_summary.csv found for run: {run_dir}")
+
+        # Decide keep/delete
+        if keep_only_significant:
+            keep = _is_significant_run(run_dir, nes_keep_threshold)
+            if not keep:
+                print(f"🧹 No NES > {nes_keep_threshold}. Deleting: {run_dir}")
+                shutil.rmtree(run_dir, ignore_errors=True)
+            else:
+                print(f"✅ Significant (NES > {nes_keep_threshold}). Keeping: {run_dir}")
+        else:
+            print("ℹ️ keep_only_significant=false -> keeping run folder")
+
+    if summary_rows:
+      out_df = pd.DataFrame(summary_rows)
+      out_df.to_csv(batch_summary_path, index=False)
+      print(f"\n📌 Wrote batch summary CSV: {batch_summary_path}")
+    else:
+      print("\n⚠️ No summary rows collected; nothing written.")
+  
     print("\nDONE.")
 
 

@@ -98,6 +98,18 @@ def run_gsea_plots(results_path: str, output_folder, run_name):
     Run GSEA plotting only, given a results folder.
     This is intended to be called as a separate Nextflow process.
     """
+    # 1️⃣ No results → skip cleanly
+    if results_path is None:
+        print("⚠️  No GSEA results found — skipping GSEA plots.")
+        return
+
+    results_path = Path(results_path)
+
+    # 2️⃣ Bad path → skip but warn
+    if not results_path.exists():
+        print(f"⚠️  GSEA results file not found: {results_path} — skipping plots.")
+        return
+
     print(f"\n📊 Generating GSEA plots from: {results_path}")
     ges_results_df=pd.read_csv(results_path)
     #divide into different columns and run each file saparatly with the barplot
@@ -222,7 +234,8 @@ def run_gene_list_pipeline(config_path: str):
     deseq_out = run_deseq_enrichment(config, config['gene_list_path'], enr_results_dir)
 
     # ---------- Step D: GSEA Plots ----------
-    run_gsea_plots(gsea_out, fig_dir, config['run_name'])
+    if gsea_out:
+      run_gsea_plots(gsea_out, fig_dir, config['run_name'])
   
     print("\n🎉 PIPELINE COMPLETE — enrichment steps finished.")
     

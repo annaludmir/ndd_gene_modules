@@ -4,11 +4,11 @@ data_path: "data/human_dev-GRCh38-3.0.0_all_layers_from_github_with_chemistry_no
 output_folder: "results/ges_score_results/"
 
 column_conditions:
-  Region:
-    - "Cerebellum"
-    - "Diencephalon"
-    - "Midbrain"
-    - "Forebrain"
+  #Region:
+    #- "Cerebellum"
+    #- "Diencephalon"
+    #- "Midbrain"
+    #- "Forebrain"
     #- "Hindbrain"
     #- "Pons"
     #- "Medulla"
@@ -28,13 +28,13 @@ column_conditions:
     #- "Vascular"
     #- "Erythrocyte"
     
-  #RegionsGeneral:
-    #derived:
-      #rules:
-        #Forebrain_General: "Region in ['Diencephalon', 'Forebrain', 'Telencephalon']"
-        #Hindbrain_General: "Region in ['Hindbrain', 'Cerebellum', 'Pons', 'Medulla']"
-        #Midbrain_General: "Region in ['Midbrain']"
-    #conditions: ["Forebrain_General", "Hindbrain_General", "Midbrain_General"]
+  RegionsGeneral:
+    derived:
+      rules:
+        Forebrain_General: "Region in ['Diencephalon', 'Forebrain', 'Telencephalon']"
+        Hindbrain_General: "Region in ['Hindbrain', 'Cerebellum', 'Pons', 'Medulla']"
+        Midbrain_General: "Region in ['Midbrain']"
+    conditions: ["Forebrain_General", "Hindbrain_General", "Midbrain_General"]
 
   #SuperRegion:
     #derived:

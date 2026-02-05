@@ -4,17 +4,17 @@ data_path: "data/human_dev-GRCh38-3.0.0_all_layers_from_github_with_chemistry_no
 output_folder: "results/ges_score_results/"
 
 column_conditions:
-  Region:
-    - "Cerebellum"
-    - "Diencephalon"
-    - "Midbrain"
-    - "Forebrain"
+  #Region:
+    #- "Cerebellum"
+    #- "Diencephalon"
+    #- "Midbrain"
+    #- "Forebrain"
     #- "Hindbrain"
     #- "Pons"
     #- "Medulla"
     #- "Telencephalon"
 
-  #CellClass:
+  CellClass:
     #- "Radial glia"
     #- "Neuronal IPC"
     #- "Neuron"
@@ -23,10 +23,10 @@ column_conditions:
     #- "Oligo"
     #- "Fibroblast"
     #- "Neural crest"
-    #- "Placode"
-    #- "Immune"
-    #- "Vascular"
-    #- "Erythrocyte"
+    - "Placode"
+    - "Immune"
+    - "Vascular"
+    - "Erythrocyte"
     
   #RegionsGeneral:
     #derived:

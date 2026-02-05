@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import sys
 import os
+import shutil
 import gseapy as gp
 import statsmodels.stats.multitest as smm 
 import matplotlib.pyplot as plt
@@ -123,14 +124,14 @@ def run_gsea(ges_score_path,
                 continue
 
             ges_df = pd.read_csv(ges_path)
-            ges_df = ges_df[ges_df["ges_score"] > ges_score_threshold]
+            ges_df = ges_df[ges_df["tau_target_score"] > ges_score_threshold]
 
             if ges_df.empty:
                 print(f"⚠️ No genes pass threshold {ges_score_threshold} for {column}/{condition}")
                 continue
 
             # Prepare ranking
-            ranking = ges_df["ges_score"]
+            ranking = ges_df["tau_target_score"]
             ranking.index = ges_df["gene"]
 
             # Folder for this exact GSEA run
@@ -138,48 +139,54 @@ def run_gsea(ges_score_path,
             raw_dir = cond_dir / "gsea_raw"
             cond_dir.mkdir(parents=True, exist_ok=True)
 
-            # Run GSEA
-            gsea_res = gp.prerank(
-                rnk=ranking,
-                gene_sets=gmt_file,
-                outdir=str(raw_dir),      # keep GSEApy default raw output
-                min_size=2,
-                max_size=2500,
-                seed=6
-            )
+            try:
+              # Run GSEA
+              gsea_res = gp.prerank(
+                  rnk=ranking,
+                  gene_sets=gmt_file,
+                  outdir=str(raw_dir),      # keep GSEApy default raw output
+                  min_size=2,
+                  max_size=2500,
+                  seed=6
+              )
+            except LookupError:
+              print("Probably not enough relevant genes were found for encrichment.")
+              gsea_res = None
+              shutil.rmtree(cond_dir)
 
-            # Save main results
-            out_csv = cond_dir / "gsea_results.csv"
-            gsea_res.res2d.to_csv(out_csv)
-            print(f"  ✔ Saved GSEA table to {out_csv}")
-
-            # Collect summary row (first term only, like old script)
-            top = gsea_res.res2d.iloc[0]
-
-            summary_rows.append({
-                "column": column,
-                "condition": condition,
-                "term": top["Term"],
-                "NES": top["NES"],
-                "NOM p-val": top["NOM p-val"],
-                "FDR q-val": top["FDR q-val"],
-                "FWER p-val": top["FWER p-val"],
-                "Tag %": top["Tag %"],
-                "Gene %": top["Gene %"],
-                "Lead_genes": top["Lead_genes"]
-            })
-          
-            # Save plot (first term)
-            term = gsea_res.res2d.Term.iloc[0]
-            if term in gsea_res.results:
-                plot_out = plot_enhanced_gsea(gsea_res, term, condition, raw_dir)
-                print(f"  ✔ Saved plot to {plot_out}")
-                # fig = gsea_res.plot(term)
-                # plot_out = fig_dir / f"GSEA_{column}_{condition}.png"
-                # fig.savefig(plot_out, dpi=300, bbox_inches="tight")
-                # print(f"  ✔ Saved plot to {plot_out}")
-            else:
-                print(f"⚠️ Term '{term}' not found in GSEA result dictionary; skipping plot.")
+            if gsea_res:
+              # Save main results
+              out_csv = cond_dir / "gsea_results.csv"
+              gsea_res.res2d.to_csv(out_csv)
+              print(f"  ✔ Saved GSEA table to {out_csv}")
+  
+              # Collect summary row (first term only, like old script)
+              top = gsea_res.res2d.iloc[0]
+  
+              summary_rows.append({
+                  "column": column,
+                  "condition": condition,
+                  "term": top["Term"],
+                  "NES": top["NES"],
+                  "NOM p-val": top["NOM p-val"],
+                  "FDR q-val": top["FDR q-val"],
+                  "FWER p-val": top["FWER p-val"],
+                  "Tag %": top["Tag %"],
+                  "Gene %": top["Gene %"],
+                  "Lead_genes": top["Lead_genes"]
+              })
+            
+              # Save plot (first term)
+              term = gsea_res.res2d.Term.iloc[0]
+              if term in gsea_res.results:
+                  plot_out = plot_enhanced_gsea(gsea_res, term, condition, raw_dir)
+                  print(f"  ✔ Saved plot to {plot_out}")
+                  # fig = gsea_res.plot(term)
+                  # plot_out = fig_dir / f"GSEA_{column}_{condition}.png"
+                  # fig.savefig(plot_out, dpi=300, bbox_inches="tight")
+                  # print(f"  ✔ Saved plot to {plot_out}")
+              else:
+                  print(f"⚠️ Term '{term}' not found in GSEA result dictionary; skipping plot.")
 
 
       # --------------------------------

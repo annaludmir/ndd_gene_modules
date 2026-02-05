@@ -1,0 +1,37 @@
+run_name: "autism_strong_cortex_tau"
+ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules/"
+
+output_folder: "results/enrichment_results/"
+ges_results_folder: "results/ges_score_results/tau_score_for_cortex_20260114"
+gene_list_path: "data/genes/autism_strong.csv"
+gmt_folder: "data/genes/"
+
+analysis_mode: "gsea"     # or "deseq" or "both"
+
+gsea:
+  min_ges_score_threshold: 0.5
+
+deseq:
+  pseudobulk_folder: "data/.../psb/"
+  gene_names: "data/.../genes_100cells.txt"
+
+column_conditions_for_gsea:
+  CellClass:
+    - "Radial glia"
+    - "Neuronal IPC"
+    - "Neuron"
+    - "Glioblast"
+    - "Neuroblast"
+
+  NPCs:
+    - True
+    - False
+
+  Proliferation_CellCycle:
+    - Proliferating_Cycling
+    - Differentiating_Cycling
+    - Proliferating_NonCycling
+    - Differentiating_NonCycling
+
+keep_only_significant: true
+nes_keep_threshold: 1.5

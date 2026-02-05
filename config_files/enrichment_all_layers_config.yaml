@@ -2,7 +2,8 @@ run_name: "ID_microcephaly_behvioral_all_layers"
 ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules/"
 
 output_folder: "results/enrichment_results/"
-ges_results_folder: "results/ges_score_results/ges_score_for_all_layers_20251225"
+ges_results_folder: "results/ges_score_results/ges_score_for_all_layers_from_github_20260108"
+
 gene_list_path: "data/genes/ID_microcephaly_behvioral.csv"
 gmt_folder: "data/genes/"
 
@@ -25,13 +26,20 @@ column_conditions_for_gsea:
     - "Pons"
     - "Medulla"
     - "Telencephalon"
-    
+
   CellClass:
     - "Radial glia"
     - "Neuronal IPC"
     - "Neuron"
     - "Glioblast"
     - "Neuroblast"
+    - "Oligo"
+    - "Fibroblast"
+    - "Neural crest"
+    - "Placode"
+    - "Immune"
+    - "Vascular"
+    - "Erythrocyte"
 
   RegionsGeneral:
     - "Forebrain_General"

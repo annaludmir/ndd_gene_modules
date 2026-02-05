@@ -273,12 +273,16 @@ def load_and_preprocess_adata(
     adata = sc.read_h5ad(data_path)
     print(f"Data loaded ({adata.n_obs} cells, {adata.n_vars} genes) in {time.time() - start_time:.2f}s")
 
+    print("Filtering chemistry...")
     if chemistry is not None and "Chemistry" in adata.obs.columns:
         before = adata.n_obs
         adata = adata[adata.obs["Chemistry"] == chemistry, :].copy()
         print(f"Filtered Chemistry == '{chemistry}': {before} → {adata.n_obs} cells")
+    else:
+      print("Chemistry is none or Chemistry column is not in data.")
 
     # preprocessing
+    print("Preprocessing...")
     prepro_time = time.time()
     sc.pp.filter_cells(adata, min_genes=200)
     sc.pp.filter_genes(adata, min_cells=3)
@@ -341,6 +345,166 @@ def apply_derived_columns(adata: sc.AnnData, column_conditions: dict) -> None:
             out = np.select(masks, labels, default=None)
             adata.obs[col_name] = out
             continue
+
+# -------------------------------------------------------------------
+# Core tau functions
+# -------------------------------------------------------------------
+def _count_nonzero_per_gene(X) -> np.ndarray:
+    """#cells expressing gene (X>0) for each gene. Dense or sparse."""
+    if sp.issparse(X):
+        return np.asarray((X > 0).sum(axis=0)).ravel()
+    return np.asarray((X > 0).sum(axis=0)).ravel()
+
+def calculate_tau(
+    adata: sc.AnnData,
+    condition_col: str,
+    target_cell_type: Any,
+    genes: List[str],
+    min_cells_global: int = 5,
+    target_expr_frac: float = 0.05,
+    agg: str = "mean",  # "mean" (default), or "median" (slower), or "pct90" (slower)
+) -> pd.DataFrame:
+    """
+    Drop-in replacement for calculate_ges().
+
+    Returns a DataFrame with the same columns as your GES function, but:
+      - results_df["ges_score"] is replaced by a tau-based target specificity score:
+          tau_target_score = tau * (x_target / x_max)
+
+    Filtering (same spirit as your GES filtering):
+      1) keep genes expressed in >= min_cells_global cells globally
+      2) keep genes expressed in >= target_expr_frac of TARGET cells
+    """
+    t0 = time.time()
+
+    # ---- basic checks ----
+    if condition_col not in adata.obs.columns:
+        raise ValueError(f"Column '{condition_col}' not found in adata.obs")
+
+    total_cells = adata.n_obs
+    target_mask = (adata.obs[condition_col] == target_cell_type).to_numpy()
+    n_target = int(target_mask.sum())
+    if n_target == 0:
+        raise ValueError(f"Target '{target_cell_type}' has 0 cells in '{condition_col}'")
+
+    # ---- filtering ----
+    global_counts = _count_nonzero_per_gene(adata.X)
+    global_keep = global_counts >= int(min_cells_global)
+
+    target_X = adata.X[target_mask, :]
+    target_counts = _count_nonzero_per_gene(target_X)
+    target_keep = target_counts >= (float(target_expr_frac) * float(n_target))
+
+    keep_mask = global_keep & target_keep
+    if int(keep_mask.sum()) == 0:
+        return pd.DataFrame(
+            columns=[
+                "gene",
+                "ges_score",
+                "tau",
+                "tau_target_score",
+                "mean_expression_target",
+                "mean_expression_other",
+                "per_expressed_target",
+                "per_expressed_other",
+                "max_group",
+                "x_target",
+                "x_max",
+            ]
+        )
+
+    adata_f = adata[:, keep_mask].copy()
+    genes_f = [g for g, keep in zip(genes, keep_mask) if keep]
+
+    # ---- group definitions ----
+    # normalize labels to strings so grouping is stable
+    groups = pd.Series(adata_f.obs[condition_col].astype(str)).fillna("NA")
+    adata_f.obs[condition_col] = groups.values
+
+    group_names = list(pd.unique(adata_f.obs[condition_col]))
+    n_groups = len(group_names)
+    if n_groups < 2:
+        raise ValueError(f"Need >=2 groups in '{condition_col}' to compute tau (got {n_groups})")
+
+    # ---- compute x_{group,gene} matrix (aggregated expression per group) ----
+    # We'll compute mean/median/pct90 per gene per group.
+    # Mean is fast and aligns with pseudo-bulk thinking.
+    X = adata_f.X
+
+    def _agg_vec(Xsub) -> np.ndarray:
+        if agg == "mean":
+            return np.asarray(Xsub.mean(axis=0)).ravel()
+        # For median/pct, convert to dense per-group; slower but workable if groups small.
+        Xdense = Xsub.toarray() if sp.issparse(Xsub) else np.asarray(Xsub)
+        if agg == "median":
+            return np.median(Xdense, axis=0)
+        if agg == "pct90":
+            return np.percentile(Xdense, 90, axis=0)
+        raise ValueError(f"Unknown agg='{agg}'. Use 'mean', 'median', or 'pct90'.")
+
+    expr_by_group = np.zeros((n_groups, adata_f.n_vars), dtype=float)
+    for i, g in enumerate(group_names):
+        idx = (adata_f.obs[condition_col] == g).to_numpy()
+        if int(idx.sum()) == 0:
+            # keep zeros; avoids divide-by-zero later
+            continue
+        expr_by_group[i, :] = _agg_vec(adata_f[idx, :].X)
+
+    # ---- tau per gene ----
+    x_max = expr_by_group.max(axis=0)
+    eps = 1e-12
+    x_max_safe = np.where(x_max > 0, x_max, eps)
+    x_norm = expr_by_group / x_max_safe  # each in [0,1] if x_max>0
+    tau = (np.sum(1.0 - x_norm, axis=0)) / float(n_groups - 1)
+
+    # ---- make it target-specific (so it behaves like your per-target GES) ----
+    target_label = str(target_cell_type)
+    if target_label not in group_names:
+        # This can happen if labels got normalized differently outside
+        raise ValueError(f"Target '{target_label}' not found among groups for '{condition_col}': {group_names}")
+
+    target_i = group_names.index(target_label)
+    x_target = expr_by_group[target_i, :]
+    tau_target_score = tau * (x_target / x_max_safe)  # in [0,1], equals tau if target is the max group
+
+    # ---- the same helper fields you used in GES ----
+    filtered_target = adata_f[target_mask, :]
+    filtered_other = adata_f[~target_mask, :]
+
+    mean_target_expr = np.asarray(filtered_target.X.mean(axis=0)).ravel()
+    mean_other_expr = np.asarray(filtered_other.X.mean(axis=0)).ravel()
+
+    per_target = np.asarray((filtered_target.X > 0).mean(axis=0)).ravel()
+    per_other = np.asarray((filtered_other.X > 0).mean(axis=0)).ravel()
+
+    max_group_idx = np.argmax(expr_by_group, axis=0)
+    max_group = [group_names[j] for j in max_group_idx]
+
+    results_df = pd.DataFrame(
+        {
+            "gene": genes_f,
+            # keep the same column name your pipeline expects:
+            "ges_score": tau_target_score,
+            # extra useful columns:
+            "tau_target_score": tau_target_score,
+            "tau": tau,
+            "max_group": max_group,
+            "x_target": x_target,
+            "x_max": x_max,
+            "mean_expression_target": mean_target_expr,
+            "mean_expression_other": mean_other_expr,
+            "per_expressed_target": per_target,
+            "per_expressed_other": per_other,
+        }
+    )
+
+    print(
+        f"finished_tau_calculations in {time.time() - t0:.2f}s | "
+        f"kept {adata_f.n_vars}/{adata.n_vars} genes "
+        f"(global>= {min_cells_global} cells AND target>= {target_expr_frac:.3f} of target cells) | "
+        f"agg={agg} | groups={n_groups}"
+    )
+    return results_df
 
 
 # -------------------------------------------------------------------
@@ -681,15 +845,21 @@ def run_ges_pipeline(config_path: str):
             filtered_genes = [g for g, keep in zip(genes, expressed_mask) if keep]
 
             # Compute GES
-            ges_results = calculate_ges(
-                filtered_adata,
-                condition_col,
-                target,
-                filtered_genes,
-            ).sort_values("ges_score", ascending=False)
+            # ges_results = calculate_ges(
+            #     filtered_adata,
+            #     condition_col,
+            #     target,
+            #     filtered_genes
+            # ).sort_values("ges_score", ascending=False)
 
-            # Normalize the GES score
-            ges_results = normalize_ges_zscore(ges_results)
+            # Compute TAU
+            ges_results = calculate_tau(
+              filtered_adata,
+              condition_col,
+              target,
+              filtered_genes
+            ).sort_values("tau_target_score", ascending=False)
+
             target_name = normalize_label(target_raw)
             out_csv = data_dir / f"ges_spec_{condition_col}_{target_name}.csv"
             ges_results.to_csv(out_csv, index=False)
