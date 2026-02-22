@@ -56,7 +56,17 @@ def _(adata):
 
 
 @app.cell
-def _():
+def _(adata):
+    adata_f = adata[
+        adata.obs["Region"].isin(['Midbrain'])
+        & (adata.obs["cell_cycle_score"] > 0.004)
+    ].copy()
+    return (adata_f,)
+
+
+@app.cell
+def _(adata_f):
+    adata_f.obs
     return
 
 

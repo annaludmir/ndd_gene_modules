@@ -614,6 +614,12 @@ def calculate_ges(
         ct_idx = (adata_f.obs[condition_col] == ct).to_numpy()
         ct_fraction = float(ct_idx.sum()) / float(total_cells)
 
+        subset = adata_f[ct_idx]
+
+        if subset.n_obs == 0:
+            print(f"⚠️ No cells for {cell_type} – skipping")
+            continue
+        
         ct_mean_expr = np.asarray(adata_f[ct_idx].X.mean(axis=0)).ravel()
         weighted_sum += ct_fraction * ct_mean_expr
 
@@ -845,20 +851,20 @@ def run_ges_pipeline(config_path: str):
             filtered_genes = [g for g, keep in zip(genes, expressed_mask) if keep]
 
             # Compute GES
-            # ges_results = calculate_ges(
-            #     filtered_adata,
-            #     condition_col,
-            #     target,
-            #     filtered_genes
-            # ).sort_values("ges_score", ascending=False)
+            ges_results = calculate_ges(
+                filtered_adata,
+                condition_col,
+                target,
+                filtered_genes
+            ).sort_values("ges_score", ascending=False)
 
             # Compute TAU
-            ges_results = calculate_tau(
-              filtered_adata,
-              condition_col,
-              target,
-              filtered_genes
-            ).sort_values("tau_target_score", ascending=False)
+            # ges_results = calculate_tau(
+            #   filtered_adata,
+            #   condition_col,
+            #   target,
+            #   filtered_genes
+            # ).sort_values("tau_target_score", ascending=False)
 
             target_name = normalize_label(target_raw)
             out_csv = data_dir / f"ges_spec_{condition_col}_{target_name}.csv"

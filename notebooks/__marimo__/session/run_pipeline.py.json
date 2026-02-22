@@ -5,6 +5,19 @@
   },
   "cells": [
     {
+      "id": "setup",
+      "code_hash": "c03378b77ebf4f272e5cb4859c340405",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
       "id": "Hbol",
       "code_hash": "12c654958696554ac82bb4d4560accd4",
       "outputs": [
@@ -15,6 +28,18 @@
           }
         }
       ],
+      "console": []
+    },
+    {
+      "id": "MJUe",
+      "code_hash": "537b33f34cf88ae4d85cd7f1e404c639",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "vblA",
+      "code_hash": "01b1bd8d58bc9e722fc6576066985d69",
+      "outputs": [],
       "console": []
     },
     {
@@ -31,6 +56,58 @@
       "console": []
     },
     {
+      "id": "lEQa",
+      "code_hash": "cb99ceb584e8d089cf412b12eaf1ad8c",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": [
+        {
+          "type": "stream",
+          "name": "stdout",
+          "text": "\n===================================================\n \ud83d\udd25 GENE LIST PIPELINE \u2014 CONFIGURATION SUMMARY\n===================================================\nRun name:              Microcephaly Cell Phase\nRoot directory:        /miridan-data/annaludmir/ndd_gene_modules/\nOutput folder:         /miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results\nGene list:             /miridan-data/annaludmir/ndd_gene_modules/data/genes/microcephaly_genes.csv\nGMT folder:            /miridan-data/annaludmir/ndd_gene_modules/data/genes\nGES Score results:     /miridan-data/annaludmir/ndd_gene_modules/results/ges_score_results/ges_score_for_cortex_cell_cycle_20251221\nAnalysis mode:         gsea\nGES score threshold:   1\nColumn conditions:     {'CellCyclePhase': ['G1', 'S', 'G2M', 'PostM', 'Non-cycling']}\n===================================================\n\n\ud83d\udcc2 GMT already exists: /miridan-data/annaludmir/ndd_gene_modules/data/genes/microcephaly_genes.gmt\n\n\ud83d\udd25 Running GSEA enrichment\n\u2192 GMT file:            /miridan-data/annaludmir/ndd_gene_modules/data/genes/microcephaly_genes.gmt\n\u2192 Output folder        /miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/Microcephaly Cell Phase_threshold_1_20260222/data/enrichment_results\n\u2192 GES score threshold  1\n\n\nUsing GMT set: microcephaly_genes\n\n\nRunning GSEA for CellCyclePhase \u2192 G1\n  \u2714 Saved GSEA table to /miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/Microcephaly Cell Phase_threshold_1_20260222/data/enrichment_results/GSEA/CellCyclePhase/G1/gsea_results.csv\n  \u2714 Saved plot to /miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/Microcephaly Cell Phase_threshold_1_20260222/data/enrichment_results/GSEA/CellCyclePhase/G1/gsea_raw/custom_gseaplot_microcephaly_genes.png\n\nRunning GSEA for CellCyclePhase \u2192 S\n  \u2714 Saved GSEA table to /miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/Microcephaly Cell Phase_threshold_1_20260222/data/enrichment_results/GSEA/CellCyclePhase/S/gsea_results.csv\n  \u2714 Saved plot to /miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/Microcephaly Cell Phase_threshold_1_20260222/data/enrichment_results/GSEA/CellCyclePhase/S/gsea_raw/custom_gseaplot_microcephaly_genes.png\n\nRunning GSEA for CellCyclePhase \u2192 G2M\n  \u2714 Saved GSEA table to /miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/Microcephaly Cell Phase_threshold_1_20260222/data/enrichment_results/GSEA/CellCyclePhase/G2M/gsea_results.csv\n  \u2714 Saved plot to /miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/Microcephaly Cell Phase_threshold_1_20260222/data/enrichment_results/GSEA/CellCyclePhase/G2M/gsea_raw/custom_gseaplot_microcephaly_genes.png\n\nRunning GSEA for CellCyclePhase \u2192 PostM\n  \u2714 Saved GSEA table to /miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/Microcephaly Cell Phase_threshold_1_20260222/data/enrichment_results/GSEA/CellCyclePhase/PostM/gsea_results.csv\n  \u2714 Saved plot to /miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/Microcephaly Cell Phase_threshold_1_20260222/data/enrichment_results/GSEA/CellCyclePhase/PostM/gsea_raw/custom_gseaplot_microcephaly_genes.png\n\nRunning GSEA for CellCyclePhase \u2192 Non-cycling\n  \u2714 Saved GSEA table to /miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/Microcephaly Cell Phase_threshold_1_20260222/data/enrichment_results/GSEA/CellCyclePhase/Non-cycling/gsea_results.csv\n  \u2714 Saved plot to /miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/Microcephaly Cell Phase_threshold_1_20260222/data/enrichment_results/GSEA/CellCyclePhase/Non-cycling/gsea_raw/custom_gseaplot_microcephaly_genes.png\n\n\ud83d\udcc4 Final summary file created:\n/miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/Microcephaly Cell Phase_threshold_1_20260222/data/enrichment_results/GSEA/GSEA_final_summary.csv\n\n\ud83c\udf89 GSEA pipeline finished successfully!\nAll files saved under:\n/miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/Microcephaly Cell Phase_threshold_1_20260222/data/enrichment_results/GSEA\n\n\u2705 GSEA enrichment finished.\n\ud83d\udd15 DESeq disabled in config\n\n\ud83d\udcca Generating GSEA plots from: /miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/Microcephaly Cell Phase_threshold_1_20260222/data/enrichment_results/GSEA/GSEA_final_summary.csv\n\n\ud83c\udf89 PIPELINE COMPLETE \u2014 enrichment steps finished.\n",
+          "mimetype": "text/plain"
+        }
+      ]
+    },
+    {
+      "id": "PKri",
+      "code_hash": "d763342d17991fc97966a319e8c62e0f",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "Xref",
+      "code_hash": "858609e105f8c9f1e4620bfeea22b2b6",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "aOHM",
+      "code_hash": "807a1448374f0fe177fbc9c49185c4a3",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": [
+        {
+          "type": "stream",
+          "name": "stdout",
+          "text": "\n===================================================\n \ud83d\udd25 GENE LIST PIPELINE \u2014 CONFIGURATION SUMMARY\n===================================================\nRun name:              Microcephaly All Data Proliferating\nRoot directory:        /miridan-data/annaludmir/ndd_gene_modules/\nOutput folder:         /miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results\nGene list:             /miridan-data/annaludmir/ndd_gene_modules/data/genes/microcephaly_genes.csv\nGMT folder:            /miridan-data/annaludmir/ndd_gene_modules/data/genes\nGES Score results:     /miridan-data/annaludmir/ndd_gene_modules/results/ges_score_results/ges_score_for_all_layers_proliferating_20260222\nAnalysis mode:         gsea\nGES score threshold:   1\nColumn conditions:     {'ProliferatingRegions': ['Forebrain', 'Midbrain', 'Hindbrain']}\n===================================================\n\n\ud83d\udcc2 GMT already exists: /miridan-data/annaludmir/ndd_gene_modules/data/genes/microcephaly_genes.gmt\n\n\ud83d\udd25 Running GSEA enrichment\n\u2192 GMT file:            /miridan-data/annaludmir/ndd_gene_modules/data/genes/microcephaly_genes.gmt\n\u2192 Output folder        /miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/Microcephaly All Data Proliferating_threshold_1_20260222/data/enrichment_results\n\u2192 GES score threshold  1\n\n\nUsing GMT set: microcephaly_genes\n\n\nRunning GSEA for ProliferatingRegions \u2192 Forebrain\n\u26a0\ufe0f No genes pass threshold 1 for ProliferatingRegions/Forebrain\n\nRunning GSEA for ProliferatingRegions \u2192 Midbrain\n\u26a0\ufe0f No genes pass threshold 1 for ProliferatingRegions/Midbrain\n\nRunning GSEA for ProliferatingRegions \u2192 Hindbrain\n\u26a0\ufe0f No genes pass threshold 1 for ProliferatingRegions/Hindbrain\n\n\u26a0\ufe0f No GSEA results found \u2014 skipping final summary table.\n\u2705 GSEA enrichment finished.\n\ud83d\udd15 DESeq disabled in config\n\n\ud83c\udf89 PIPELINE COMPLETE \u2014 enrichment steps finished.\n",
+          "mimetype": "text/plain"
+        }
+      ]
+    },
+    {
       "id": "SFPL",
       "code_hash": "a1148a6c43877a8988f3cc060ff41e24",
       "outputs": [
@@ -41,6 +118,12 @@
           }
         }
       ],
+      "console": []
+    },
+    {
+      "id": "BYtC",
+      "code_hash": "47e4f928735212f467fc6792b9e66edd",
+      "outputs": [],
       "console": []
     },
     {
@@ -57,6 +140,12 @@
       "console": []
     },
     {
+      "id": "Kclp",
+      "code_hash": "ae8b5a661487a6d311be9b9d9793769e",
+      "outputs": [],
+      "console": []
+    },
+    {
       "id": "emfo",
       "code_hash": "5e3383c5bb612e0dee794eee329bf5bd",
       "outputs": [
@@ -70,6 +159,24 @@
       "console": []
     },
     {
+      "id": "Hstk",
+      "code_hash": "4fa13a47b40518ff62ca85395ba97fc2",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "nWHF",
+      "code_hash": "666cd6937d926c9a3618b9d00c8265bd",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "iLit",
+      "code_hash": null,
+      "outputs": [],
+      "console": []
+    },
+    {
       "id": "ZHCJ",
       "code_hash": "7d6069fcc7173311bf654ea30e37cb1f",
       "outputs": [
@@ -80,100 +187,6 @@
           }
         }
       ],
-      "console": []
-    },
-    {
-      "id": "ZBYS",
-      "code_hash": "00cf598b1aaa08cb12a4a47b1445f2bd",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"check-similarity-between-leading-genes\">Check similarity between leading genes</h2></span>"
-          }
-        }
-      ],
-      "console": []
-    },
-    {
-      "id": "setup",
-      "code_hash": "c03378b77ebf4f272e5cb4859c340405",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
-      "console": []
-    },
-    {
-      "id": "MJUe",
-      "code_hash": "537b33f34cf88ae4d85cd7f1e404c639",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/html": "<pre style='font-size: 12px'>&lt;module &#x27;modules.specificity_score_calculations&#x27; from &#x27;/miridan-data/annaludmir/ndd_gene_modules/modules/specificity_score_calculations.py&#x27;&gt;</pre>"
-          }
-        }
-      ],
-      "console": []
-    },
-    {
-      "id": "vblA",
-      "code_hash": "01b1bd8d58bc9e722fc6576066985d69",
-      "outputs": [],
-      "console": [
-        {
-          "type": "stream",
-          "name": "stdout",
-          "text": "\n==============================\n  Loading GES YAML config\n==============================\n\u2022 Name of run:          ges_score_for_all_layers_proliferating\n\u2022 Data path:            /miridan-data/annaludmir/ndd_gene_modules/data/human_dev.h5ad\n\u2022 Output root:          /miridan-data/annaludmir/ndd_gene_modules/results/ges_score_results\n\u2022 Run directory:        /miridan-data/annaludmir/ndd_gene_modules/results/ges_score_results/ges_score_for_all_layers_proliferating_20260222\n\u2022 Normalize data:       True\n\u2022 Chemistry:            v3\n\u2022 Expression threshold: 0.05\n\u2022 Permutations:         False\n==============================\n\nAvailable columns in .obs (fast h5py check):\n['Age', 'CellClass', 'CellID', 'Chemistry', 'Region', 'Subregion', 'assay_ontology_term_id', 'cell_cycle_score', 'cell_type_ontology_term_id', 'cluster_id', 'development_stage_ontology_term_id', 'disease_ontology_term_id', 'dissection', 'donor_id', 'fraction_mitochondrial', 'fraction_unspliced', 'organism_ontology_term_id', 'sample_id', 'self_reported_ethnicity_ontology_term_id', 'sex_ontology_term_id', 'suspension_type', 'tissue_ontology_term_id', 'tissue_type', 'total_UMIs', 'total_genes']\nUploading data from: /miridan-data/annaludmir/ndd_gene_modules/data/human_dev.h5ad\nData loaded (1665937 cells, 59459 genes) in 179.46s\nFiltering chemistry...\n",
-          "mimetype": "text/plain"
-        }
-      ]
-    },
-    {
-      "id": "lEQa",
-      "code_hash": "cb99ceb584e8d089cf412b12eaf1ad8c",
-      "outputs": [],
-      "console": []
-    },
-    {
-      "id": "PKri",
-      "code_hash": "d763342d17991fc97966a319e8c62e0f",
-      "outputs": [],
-      "console": []
-    },
-    {
-      "id": "Xref",
-      "code_hash": "858609e105f8c9f1e4620bfeea22b2b6",
-      "outputs": [],
-      "console": []
-    },
-    {
-      "id": "BYtC",
-      "code_hash": "47e4f928735212f467fc6792b9e66edd",
-      "outputs": [],
-      "console": []
-    },
-    {
-      "id": "Kclp",
-      "code_hash": "ae8b5a661487a6d311be9b9d9793769e",
-      "outputs": [],
-      "console": []
-    },
-    {
-      "id": "Hstk",
-      "code_hash": "4fa13a47b40518ff62ca85395ba97fc2",
-      "outputs": [],
-      "console": []
-    },
-    {
-      "id": "nWHF",
-      "code_hash": "666cd6937d926c9a3618b9d00c8265bd",
-      "outputs": [],
       "console": []
     },
     {
@@ -222,6 +235,19 @@
       "id": "Pvdt",
       "code_hash": "36400ace0226be4cd8d012b1a08b8fd5",
       "outputs": [],
+      "console": []
+    },
+    {
+      "id": "ZBYS",
+      "code_hash": "00cf598b1aaa08cb12a4a47b1445f2bd",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"check-similarity-between-leading-genes\">Check similarity between leading genes</h2></span>"
+          }
+        }
+      ],
       "console": []
     },
     {
@@ -317,6 +343,12 @@
     {
       "id": "dGlV",
       "code_hash": "dcfd075f94ffc279ea94abfea1179301",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "SdmI",
+      "code_hash": null,
       "outputs": [],
       "console": []
     }

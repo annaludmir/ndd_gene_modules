@@ -8,7 +8,8 @@ import pandas as pd
 from get_gmt import save_to_gmt
 from search_enrichment_gsea import run_gsea
 from deseq_calculations import main as run_deseq
-from create_figs_ges import plot_bar_chart as plot_ges
+# from create_figs_ges import plot_bar_chart as plot_ges
+from create_figs_ges_for_presentation import plot_bar_chart as plot_ges
 from create_figs_deseq import plot_bar_chart as plot_deseq
 
 

@@ -62,6 +62,12 @@ def _(epfgl):
     return
 
 
+@app.cell
+def _(epfgl):
+    epfgl.run_gene_list_pipeline(config_path='/miridan-data/annaludmir/ndd_gene_modules/config_files/enrichment_all_layers_proliferating_config.yaml')
+    return
+
+
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
