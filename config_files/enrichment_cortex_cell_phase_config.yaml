@@ -1,9 +1,9 @@
-run_name: "ID_microcephaly_behvioral_cortex_cell_phase"
+run_name: "Microcephaly Cell Phase"
 ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules/"
 
 output_folder: "results/enrichment_results/"
 ges_results_folder: "results/ges_score_results/ges_score_for_cortex_cell_cycle_20251221"
-gene_list_path: "data/genes/ID_microcephaly_behvioral.csv"
+gene_list_path: "data/genes/microcephaly_genes.csv"
 gmt_folder: "data/genes/"
 
 analysis_mode: "gsea"     # or "deseq" or "both"

@@ -5,12 +5,6 @@
   },
   "cells": [
     {
-      "id": "setup",
-      "code_hash": "c03378b77ebf4f272e5cb4859c340405",
-      "outputs": [],
-      "console": []
-    },
-    {
       "id": "Hbol",
       "code_hash": "12c654958696554ac82bb4d4560accd4",
       "outputs": [
@@ -21,18 +15,6 @@
           }
         }
       ],
-      "console": []
-    },
-    {
-      "id": "MJUe",
-      "code_hash": "537b33f34cf88ae4d85cd7f1e404c639",
-      "outputs": [],
-      "console": []
-    },
-    {
-      "id": "vblA",
-      "code_hash": "961a656545dc4275f39ce7c9687fe9bd",
-      "outputs": [],
       "console": []
     },
     {
@@ -47,6 +29,110 @@
         }
       ],
       "console": []
+    },
+    {
+      "id": "SFPL",
+      "code_hash": "a1148a6c43877a8988f3cc060ff41e24",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"plotting-tsne-plots\">Plotting tSNE plots</h2></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "RGSE",
+      "code_hash": "51c3f0b5e2f2cb08158b479b50aaa813",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"plotting-dot-plots\">Plotting dot plots</h2></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "emfo",
+      "code_hash": "5e3383c5bb612e0dee794eee329bf5bd",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"playing-around-with-the-data\">Playing around with the data</h2></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "ZHCJ",
+      "code_hash": "7d6069fcc7173311bf654ea30e37cb1f",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"running-in-loop-for-many-gene-lists\">Running in Loop for many gene lists</h2></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "ZBYS",
+      "code_hash": "00cf598b1aaa08cb12a4a47b1445f2bd",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"check-similarity-between-leading-genes\">Check similarity between leading genes</h2></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "setup",
+      "code_hash": "c03378b77ebf4f272e5cb4859c340405",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "MJUe",
+      "code_hash": "537b33f34cf88ae4d85cd7f1e404c639",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/html": "<pre style='font-size: 12px'>&lt;module &#x27;modules.specificity_score_calculations&#x27; from &#x27;/miridan-data/annaludmir/ndd_gene_modules/modules/specificity_score_calculations.py&#x27;&gt;</pre>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "vblA",
+      "code_hash": "01b1bd8d58bc9e722fc6576066985d69",
+      "outputs": [],
+      "console": [
+        {
+          "type": "stream",
+          "name": "stdout",
+          "text": "\n==============================\n  Loading GES YAML config\n==============================\n\u2022 Name of run:          ges_score_for_all_layers_proliferating\n\u2022 Data path:            /miridan-data/annaludmir/ndd_gene_modules/data/human_dev.h5ad\n\u2022 Output root:          /miridan-data/annaludmir/ndd_gene_modules/results/ges_score_results\n\u2022 Run directory:        /miridan-data/annaludmir/ndd_gene_modules/results/ges_score_results/ges_score_for_all_layers_proliferating_20260222\n\u2022 Normalize data:       True\n\u2022 Chemistry:            v3\n\u2022 Expression threshold: 0.05\n\u2022 Permutations:         False\n==============================\n\nAvailable columns in .obs (fast h5py check):\n['Age', 'CellClass', 'CellID', 'Chemistry', 'Region', 'Subregion', 'assay_ontology_term_id', 'cell_cycle_score', 'cell_type_ontology_term_id', 'cluster_id', 'development_stage_ontology_term_id', 'disease_ontology_term_id', 'dissection', 'donor_id', 'fraction_mitochondrial', 'fraction_unspliced', 'organism_ontology_term_id', 'sample_id', 'self_reported_ethnicity_ontology_term_id', 'sex_ontology_term_id', 'suspension_type', 'tissue_ontology_term_id', 'tissue_type', 'total_UMIs', 'total_genes']\nUploading data from: /miridan-data/annaludmir/ndd_gene_modules/data/human_dev.h5ad\nData loaded (1665937 cells, 59459 genes) in 179.46s\nFiltering chemistry...\n",
+          "mimetype": "text/plain"
+        }
+      ]
     },
     {
       "id": "lEQa",
@@ -67,54 +153,15 @@
       "console": []
     },
     {
-      "id": "SFPL",
-      "code_hash": "a1148a6c43877a8988f3cc060ff41e24",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"plotting-tsne-plots\">Plotting tSNE plots</h2></span>"
-          }
-        }
-      ],
-      "console": []
-    },
-    {
       "id": "BYtC",
       "code_hash": "47e4f928735212f467fc6792b9e66edd",
       "outputs": [],
       "console": []
     },
     {
-      "id": "RGSE",
-      "code_hash": "51c3f0b5e2f2cb08158b479b50aaa813",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"plotting-dot-plots\">Plotting dot plots</h2></span>"
-          }
-        }
-      ],
-      "console": []
-    },
-    {
       "id": "Kclp",
       "code_hash": "ae8b5a661487a6d311be9b9d9793769e",
       "outputs": [],
-      "console": []
-    },
-    {
-      "id": "emfo",
-      "code_hash": "5e3383c5bb612e0dee794eee329bf5bd",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"playing-around-with-the-data\">Playing around with the data</h2></span>"
-          }
-        }
-      ],
       "console": []
     },
     {
@@ -130,54 +177,21 @@
       "console": []
     },
     {
-      "id": "iLit",
-      "code_hash": null,
-      "outputs": [],
-      "console": []
-    },
-    {
-      "id": "ZHCJ",
-      "code_hash": "7d6069fcc7173311bf654ea30e37cb1f",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"running-in-loop-for-many-gene-lists\">Running in Loop for many gene lists</h2></span>"
-          }
-        }
-      ],
-      "console": []
-    },
-    {
       "id": "ROlb",
-      "code_hash": "98334bc3d673c0fd7bcb0122eb85c4e1",
+      "code_hash": "b342074ed4b75cfd1914e641516a1053",
       "outputs": [],
       "console": []
     },
     {
       "id": "qnkX",
       "code_hash": "c1b7b1d18b5ff786fb8c4d2ef4e0138a",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
+      "outputs": [],
       "console": []
     },
     {
       "id": "TqIu",
-      "code_hash": "147fd1d75c3aa1cf56403267004a7800",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
+      "code_hash": "9004f8fa7de0fdd3b7d2d07096667f27",
+      "outputs": [],
       "console": []
     },
     {
@@ -194,183 +208,115 @@
     },
     {
       "id": "ulZA",
-      "code_hash": "1ffe30ded42d18935001e2073e86d50b",
+      "code_hash": "604f262a6dd1f3a21a3427e8921f1669",
       "outputs": [],
       "console": []
     },
     {
       "id": "ecfG",
+      "code_hash": "bd54c375eda4291fce2b033f636ffe8f",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "Pvdt",
+      "code_hash": "36400ace0226be4cd8d012b1a08b8fd5",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "aLJB",
+      "code_hash": "93161a411f1e8454da2bc3acabad084f",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "nHfw",
       "code_hash": "41493d8ee4b4e3dbf6105f5d39424a8e",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
+      "outputs": [],
       "console": []
     },
     {
-      "id": "vvos",
+      "id": "xXTn",
       "code_hash": "5e719f47faa8b0ab31285edfe4155dcc",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
+      "outputs": [],
       "console": []
     },
     {
-      "id": "FIVo",
+      "id": "AjVT",
       "code_hash": "a063de87829ba81aaeee6eca97f0f1f2",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
+      "outputs": [],
       "console": []
     },
     {
-      "id": "fkML",
+      "id": "pHFh",
       "code_hash": "d6702ff61d1adcda0ad5c278370b08e5",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/html": "<marimo-ui-element object-id='fkML-0' random-id='776aaef6-6c5f-d854-2e38-3888b7fb2524'><marimo-table data-initial-value='[]' data-label='null' data-data='&quot;[{&#92;&quot;column&#92;&quot;:&#92;&quot;Region&#92;&quot;,&#92;&quot;condition&#92;&quot;:&#92;&quot;Cerebellum&#92;&quot;,&#92;&quot;term&#92;&quot;:&#92;&quot;microcephaly_genes&#92;&quot;,&#92;&quot;NES&#92;&quot;:-1.7107254502,&#92;&quot;NOM p-val&#92;&quot;:0.0,&#92;&quot;FDR q-val&#92;&quot;:0.0,&#92;&quot;FWER p-val&#92;&quot;:0.0,&#92;&quot;Tag %&#92;&quot;:&#92;&quot;75/79&#92;&quot;,&#92;&quot;Gene %&#92;&quot;:&#92;&quot;74.34%&#92;&quot;,&#92;&quot;Lead_genes&#92;&quot;:&#92;&quot;TNPO2;TRAPPC9;DIAPH1;UFM1;COPB2;WDFY3;DHCR7;MYCN;ATP1A2;MSMO1;TUBGCP2;HDAC8;WDR4;KMT2B;RPL10;SLC9A6;MECP2;ARF3;CAMSAP1;ATP6V0A1;ZNF335;PTPN23;TRAPPC12;FANCC;ZNHIT3;TUBGCP4;ATRIP;GINS3;TSEN54;ACBD6;PDHA1;CEP57;PALB2;ORC4;CHKA;TTC5;MCPH1;PPFIBP1;INTS11;TUBGCP6;UBE3A;PHC1;PDCD6IP;DYNC1I2;UNC80;ZPR1;WDR37;RUSC2;RING1;SLX4;AP4B1;SVBP;DOHH;FRA10AC1;EXOC7;CTU2;CASK;FANCG;MORC2;VPS50;EOMES;IGF1R;DPP6;TRIO;AP4M1;TRMT1;YIF1B;SLC1A4;AP4S1;NIN;CTSF;TRAPPC6B;ATP9A;ZNF668;ERCC6&#92;&quot;,&#92;&quot;FDR q-val (BH corrected)&#92;&quot;:0.0},{&#92;&quot;column&#92;&quot;:&#92;&quot;Region&#92;&quot;,&#92;&quot;condition&#92;&quot;:&#92;&quot;Diencephalon&#92;&quot;,&#92;&quot;term&#92;&quot;:&#92;&quot;microcephaly_genes&#92;&quot;,&#92;&quot;NES&#92;&quot;:-1.3193386129,&#92;&quot;NOM p-val&#92;&quot;:0.1266666667,&#92;&quot;FDR q-val&#92;&quot;:0.1266666667,&#92;&quot;FWER p-val&#92;&quot;:0.1266666667,&#92;&quot;Tag %&#92;&quot;:&#92;&quot;50/51&#92;&quot;,&#92;&quot;Gene %&#92;&quot;:&#92;&quot;81.92%&#92;&quot;,&#92;&quot;Lead_genes&#92;&quot;:&#92;&quot;ZNHIT3;PLK4;MFSD2A;HIKESHI;LMNB2;NCAPD2;SASS6;RMI1;TUBG1;CEP135;CRIPT;MSMO1;LARP7;RRP7A;SLC9A6;DPP6;LAGE3;KIF11;PRIM1;SVBP;NCAPH;FANCB;TPRKB;TRMT10A;MPLKIP;UNC80;HMGB1;CENPE;POC1A;FANCD2;ORC6;DYNC1I2;DHCR7;MED11;BUB1B;UFC1;CIT;KIF14;CTNNB1;ASPM;BUB1;KNL1;CEP55;HIST1H4C;CDK6;METTL5;CENPF;ATP1A2;NUF2;CKAP2L&#92;&quot;,&#92;&quot;FDR q-val (BH corrected)&#92;&quot;:0.19},{&#92;&quot;column&#92;&quot;:&#92;&quot;Region&#92;&quot;,&#92;&quot;condition&#92;&quot;:&#92;&quot;Midbrain&#92;&quot;,&#92;&quot;term&#92;&quot;:&#92;&quot;microcephaly_genes&#92;&quot;,&#92;&quot;NES&#92;&quot;:-2.5242130559,&#92;&quot;NOM p-val&#92;&quot;:0.0,&#92;&quot;FDR q-val&#92;&quot;:0.0,&#92;&quot;FWER p-val&#92;&quot;:0.0,&#92;&quot;Tag %&#92;&quot;:&#92;&quot;35/53&#92;&quot;,&#92;&quot;Gene %&#92;&quot;:&#92;&quot;34.53%&#92;&quot;,&#92;&quot;Lead_genes&#92;&quot;:&#92;&quot;EIF2S3;ARCN1;MINPP1;NSRP1;ERCC4;NBN;RAD21;MSMO1;ATP1A2;TUBG1;DHCR7;SMO;UBA5;UFC1;TRMT1;QARS;RPL10;AP4S1;RAD51C;STAMBP;CRIPT;ATP6V0A1;PUF60;WDR73;CEP63;NIN;NAA20;COPB2;PPFIBP1;ZNHIT3;TPRKB;GINS2;TRA2B;COASY;SVBP&#92;&quot;,&#92;&quot;FDR q-val (BH corrected)&#92;&quot;:0.0},{&#92;&quot;column&#92;&quot;:&#92;&quot;Region&#92;&quot;,&#92;&quot;condition&#92;&quot;:&#92;&quot;Forebrain&#92;&quot;,&#92;&quot;term&#92;&quot;:&#92;&quot;microcephaly_genes&#92;&quot;,&#92;&quot;NES&#92;&quot;:2.4465008026,&#92;&quot;NOM p-val&#92;&quot;:0.0,&#92;&quot;FDR q-val&#92;&quot;:0.0,&#92;&quot;FWER p-val&#92;&quot;:0.0,&#92;&quot;Tag %&#92;&quot;:&#92;&quot;86/181&#92;&quot;,&#92;&quot;Gene %&#92;&quot;:&#92;&quot;31.52%&#92;&quot;,&#92;&quot;Lead_genes&#92;&quot;:&#92;&quot;FOXG1;CDK6;HPDL;BRIP1;CIT;KIF11;CEP152;KNL1;BLM;ORC1;FANCI;CDT1;BUB1B;POC1A;NCAPH;CDC6;CKAP2L;DNA2;NCAPD2;WDR62;BUB1;STIL;ZEB2;PLK4;CENPF;BRCA2;ASPM;CCDC88A;FANCB;FANCA;CENPE;LMNB2;HHAT;FANCD2;CEP55;NDE1;GINS2;MRE11;DDX11;RBBP8;TRAIP;FANCL;KIF14;GINS3;CEP135;FANCE;NUF2;TRIP13;GMNN;CDK5RAP2;TUBGCP3;CCND2;ORC6;VRK1;MCM7;LMNB1;DIAPH1;PCNT;SMC1A;NUP107;NUP188;SMO;ATP1A2;FANCG;GPT2;SASS6;PUS7;HIST1H4C;TCF4;TOP3A;NCAPD3;NUP214;NSD2;RMI1;SMC5;RAD21;FBRSL1;OSGEP;EFTUD2;TUBGCP4;ATRIP;TTI1;ZNF526;SLF2;SMC3;ANKLE2&#92;&quot;,&#92;&quot;FDR q-val (BH corrected)&#92;&quot;:0.0},{&#92;&quot;column&#92;&quot;:&#92;&quot;Region&#92;&quot;,&#92;&quot;condition&#92;&quot;:&#92;&quot;Hindbrain&#92;&quot;,&#92;&quot;term&#92;&quot;:&#92;&quot;microcephaly_genes&#92;&quot;,&#92;&quot;NES&#92;&quot;:-1.8139314774,&#92;&quot;NOM p-val&#92;&quot;:0.0,&#92;&quot;FDR q-val&#92;&quot;:0.0,&#92;&quot;FWER p-val&#92;&quot;:0.0,&#92;&quot;Tag %&#92;&quot;:&#92;&quot;87/92&#92;&quot;,&#92;&quot;Gene %&#92;&quot;:&#92;&quot;78.29%&#92;&quot;,&#92;&quot;Lead_genes&#92;&quot;:&#92;&quot;SMC1A;PPP1R35;FBRSL1;KMT2B;RPL10;NSMCE2;SMC3;TPR;MCPH1;ATP9A;CHAMP1;PDHA1;TUBGCP2;XRCC4;PTPN23;PUF60;PSMC3;ERCC6;ZNF335;COPB2;TTC5;MECP2;DPM1;CHKA;CAMSAP1;SLC1A4;COPB1;QARS;CRIPT;RAD51C;LMNB1;DYNC1I2;TUBG1;TRAPPC12;TUBGCP4;SLX4;CTCF;PQBP1;ZPR1;TRA2B;CPSF3;MSMO1;ERCC8;ARF3;ATP1A2;AP4E1;UFM1;WDR4;RING1;ANKLE2;COG3;SMARCA5;METTL5;MPLKIP;PLAA;TP53RK;MED11;LARP7;EIF5A;KIF1BP;WDR73;UBA5;GRM7;SVBP;TPRKB;DPP6;DOHH;YIF1B;PALB2;HIKESHI;STAMBP;ERCC4;LAGE3;ARCN1;MORC2;NIN;ZNF668;AP4S1;PPP1R15B;MINPP1;TRAPPC10;CTU2;ZNHIT3;PPIL1;TSEN15;TRMT10A;NBN&#92;&quot;,&#92;&quot;FDR q-val (BH corrected)&#92;&quot;:0.0},{&#92;&quot;column&#92;&quot;:&#92;&quot;Region&#92;&quot;,&#92;&quot;condition&#92;&quot;:&#92;&quot;Pons&#92;&quot;,&#92;&quot;term&#92;&quot;:&#92;&quot;microcephaly_genes&#92;&quot;,&#92;&quot;NES&#92;&quot;:-1.5924607614,&#92;&quot;NOM p-val&#92;&quot;:0.039800995,&#92;&quot;FDR q-val&#92;&quot;:0.039800995,&#92;&quot;FWER p-val&#92;&quot;:0.039800995,&#92;&quot;Tag %&#92;&quot;:&#92;&quot;10/23&#92;&quot;,&#92;&quot;Gene %&#92;&quot;:&#92;&quot;13.68%&#92;&quot;,&#92;&quot;Lead_genes&#92;&quot;:&#92;&quot;TSEN15;NAA20;YIF1B;MPLKIP;LIG4;MED11;TPRKB;UFC1;RPL10;NIN&#92;&quot;,&#92;&quot;FDR q-val (BH corrected)&#92;&quot;:0.071641791},{&#92;&quot;column&#92;&quot;:&#92;&quot;Region&#92;&quot;,&#92;&quot;condition&#92;&quot;:&#92;&quot;Medulla&#92;&quot;,&#92;&quot;term&#92;&quot;:&#92;&quot;microcephaly_genes&#92;&quot;,&#92;&quot;NES&#92;&quot;:-1.4057026098,&#92;&quot;NOM p-val&#92;&quot;:0.0652173913,&#92;&quot;FDR q-val&#92;&quot;:0.0652173913,&#92;&quot;FWER p-val&#92;&quot;:0.0652173913,&#92;&quot;Tag %&#92;&quot;:&#92;&quot;25/29&#92;&quot;,&#92;&quot;Gene %&#92;&quot;:&#92;&quot;60.20%&#92;&quot;,&#92;&quot;Lead_genes&#92;&quot;:&#92;&quot;UNC80;HMGB1;NAA20;GPT2;UFC1;GRM7;ZPR1;DHCR7;KIF1BP;EIF5A;ARF3;COASY;RPL10;HIKESHI;CRIPT;TSEN15;TAF13;DPP6;MINPP1;MSMO1;WLS;MED11;METTL5;TCF4;YIF1B&#92;&quot;,&#92;&quot;FDR q-val (BH corrected)&#92;&quot;:0.1067193676},{&#92;&quot;column&#92;&quot;:&#92;&quot;Region&#92;&quot;,&#92;&quot;condition&#92;&quot;:&#92;&quot;Telencephalon&#92;&quot;,&#92;&quot;term&#92;&quot;:&#92;&quot;microcephaly_genes&#92;&quot;,&#92;&quot;NES&#92;&quot;:1.1263690093,&#92;&quot;NOM p-val&#92;&quot;:0.3200815494,&#92;&quot;FDR q-val&#92;&quot;:0.3200815494,&#92;&quot;FWER p-val&#92;&quot;:0.314,&#92;&quot;Tag %&#92;&quot;:&#92;&quot;124/157&#92;&quot;,&#92;&quot;Gene %&#92;&quot;:&#92;&quot;68.19%&#92;&quot;,&#92;&quot;Lead_genes&#92;&quot;:&#92;&quot;EOMES;FOXG1;LHX2;VRK1;CCND2;TCF4;PUS7;BUB1B;FANCL;AKT3;PCNT;ASPM;BUB1;FANCA;DNA2;CKAP2L;CEP135;TRAPPC9;MYCN;KIF11;BRIP1;KNL1;DIAPH1;CEP152;TP53RK;CDK5RAP2;FANCI;PLK4;AP4B1;NCAPH;NUF2;CEP63;ATP11A;NDE1;SLF2;TUBGCP3;TRIP13;TRIO;ZEB2;NUP188;CENPF;PCLO;ACBD6;NCAPD2;HIST1H4C;FANCD2;CDT1;PDHA1;MCPH1;TOP3A;LMNB1;POC1A;ORC6;POGZ;PRIM1;CEP55;DROSHA;NUP107;WDR62;NCAPD3;KIF14;GINS2;BRCA2;LMNB2;ATRIP;CAMSAP1;STIL;ADARB1;ATRX;PALB2;FANCE;ATR;SMC1A;EXOC7;FANCB;TUBGCP6;KMT2B;ZNF526;EFTUD2;MCM7;DDX11;VPS50;SMC5;IGF1R;ZPR1;GPT2;CCDC88A;CENPE;MRE11;SMC3;WDFY3;FANCM;NSD2;OSGEP;PTPN23;CREBBP;CIT;NIPBL;TUBGCP2;FRA10AC1;RBBP8;WDR11;UBE3A;GMNN;UNC80;CTCF;RTTN;HDAC8;NUP214;TTI1;RMI1;ATP9A;RUSC2;TRAIP;FBRSL1;ERCC6;MORC2;TUBGCP4;PQBP1;AP4E1;TNPO2;PRUNE1;NSRP1;HMGB1&#92;&quot;,&#92;&quot;FDR q-val (BH corrected)&#92;&quot;:0.4115334207},{&#92;&quot;column&#92;&quot;:&#92;&quot;CellClass&#92;&quot;,&#92;&quot;condition&#92;&quot;:&#92;&quot;Radial glia&#92;&quot;,&#92;&quot;term&#92;&quot;:&#92;&quot;microcephaly_genes&#92;&quot;,&#92;&quot;NES&#92;&quot;:2.0280378544,&#92;&quot;NOM p-val&#92;&quot;:0.0,&#92;&quot;FDR q-val&#92;&quot;:0.0,&#92;&quot;FWER p-val&#92;&quot;:0.0,&#92;&quot;Tag %&#92;&quot;:&#92;&quot;54/167&#92;&quot;,&#92;&quot;Gene %&#92;&quot;:&#92;&quot;17.02%&#92;&quot;,&#92;&quot;Lead_genes&#92;&quot;:&#92;&quot;FILIP1;HPDL;CENPF;CEP55;NUF2;POC1A;CDC6;BUB1;BRCA2;CKAP2L;CENPE;ASPM;GINS2;NCAPH;TRIP13;CDT1;BUB1B;ORC1;FANCD2;KIF14;KIF11;ORC6;TRAIP;STIL;KNL1;GINS3;BLM;PLK4;FANCB;GMNN;MCM7;WDR62;BRIP1;FANCI;WLS;NCAPD2;CEP152;NDE1;MYCN;SLC25A19;CIT;CEP135;MFSD2A;TSEN15;DDX11;DNA2;RBBP8;SASS6;PPIL1;CDK6;FANCA;FANCG;TRMT10A;SMO&#92;&quot;,&#92;&quot;FDR q-val (BH corrected)&#92;&quot;:0.0},{&#92;&quot;column&#92;&quot;:&#92;&quot;CellClass&#92;&quot;,&#92;&quot;condition&#92;&quot;:&#92;&quot;Neuronal IPC&#92;&quot;,&#92;&quot;term&#92;&quot;:&#92;&quot;microcephaly_genes&#92;&quot;,&#92;&quot;NES&#92;&quot;:3.1169240382,&#92;&quot;NOM p-val&#92;&quot;:0.0,&#92;&quot;FDR q-val&#92;&quot;:0.0,&#92;&quot;FWER p-val&#92;&quot;:0.0,&#92;&quot;Tag %&#92;&quot;:&#92;&quot;69/161&#92;&quot;,&#92;&quot;Gene %&#92;&quot;:&#92;&quot;13.96%&#92;&quot;,&#92;&quot;Lead_genes&#92;&quot;:&#92;&quot;EOMES;KNL1;CEP55;BUB1B;WDR62;CKAP2L;KIF11;BUB1;CIT;STIL;NCAPH;ASPM;CEP152;NUF2;BRIP1;KIF14;DNA2;BLM;CENPE;POC1A;FANCD2;FANCI;PLK4;CENPF;NCAPD2;ORC1;BRCA2;CDT1;FANCB;FANCA;CDC6;ORC6;TRAIP;RBBP8;NDE1;NCAPD3;TRIP13;LMNB2;VRK1;CEP135;DDX11;GMNN;HIST1H4C;CDK6;CCND2;FANCG;FANCM;CDK5RAP2;LMNB1;MCM7;PRIM1;RTTN;GINS2;PCNT;TUBGCP3;SMC1A;RMI1;FOXG1;TOP3A;FANCL;GINS3;TUBG1;NSD2;FANCE;SASS6;MRE11;DONSON;XRCC4;NUP188&#92;&quot;,&#92;&quot;FDR q-val (BH corrected)&#92;&quot;:0.0}]&quot;' data-total-rows='18' data-total-columns='11' data-max-columns='50' data-banner-text='&quot;&quot;' data-pagination='true' data-page-size='10' data-field-types='[[&quot;column&quot;,[&quot;string&quot;,&quot;object&quot;]],[&quot;condition&quot;,[&quot;string&quot;,&quot;object&quot;]],[&quot;term&quot;,[&quot;string&quot;,&quot;object&quot;]],[&quot;NES&quot;,[&quot;number&quot;,&quot;float64&quot;]],[&quot;NOM p-val&quot;,[&quot;number&quot;,&quot;float64&quot;]],[&quot;FDR q-val&quot;,[&quot;number&quot;,&quot;float64&quot;]],[&quot;FWER p-val&quot;,[&quot;number&quot;,&quot;float64&quot;]],[&quot;Tag %&quot;,[&quot;string&quot;,&quot;object&quot;]],[&quot;Gene %&quot;,[&quot;string&quot;,&quot;object&quot;]],[&quot;Lead_genes&quot;,[&quot;string&quot;,&quot;object&quot;]],[&quot;FDR q-val (BH corrected)&quot;,[&quot;number&quot;,&quot;float64&quot;]]]' data-show-filters='true' data-show-download='true' data-show-column-summaries='true' data-show-data-types='true' data-show-page-size-selector='true' data-show-column-explorer='true' data-show-chart-builder='true' data-row-headers='[]' data-has-stable-row-id='false' data-lazy='false' data-preload='false'></marimo-table></marimo-ui-element>"
-          }
-        }
-      ],
+      "outputs": [],
       "console": []
     },
     {
-      "id": "pZYe",
+      "id": "NCOB",
       "code_hash": "c478781beba2cdb6f2950f4d373548ab",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/html": "<marimo-ui-element object-id='pZYe-0' random-id='c9618760-5a9e-e0a1-988f-cea445272e3c'><marimo-table data-initial-value='[]' data-label='null' data-data='&quot;[{&#92;&quot;column&#92;&quot;:&#92;&quot;Region&#92;&quot;,&#92;&quot;condition&#92;&quot;:&#92;&quot;Cerebellum&#92;&quot;,&#92;&quot;term&#92;&quot;:&#92;&quot;ID_SYNDD_Neoplasm&#92;&quot;,&#92;&quot;NES&#92;&quot;:-2.731896603,&#92;&quot;NOM p-val&#92;&quot;:0.0,&#92;&quot;FDR q-val&#92;&quot;:0.0,&#92;&quot;FWER p-val&#92;&quot;:0.0,&#92;&quot;Tag %&#92;&quot;:&#92;&quot;12/15&#92;&quot;,&#92;&quot;Gene %&#92;&quot;:&#92;&quot;22.62%&#92;&quot;,&#92;&quot;Lead_genes&#92;&quot;:&#92;&quot;NF1;CLPB;VPS13B;ADAR;TSC2;JAGN1;MAN2C1;PIK3CA;PTEN;TSC1;FANCC;HAX1&#92;&quot;,&#92;&quot;FDR q-val (BH corrected)&#92;&quot;:0.0},{&#92;&quot;column&#92;&quot;:&#92;&quot;Region&#92;&quot;,&#92;&quot;condition&#92;&quot;:&#92;&quot;Diencephalon&#92;&quot;,&#92;&quot;term&#92;&quot;:&#92;&quot;ID_SYNDD_Neoplasm&#92;&quot;,&#92;&quot;NES&#92;&quot;:1.0902298524,&#92;&quot;NOM p-val&#92;&quot;:0.3500784929,&#92;&quot;FDR q-val&#92;&quot;:0.3500784929,&#92;&quot;FWER p-val&#92;&quot;:0.223,&#92;&quot;Tag %&#92;&quot;:&#92;&quot;6/7&#92;&quot;,&#92;&quot;Gene %&#92;&quot;:&#92;&quot;50.92%&#92;&quot;,&#92;&quot;Lead_genes&#92;&quot;:&#92;&quot;NKX2-1;GPC3;BRCA1;BUB1B;HAX1;FANCD2&#92;&quot;,&#92;&quot;FDR q-val (BH corrected)&#92;&quot;:0.5375722543},{&#92;&quot;column&#92;&quot;:&#92;&quot;Region&#92;&quot;,&#92;&quot;condition&#92;&quot;:&#92;&quot;Midbrain&#92;&quot;,&#92;&quot;term&#92;&quot;:&#92;&quot;ID_SYNDD_Neoplasm&#92;&quot;,&#92;&quot;NES&#92;&quot;:-1.6159245226,&#92;&quot;NOM p-val&#92;&quot;:0.0285714286,&#92;&quot;FDR q-val&#92;&quot;:0.0285714286,&#92;&quot;FWER p-val&#92;&quot;:0.0285714286,&#92;&quot;Tag %&#92;&quot;:&#92;&quot;6/10&#92;&quot;,&#92;&quot;Gene %&#92;&quot;:&#92;&quot;16.61%&#92;&quot;,&#92;&quot;Lead_genes&#92;&quot;:&#92;&quot;ERCC2;SETBP1;NBN;XPA;PNP;FIBP&#92;&quot;,&#92;&quot;FDR q-val (BH corrected)&#92;&quot;:0.1028571429},{&#92;&quot;column&#92;&quot;:&#92;&quot;Region&#92;&quot;,&#92;&quot;condition&#92;&quot;:&#92;&quot;Forebrain&#92;&quot;,&#92;&quot;term&#92;&quot;:&#92;&quot;ID_SYNDD_Neoplasm&#92;&quot;,&#92;&quot;NES&#92;&quot;:1.5054579597,&#92;&quot;NOM p-val&#92;&quot;:0.0632570659,&#92;&quot;FDR q-val&#92;&quot;:0.0632570659,&#92;&quot;FWER p-val&#92;&quot;:0.047,&#92;&quot;Tag %&#92;&quot;:&#92;&quot;11/36&#92;&quot;,&#92;&quot;Gene %&#92;&quot;:&#92;&quot;14.20%&#92;&quot;,&#92;&quot;Lead_genes&#92;&quot;:&#92;&quot;NKX2-1;GPC3;BLM;BUB1B;BRCA1;FANCB;FANCA;FANCD2;PNP;FANCL;FANCE&#92;&quot;,&#92;&quot;FDR q-val (BH corrected)&#92;&quot;:0.1730769231},{&#92;&quot;column&#92;&quot;:&#92;&quot;Region&#92;&quot;,&#92;&quot;condition&#92;&quot;:&#92;&quot;Hindbrain&#92;&quot;,&#92;&quot;term&#92;&quot;:&#92;&quot;ID_SYNDD_Neoplasm&#92;&quot;,&#92;&quot;NES&#92;&quot;:-1.1939019207,&#92;&quot;NOM p-val&#92;&quot;:0.193877551,&#92;&quot;FDR q-val&#92;&quot;:0.193877551,&#92;&quot;FWER p-val&#92;&quot;:0.193877551,&#92;&quot;Tag %&#92;&quot;:&#92;&quot;8/19&#92;&quot;,&#92;&quot;Gene %&#92;&quot;:&#92;&quot;15.45%&#92;&quot;,&#92;&quot;Lead_genes&#92;&quot;:&#92;&quot;KDM3B;XPA;PNP;GPC3;DKC1;XRCC4;ADAR;PSMC3&#92;&quot;,&#92;&quot;FDR q-val (BH corrected)&#92;&quot;:0.3489795918},{&#92;&quot;column&#92;&quot;:&#92;&quot;Region&#92;&quot;,&#92;&quot;condition&#92;&quot;:&#92;&quot;Pons&#92;&quot;,&#92;&quot;term&#92;&quot;:&#92;&quot;ID_SYNDD_Neoplasm&#92;&quot;,&#92;&quot;NES&#92;&quot;:-0.9772172062,&#92;&quot;NOM p-val&#92;&quot;:0.4919354839,&#92;&quot;FDR q-val&#92;&quot;:0.4919354839,&#92;&quot;FWER p-val&#92;&quot;:0.4919354839,&#92;&quot;Tag %&#92;&quot;:&#92;&quot;6/6&#92;&quot;,&#92;&quot;Gene %&#92;&quot;:&#92;&quot;68.11%&#92;&quot;,&#92;&quot;Lead_genes&#92;&quot;:&#92;&quot;LIG4;PIK3R1;FIBP;HAX1;HRAS;SBDS&#92;&quot;,&#92;&quot;FDR q-val (BH corrected)&#92;&quot;:0.6811414392},{&#92;&quot;column&#92;&quot;:&#92;&quot;Region&#92;&quot;,&#92;&quot;condition&#92;&quot;:&#92;&quot;Medulla&#92;&quot;,&#92;&quot;term&#92;&quot;:&#92;&quot;ID_SYNDD_Neoplasm&#92;&quot;,&#92;&quot;NES&#92;&quot;:-1.0776109437,&#92;&quot;NOM p-val&#92;&quot;:0.3583815029,&#92;&quot;FDR q-val&#92;&quot;:0.3583815029,&#92;&quot;FWER p-val&#92;&quot;:0.3583815029,&#92;&quot;Tag %&#92;&quot;:&#92;&quot;5/6&#92;&quot;,&#92;&quot;Gene %&#92;&quot;:&#92;&quot;46.93%&#92;&quot;,&#92;&quot;Lead_genes&#92;&quot;:&#92;&quot;FIBP;HAX1;JAGN1;HRAS;PIK3R1&#92;&quot;,&#92;&quot;FDR q-val (BH corrected)&#92;&quot;:0.5375722543},{&#92;&quot;column&#92;&quot;:&#92;&quot;Region&#92;&quot;,&#92;&quot;condition&#92;&quot;:&#92;&quot;Telencephalon&#92;&quot;,&#92;&quot;term&#92;&quot;:&#92;&quot;ID_SYNDD_Neoplasm&#92;&quot;,&#92;&quot;NES&#92;&quot;:0.5798004164,&#92;&quot;NOM p-val&#92;&quot;:0.9044117647,&#92;&quot;FDR q-val&#92;&quot;:0.9044117647,&#92;&quot;FWER p-val&#92;&quot;:0.738,&#92;&quot;Tag %&#92;&quot;:&#92;&quot;16/26&#92;&quot;,&#92;&quot;Gene %&#92;&quot;:&#92;&quot;52.94%&#92;&quot;,&#92;&quot;Lead_genes&#92;&quot;:&#92;&quot;NKX2-1;BUB1B;FANCL;FANCA;SETBP1;CBL;FANCD2;BRCA1;TSC2;RBL2;CLPB;FANCE;TRIM37;FANCB;TSC1;BRAF&#92;&quot;,&#92;&quot;FDR q-val (BH corrected)&#92;&quot;:0.9224489796},{&#92;&quot;column&#92;&quot;:&#92;&quot;CellClass&#92;&quot;,&#92;&quot;condition&#92;&quot;:&#92;&quot;Radial glia&#92;&quot;,&#92;&quot;term&#92;&quot;:&#92;&quot;ID_SYNDD_Neoplasm&#92;&quot;,&#92;&quot;NES&#92;&quot;:1.5084555056,&#92;&quot;NOM p-val&#92;&quot;:0.0718294052,&#92;&quot;FDR q-val&#92;&quot;:0.0718294052,&#92;&quot;FWER p-val&#92;&quot;:0.064,&#92;&quot;Tag %&#92;&quot;:&#92;&quot;10/27&#92;&quot;,&#92;&quot;Gene %&#92;&quot;:&#92;&quot;18.25%&#92;&quot;,&#92;&quot;Lead_genes&#92;&quot;:&#92;&quot;GPC3;BUB1B;FANCD2;BRCA1;BLM;FANCB;FANCA;FANCG;DKC1;PNP&#92;&quot;,&#92;&quot;FDR q-val (BH corrected)&#92;&quot;:0.1730769231},{&#92;&quot;column&#92;&quot;:&#92;&quot;CellClass&#92;&quot;,&#92;&quot;condition&#92;&quot;:&#92;&quot;Neuronal IPC&#92;&quot;,&#92;&quot;term&#92;&quot;:&#92;&quot;ID_SYNDD_Neoplasm&#92;&quot;,&#92;&quot;NES&#92;&quot;:2.1083924699,&#92;&quot;NOM p-val&#92;&quot;:0.0,&#92;&quot;FDR q-val&#92;&quot;:0.0,&#92;&quot;FWER p-val&#92;&quot;:0.0,&#92;&quot;Tag %&#92;&quot;:&#92;&quot;12/27&#92;&quot;,&#92;&quot;Gene %&#92;&quot;:&#92;&quot;15.94%&#92;&quot;,&#92;&quot;Lead_genes&#92;&quot;:&#92;&quot;BUB1B;BLM;FANCD2;BRCA1;FANCB;FANCA;FANCG;NKX2-1;FANCL;FANCE;XRCC4;PNP&#92;&quot;,&#92;&quot;FDR q-val (BH corrected)&#92;&quot;:0.0}]&quot;' data-total-rows='18' data-total-columns='11' data-max-columns='50' data-banner-text='&quot;&quot;' data-pagination='true' data-page-size='10' data-field-types='[[&quot;column&quot;,[&quot;string&quot;,&quot;object&quot;]],[&quot;condition&quot;,[&quot;string&quot;,&quot;object&quot;]],[&quot;term&quot;,[&quot;string&quot;,&quot;object&quot;]],[&quot;NES&quot;,[&quot;number&quot;,&quot;float64&quot;]],[&quot;NOM p-val&quot;,[&quot;number&quot;,&quot;float64&quot;]],[&quot;FDR q-val&quot;,[&quot;number&quot;,&quot;float64&quot;]],[&quot;FWER p-val&quot;,[&quot;number&quot;,&quot;float64&quot;]],[&quot;Tag %&quot;,[&quot;string&quot;,&quot;object&quot;]],[&quot;Gene %&quot;,[&quot;string&quot;,&quot;object&quot;]],[&quot;Lead_genes&quot;,[&quot;string&quot;,&quot;object&quot;]],[&quot;FDR q-val (BH corrected)&quot;,[&quot;number&quot;,&quot;float64&quot;]]]' data-show-filters='true' data-show-download='true' data-show-column-summaries='true' data-show-data-types='true' data-show-page-size-selector='true' data-show-column-explorer='true' data-show-chart-builder='true' data-row-headers='[]' data-has-stable-row-id='false' data-lazy='false' data-preload='false'></marimo-table></marimo-ui-element>"
-          }
-        }
-      ],
+      "outputs": [],
       "console": []
     },
     {
-      "id": "iybU",
-      "code_hash": "0ef22fd575403d933324f1f06ff9e3cc",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
+      "id": "aqbW",
+      "code_hash": "859a56eaa51e4acc7376bda408cc01f0",
+      "outputs": [],
       "console": []
     },
     {
-      "id": "iNVi",
-      "code_hash": "8ca49c6d79ff59db7855e44c78e8a17b",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
-      "console": [
-        {
-          "type": "stream",
-          "name": "stdout",
-          "text": "Region - Cerebellum: similarity = 0.012  (micro n=75;NES=-1.71;FDR=0.0, neo n=12;NES:-2.73;FDR:0.0)\nRegion - Diencephalon: similarity = 0.037  (micro n=50;NES=-1.32;FDR=0.19, neo n=6;NES:1.09;FDR:0.538)\nRegion - Midbrain: similarity = 0.025  (micro n=35;NES=-2.52;FDR=0.0, neo n=6;NES:-1.62;FDR:0.103)\nRegion - Forebrain: similarity = 0.636  (micro n=86;NES=2.45;FDR=0.0, neo n=11;NES:1.51;FDR:0.173)\nRegion - Hindbrain: similarity = 0.022  (micro n=87;NES=-1.81;FDR=0.0, neo n=8;NES:-1.19;FDR:0.349)\nRegion - Pons: similarity = 0.067  (micro n=10;NES=-1.59;FDR=0.072, neo n=6;NES:-0.98;FDR:0.681)\nRegion - Medulla: similarity = 0.000  (micro n=25;NES=-1.41;FDR=0.107, neo n=5;NES:-1.08;FDR:0.538)\nRegion - Telencephalon: similarity = 0.045  (micro n=124;NES=1.13;FDR=0.412, neo n=16;NES:0.58;FDR:0.922)\nCellClass - Radial glia: similarity = 0.600  (micro n=54;NES=2.03;FDR=0.0, neo n=10;NES:1.51;FDR:0.173)\nCellClass - Neuronal IPC: similarity = 0.750  (micro n=69;NES=3.12;FDR=0.0, neo n=12;NES:2.11;FDR:0.0)\nCellClass - Neuron: similarity = 0.029  (micro n=57;NES=0.51;FDR=0.995, neo n=15;NES:-2.25;FDR:0.0)\nCellClass - Glioblast: similarity = 0.071  (micro n=120;NES=-1.0;FDR=0.0, neo n=31;NES:-1.81;FDR:0.0)\nCellClass - Neuroblast: similarity = 0.000  (micro n=67;NES=-1.17;FDR=0.329, neo n=7;NES:-1.41;FDR:0.22)\nCellClass - Oligo: similarity = 0.000  (micro n=1;NES=0.59;FDR=0.995, neo n=19;NES:-0.81;FDR:0.861)\nCellClass - Fibroblast: similarity = 0.000  (micro n=109;NES=-1.0;FDR=0.0, neo n=1;NES:0.47;FDR:0.922)\nCellClass - Neural crest: similarity = 0.079  (micro n=133;NES=-1.0;FDR=0.0, neo n=31;NES:-1.47;FDR:0.173)\nCellClass - Immune: similarity = 0.000  (micro n=1;NES=0.54;FDR=0.995, neo n=2;NES:0.86;FDR:0.861)\nCellClass - Vascular: similarity = 0.000  (micro n=4;NES=0.61;FDR=0.995, neo n=2;NES:0.65;FDR:0.922)\n",
-          "mimetype": "text/plain"
-        }
-      ]
-    },
-    {
-      "id": "JTaA",
-      "code_hash": "271c2de28b5268c23d003f8f77587d30",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
+      "id": "TRpd",
+      "code_hash": "14686a7daf4279c19b105d33ce27b762",
+      "outputs": [],
       "console": []
     },
     {
-      "id": "KDIb",
+      "id": "TXez",
+      "code_hash": "d45857a8b898d2ae69ec203619b90d61",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "dNNg",
       "code_hash": "dc6baa5f316a55cb3ed185f7b8399626",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "application/json": "{\"CellClass\": \"text/html:<marimo-ui-element object-id='KDIb-0' random-id='555419ef-c0d6-24dd-3b73-e88748a174c4'><marimo-table data-initial-value='[]' data-label='null' data-data='&quot;[{&#92;&quot;&#92;&quot;:&#92;&quot;Radial glia&#92;&quot;,&#92;&quot;Radial glia&#92;&quot;:1.0,&#92;&quot;Neuronal IPC&#92;&quot;:0.8148148148,&#92;&quot;Neuron&#92;&quot;:0.0,&#92;&quot;Glioblast&#92;&quot;:0.5925925926,&#92;&quot;Neuroblast&#92;&quot;:0.0,&#92;&quot;Oligo&#92;&quot;:0.0,&#92;&quot;Fibroblast&#92;&quot;:0.1985294118,&#92;&quot;Neural crest&#92;&quot;:0.7222222222,&#92;&quot;Immune&#92;&quot;:0.0,&#92;&quot;Vascular&#92;&quot;:0.0175438596},{&#92;&quot;&#92;&quot;:&#92;&quot;Neuronal IPC&#92;&quot;,&#92;&quot;Radial glia&#92;&quot;:0.8148148148,&#92;&quot;Neuronal IPC&#92;&quot;:1.0,&#92;&quot;Neuron&#92;&quot;:0.008,&#92;&quot;Glioblast&#92;&quot;:0.652173913,&#92;&quot;Neuroblast&#92;&quot;:0.0149253731,&#92;&quot;Oligo&#92;&quot;:0.0,&#92;&quot;Fibroblast&#92;&quot;:0.2361111111,&#92;&quot;Neural crest&#92;&quot;:0.7101449275,&#92;&quot;Immune&#92;&quot;:0.0,&#92;&quot;Vascular&#92;&quot;:0.0},{&#92;&quot;&#92;&quot;:&#92;&quot;Neuron&#92;&quot;,&#92;&quot;Radial glia&#92;&quot;:0.0,&#92;&quot;Neuronal IPC&#92;&quot;:0.008,&#92;&quot;Neuron&#92;&quot;:1.0,&#92;&quot;Glioblast&#92;&quot;:0.0792682927,&#92;&quot;Neuroblast&#92;&quot;:0.6140350877,&#92;&quot;Oligo&#92;&quot;:0.0,&#92;&quot;Fibroblast&#92;&quot;:0.0921052632,&#92;&quot;Neural crest&#92;&quot;:0.0555555556,&#92;&quot;Immune&#92;&quot;:0.0,&#92;&quot;Vascular&#92;&quot;:0.0},{&#92;&quot;&#92;&quot;:&#92;&quot;Glioblast&#92;&quot;,&#92;&quot;Radial glia&#92;&quot;:0.5925925926,&#92;&quot;Neuronal IPC&#92;&quot;:0.652173913,&#92;&quot;Neuron&#92;&quot;:0.0792682927,&#92;&quot;Glioblast&#92;&quot;:1.0,&#92;&quot;Neuroblast&#92;&quot;:0.1130952381,&#92;&quot;Oligo&#92;&quot;:0.0,&#92;&quot;Fibroblast&#92;&quot;:0.5779816514,&#92;&quot;Neural crest&#92;&quot;:0.6666666667,&#92;&quot;Immune&#92;&quot;:0.0,&#92;&quot;Vascular&#92;&quot;:0.0},{&#92;&quot;&#92;&quot;:&#92;&quot;Neuroblast&#92;&quot;,&#92;&quot;Radial glia&#92;&quot;:0.0,&#92;&quot;Neuronal IPC&#92;&quot;:0.0149253731,&#92;&quot;Neuron&#92;&quot;:0.6140350877,&#92;&quot;Glioblast&#92;&quot;:0.1130952381,&#92;&quot;Neuroblast&#92;&quot;:1.0,&#92;&quot;Oligo&#92;&quot;:0.0,&#92;&quot;Fibroblast&#92;&quot;:0.1655629139,&#92;&quot;Neural crest&#92;&quot;:0.1173184358,&#92;&quot;Immune&#92;&quot;:0.0,&#92;&quot;Vascular&#92;&quot;:0.0},{&#92;&quot;&#92;&quot;:&#92;&quot;Oligo&#92;&quot;,&#92;&quot;Radial glia&#92;&quot;:0.0,&#92;&quot;Neuronal IPC&#92;&quot;:0.0,&#92;&quot;Neuron&#92;&quot;:0.0,&#92;&quot;Glioblast&#92;&quot;:0.0,&#92;&quot;Neuroblast&#92;&quot;:0.0,&#92;&quot;Oligo&#92;&quot;:1.0,&#92;&quot;Fibroblast&#92;&quot;:0.0,&#92;&quot;Neural crest&#92;&quot;:0.0,&#92;&quot;Immune&#92;&quot;:0.0,&#92;&quot;Vascular&#92;&quot;:0.0},{&#92;&quot;&#92;&quot;:&#92;&quot;Fibroblast&#92;&quot;,&#92;&quot;Radial glia&#92;&quot;:0.1985294118,&#92;&quot;Neuronal IPC&#92;&quot;:0.2361111111,&#92;&quot;Neuron&#92;&quot;:0.0921052632,&#92;&quot;Glioblast&#92;&quot;:0.5779816514,&#92;&quot;Neuroblast&#92;&quot;:0.1655629139,&#92;&quot;Oligo&#92;&quot;:0.0,&#92;&quot;Fibroblast&#92;&quot;:1.0,&#92;&quot;Neural crest&#92;&quot;:0.7431192661,&#92;&quot;Immune&#92;&quot;:0.0,&#92;&quot;Vascular&#92;&quot;:0.0},{&#92;&quot;&#92;&quot;:&#92;&quot;Neural crest&#92;&quot;,&#92;&quot;Radial glia&#92;&quot;:0.7222222222,&#92;&quot;Neuronal IPC&#92;&quot;:0.7101449275,&#92;&quot;Neuron&#92;&quot;:0.0555555556,&#92;&quot;Glioblast&#92;&quot;:0.6666666667,&#92;&quot;Neuroblast&#92;&quot;:0.1173184358,&#92;&quot;Oligo&#92;&quot;:0.0,&#92;&quot;Fibroblast&#92;&quot;:0.7431192661,&#92;&quot;Neural crest&#92;&quot;:1.0,&#92;&quot;Immune&#92;&quot;:0.0,&#92;&quot;Vascular&#92;&quot;:0.0},{&#92;&quot;&#92;&quot;:&#92;&quot;Immune&#92;&quot;,&#92;&quot;Radial glia&#92;&quot;:0.0,&#92;&quot;Neuronal IPC&#92;&quot;:0.0,&#92;&quot;Neuron&#92;&quot;:0.0,&#92;&quot;Glioblast&#92;&quot;:0.0,&#92;&quot;Neuroblast&#92;&quot;:0.0,&#92;&quot;Oligo&#92;&quot;:0.0,&#92;&quot;Fibroblast&#92;&quot;:0.0,&#92;&quot;Neural crest&#92;&quot;:0.0,&#92;&quot;Immune&#92;&quot;:1.0,&#92;&quot;Vascular&#92;&quot;:0.0},{&#92;&quot;&#92;&quot;:&#92;&quot;Vascular&#92;&quot;,&#92;&quot;Radial glia&#92;&quot;:0.0175438596,&#92;&quot;Neuronal IPC&#92;&quot;:0.0,&#92;&quot;Neuron&#92;&quot;:0.0,&#92;&quot;Glioblast&#92;&quot;:0.0,&#92;&quot;Neuroblast&#92;&quot;:0.0,&#92;&quot;Oligo&#92;&quot;:0.0,&#92;&quot;Fibroblast&#92;&quot;:0.0,&#92;&quot;Neural crest&#92;&quot;:0.0,&#92;&quot;Immune&#92;&quot;:0.0,&#92;&quot;Vascular&#92;&quot;:1.0}]&quot;' data-total-rows='10' data-total-columns='10' data-max-columns='50' data-banner-text='&quot;&quot;' data-pagination='true' data-page-size='10' data-field-types='[[&quot;Radial glia&quot;,[&quot;number&quot;,&quot;float64&quot;]],[&quot;Neuronal IPC&quot;,[&quot;number&quot;,&quot;float64&quot;]],[&quot;Neuron&quot;,[&quot;number&quot;,&quot;float64&quot;]],[&quot;Glioblast&quot;,[&quot;number&quot;,&quot;float64&quot;]],[&quot;Neuroblast&quot;,[&quot;number&quot;,&quot;float64&quot;]],[&quot;Oligo&quot;,[&quot;number&quot;,&quot;float64&quot;]],[&quot;Fibroblast&quot;,[&quot;number&quot;,&quot;float64&quot;]],[&quot;Neural crest&quot;,[&quot;number&quot;,&quot;float64&quot;]],[&quot;Immune&quot;,[&quot;number&quot;,&quot;float64&quot;]],[&quot;Vascular&quot;,[&quot;number&quot;,&quot;float64&quot;]]]' data-show-filters='true' data-show-download='true' data-show-column-summaries='false' data-show-data-types='true' data-show-page-size-selector='true' data-show-column-explorer='true' data-show-chart-builder='true' data-row-headers='[[&quot;&quot;,[&quot;string&quot;,&quot;object&quot;]]]' data-has-stable-row-id='false' data-lazy='false' data-preload='false'></marimo-table></marimo-ui-element>\", \"Region\": \"text/html:<marimo-ui-element object-id='KDIb-1' random-id='93388908-49f0-6322-dfd9-7c4735bc7a07'><marimo-table data-initial-value='[]' data-label='null' data-data='&quot;[{&#92;&quot;&#92;&quot;:&#92;&quot;Cerebellum&#92;&quot;,&#92;&quot;Cerebellum&#92;&quot;:1.0,&#92;&quot;Diencephalon&#92;&quot;:0.0775862069,&#92;&quot;Midbrain&#92;&quot;:0.1224489796,&#92;&quot;Forebrain&#92;&quot;:0.0387096774,&#92;&quot;Hindbrain&#92;&quot;:0.296,&#92;&quot;Pons&#92;&quot;:0.0365853659,&#92;&quot;Medulla&#92;&quot;:0.0869565217,&#92;&quot;Telencephalon&#92;&quot;:0.1845238095},{&#92;&quot;&#92;&quot;:&#92;&quot;Diencephalon&#92;&quot;,&#92;&quot;Cerebellum&#92;&quot;:0.0775862069,&#92;&quot;Diencephalon&#92;&quot;:1.0,&#92;&quot;Midbrain&#92;&quot;:0.1184210526,&#92;&quot;Forebrain&#92;&quot;:0.52,&#92;&quot;Hindbrain&#92;&quot;:0.132231405,&#92;&quot;Pons&#92;&quot;:0.0714285714,&#92;&quot;Medulla&#92;&quot;:0.1538461538,&#92;&quot;Telencephalon&#92;&quot;:0.52},{&#92;&quot;&#92;&quot;:&#92;&quot;Midbrain&#92;&quot;,&#92;&quot;Cerebellum&#92;&quot;:0.1224489796,&#92;&quot;Diencephalon&#92;&quot;:0.1184210526,&#92;&quot;Midbrain&#92;&quot;:1.0,&#92;&quot;Forebrain&#92;&quot;:0.0341880342,&#92;&quot;Hindbrain&#92;&quot;:0.6285714286,&#92;&quot;Pons&#92;&quot;:0.125,&#92;&quot;Medulla&#92;&quot;:0.1538461538,&#92;&quot;Telencephalon&#92;&quot;:0.0192307692},{&#92;&quot;&#92;&quot;:&#92;&quot;Forebrain&#92;&quot;,&#92;&quot;Cerebellum&#92;&quot;:0.0387096774,&#92;&quot;Diencephalon&#92;&quot;:0.52,&#92;&quot;Midbrain&#92;&quot;:0.0341880342,&#92;&quot;Forebrain&#92;&quot;:1.0,&#92;&quot;Hindbrain&#92;&quot;:0.0421686747,&#92;&quot;Pons&#92;&quot;:0.0,&#92;&quot;Medulla&#92;&quot;:0.0183486239,&#92;&quot;Telencephalon&#92;&quot;:0.8488372093},{&#92;&quot;&#92;&quot;:&#92;&quot;Hindbrain&#92;&quot;,&#92;&quot;Cerebellum&#92;&quot;:0.296,&#92;&quot;Diencephalon&#92;&quot;:0.132231405,&#92;&quot;Midbrain&#92;&quot;:0.6285714286,&#92;&quot;Forebrain&#92;&quot;:0.0421686747,&#92;&quot;Hindbrain&#92;&quot;:1.0,&#92;&quot;Pons&#92;&quot;:0.7,&#92;&quot;Medulla&#92;&quot;:0.6,&#92;&quot;Telencephalon&#92;&quot;:0.1047120419},{&#92;&quot;&#92;&quot;:&#92;&quot;Pons&#92;&quot;,&#92;&quot;Cerebellum&#92;&quot;:0.0365853659,&#92;&quot;Diencephalon&#92;&quot;:0.0714285714,&#92;&quot;Midbrain&#92;&quot;:0.125,&#92;&quot;Forebrain&#92;&quot;:0.0,&#92;&quot;Hindbrain&#92;&quot;:0.7,&#92;&quot;Pons&#92;&quot;:1.0,&#92;&quot;Medulla&#92;&quot;:0.6,&#92;&quot;Telencephalon&#92;&quot;:0.0},{&#92;&quot;&#92;&quot;:&#92;&quot;Medulla&#92;&quot;,&#92;&quot;Cerebellum&#92;&quot;:0.0869565217,&#92;&quot;Diencephalon&#92;&quot;:0.1538461538,&#92;&quot;Midbrain&#92;&quot;:0.1538461538,&#92;&quot;Forebrain&#92;&quot;:0.0183486239,&#92;&quot;Hindbrain&#92;&quot;:0.6,&#92;&quot;Pons&#92;&quot;:0.6,&#92;&quot;Medulla&#92;&quot;:1.0,&#92;&quot;Telencephalon&#92;&quot;:0.0347222222},{&#92;&quot;&#92;&quot;:&#92;&quot;Telencephalon&#92;&quot;,&#92;&quot;Cerebellum&#92;&quot;:0.1845238095,&#92;&quot;Diencephalon&#92;&quot;:0.52,&#92;&quot;Midbrain&#92;&quot;:0.0192307692,&#92;&quot;Forebrain&#92;&quot;:0.8488372093,&#92;&quot;Hindbrain&#92;&quot;:0.1047120419,&#92;&quot;Pons&#92;&quot;:0.0,&#92;&quot;Medulla&#92;&quot;:0.0347222222,&#92;&quot;Telencephalon&#92;&quot;:1.0}]&quot;' data-total-rows='8' data-total-columns='8' data-max-columns='50' data-banner-text='&quot;&quot;' data-pagination='true' data-page-size='10' data-field-types='[[&quot;Cerebellum&quot;,[&quot;number&quot;,&quot;float64&quot;]],[&quot;Diencephalon&quot;,[&quot;number&quot;,&quot;float64&quot;]],[&quot;Midbrain&quot;,[&quot;number&quot;,&quot;float64&quot;]],[&quot;Forebrain&quot;,[&quot;number&quot;,&quot;float64&quot;]],[&quot;Hindbrain&quot;,[&quot;number&quot;,&quot;float64&quot;]],[&quot;Pons&quot;,[&quot;number&quot;,&quot;float64&quot;]],[&quot;Medulla&quot;,[&quot;number&quot;,&quot;float64&quot;]],[&quot;Telencephalon&quot;,[&quot;number&quot;,&quot;float64&quot;]]]' data-show-filters='true' data-show-download='true' data-show-column-summaries='false' data-show-data-types='true' data-show-page-size-selector='true' data-show-column-explorer='true' data-show-chart-builder='true' data-row-headers='[[&quot;&quot;,[&quot;string&quot;,&quot;object&quot;]]]' data-has-stable-row-id='false' data-lazy='false' data-preload='false'></marimo-table></marimo-ui-element>\"}"
-          }
-        }
-      ],
-      "console": [
-        {
-          "type": "stream",
-          "name": "stdout",
-          "text": "\n=== CellClass: condition \u00d7 condition similarity ===\n              Radial glia  Neuronal IPC  Neuron  Glioblast  Neuroblast  Oligo  \\\nRadial glia         1.000         0.815   0.000      0.593       0.000    0.0   \nNeuronal IPC        0.815         1.000   0.008      0.652       0.015    0.0   \nNeuron              0.000         0.008   1.000      0.079       0.614    0.0   \nGlioblast           0.593         0.652   0.079      1.000       0.113    0.0   \nNeuroblast          0.000         0.015   0.614      0.113       1.000    0.0   \nOligo               0.000         0.000   0.000      0.000       0.000    1.0   \nFibroblast          0.199         0.236   0.092      0.578       0.166    0.0   \nNeural crest        0.722         0.710   0.056      0.667       0.117    0.0   \nImmune              0.000         0.000   0.000      0.000       0.000    0.0   \nVascular            0.018         0.000   0.000      0.000       0.000    0.0   \n\n              Fibroblast  Neural crest  Immune  Vascular  \nRadial glia        0.199         0.722     0.0     0.018  \nNeuronal IPC       0.236         0.710     0.0     0.000  \nNeuron             0.092         0.056     0.0     0.000  \nGlioblast          0.578         0.667     0.0     0.000  \nNeuroblast         0.166         0.117     0.0     0.000  \nOligo              0.000         0.000     0.0     0.000  \nFibroblast         1.000         0.743     0.0     0.000  \nNeural crest       0.743         1.000     0.0     0.000  \nImmune             0.000         0.000     1.0     0.000  \nVascular           0.000         0.000     0.0     1.000  \n\n=== Region: condition \u00d7 condition similarity ===\n               Cerebellum  Diencephalon  Midbrain  Forebrain  Hindbrain  \\\nCerebellum          1.000         0.078     0.122      0.039      0.296   \nDiencephalon        0.078         1.000     0.118      0.520      0.132   \nMidbrain            0.122         0.118     1.000      0.034      0.629   \nForebrain           0.039         0.520     0.034      1.000      0.042   \nHindbrain           0.296         0.132     0.629      0.042      1.000   \nPons                0.037         0.071     0.125      0.000      0.700   \nMedulla             0.087         0.154     0.154      0.018      0.600   \nTelencephalon       0.185         0.520     0.019      0.849      0.105   \n\n                Pons  Medulla  Telencephalon  \nCerebellum     0.037    0.087          0.185  \nDiencephalon   0.071    0.154          0.520  \nMidbrain       0.125    0.154          0.019  \nForebrain      0.000    0.018          0.849  \nHindbrain      0.700    0.600          0.105  \nPons           1.000    0.600          0.000  \nMedulla        0.600    1.000          0.035  \nTelencephalon  0.000    0.035          1.000  \n",
-          "mimetype": "text/plain"
-        }
-      ]
-    },
-    {
-      "id": "rQJg",
-      "code_hash": "9bd18f9fbd5317282254c47a454b1a25",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
+      "outputs": [],
       "console": []
     },
     {
-      "id": "TRpp",
-      "code_hash": "f6e34cedc15142b63f2f446d642a9f6b",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
+      "id": "yCnT",
+      "code_hash": "dd827ed2e6182e796b2d0da38d03ad32",
+      "outputs": [],
       "console": []
     },
     {
-      "id": "ZRXu",
-      "code_hash": "8a6133b7923cdc16cedf6542a1e8c9c5",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/html": "<pre style='font-size: 12px'>0.030303030303030304</pre>"
-          }
-        }
-      ],
+      "id": "wlCL",
+      "code_hash": "a936c616faecb913cc7e9e70b3ad9f06",
+      "outputs": [],
       "console": []
     },
     {
-      "id": "sJcE",
-      "code_hash": null,
+      "id": "kqZH",
+      "code_hash": "cbe3d1b089beb799203c26c4ec8a28a4",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "wAgl",
+      "code_hash": "7c0893da44a993546a0af341a1c6b7f7",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "rEll",
+      "code_hash": "346a8a17e30aaa7cfe92dc552869c8e3",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "dGlV",
+      "code_hash": "dcfd075f94ffc279ea94abfea1179301",
       "outputs": [],
       "console": []
     }

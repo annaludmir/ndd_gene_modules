@@ -1,24 +1,24 @@
 name_of_run: "ges_score_for_all_layers_from_github"
 ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules"
-data_path: "data/human_dev.h5ad"
+data_path: "data/human_dev-GRCh38-3.0.0_all_layers_from_github_with_chemistry_no_bytes.h5ad"
 output_folder: "results/ges_score_results/"
 
 column_conditions:
-  #Region:
-    #- "Cerebellum"
-    #- "Diencephalon"
-    #- "Midbrain"
-    #- "Forebrain"
+  Region:
+    - "Cerebellum"
+    - "Diencephalon"
+    - "Midbrain"
+    - "Forebrain"
     #- "Hindbrain"
     #- "Pons"
     #- "Medulla"
     #- "Telencephalon"
 
-  CellClass:
-    - "Radial glia"
-    - "Neuronal IPC"
-    - "Neuron"
-    - "Glioblast"
+  #CellClass:
+    #- "Radial glia"
+    #- "Neuronal IPC"
+    #- "Neuron"
+    #- "Glioblast"
     #- "Neuroblast"
     #- "Oligo"
     #- "Fibroblast"

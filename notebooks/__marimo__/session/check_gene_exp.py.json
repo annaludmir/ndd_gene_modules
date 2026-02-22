@@ -5,16 +5,48 @@
   },
   "cells": [
     {
-      "id": "Hbol",
-      "code_hash": "1d0db38904205bec4d6f6f6a1f6cec3e",
+      "id": "lEQa",
+      "code_hash": "63d9b9c4cd3580c843055942ee861643",
       "outputs": [
         {
           "type": "data",
           "data": {
-            "text/plain": ""
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"playing-around-with-the-data\">Playing Around With The Data</h1></span>"
           }
         }
       ],
+      "console": []
+    },
+    {
+      "id": "xXTn",
+      "code_hash": "0e067fa17f595ef05ac131fa8ac04061",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"running-ges-score-and-pipeline\">Running GES Score and Pipeline</h1></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "NCOB",
+      "code_hash": "bdaecd8c76f0e0b6e77496694d4b99ad",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"analyzing-results\">Analyzing Results</h1></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "Hbol",
+      "code_hash": "1d0db38904205bec4d6f6f6a1f6cec3e",
+      "outputs": [],
       "console": []
     },
     {
@@ -43,21 +75,8 @@
       "console": []
     },
     {
-      "id": "lEQa",
-      "code_hash": "63d9b9c4cd3580c843055942ee861643",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"playing-around-with-the-data\">Playing Around With The Data</h1></span>"
-          }
-        }
-      ],
-      "console": []
-    },
-    {
       "id": "PKri",
-      "code_hash": "ca3674efb13bab056b747a24efdea9cb",
+      "code_hash": "de3add5e354e910a0275a679bf7d62e9",
       "outputs": [
         {
           "type": "data",
@@ -69,268 +88,236 @@
       "console": []
     },
     {
-      "id": "RyVv",
+      "id": "Xref",
       "code_hash": "17933517c0777fa955ece1ead1cdec60",
       "outputs": [
         {
           "type": "data",
           "data": {
-            "text/html": "<marimo-ui-element object-id='RyVv-0' random-id='4120baf9-0dd5-f681-af27-4bdbca6afaca'><marimo-table data-initial-value='[]' data-label='null' data-data='&quot;[{&#92;&quot;CellID&#92;&quot;:&#92;&quot;b&#x27;10X89_1:AAACGGGAGGCTACGA&#x27;&#92;&quot;,&#92;&quot;Age&#92;&quot;:8.0,&#92;&quot;CellClass&#92;&quot;:&#92;&quot;b&#x27;Erythrocyte&#x27;&#92;&quot;,&#92;&quot;Region&#92;&quot;:&#92;&quot;b&#x27;Telencephalon&#x27;&#92;&quot;,&#92;&quot;Subdivision&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;Subregion&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;Tissue&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;TopLevelCluster&#92;&quot;:25,&#92;&quot;organism_ontology_term_id&#92;&quot;:&#92;&quot;NCBITaxon:9606&#92;&quot;,&#92;&quot;disease_ontology_term_id&#92;&quot;:&#92;&quot;PATO:0000461&#92;&quot;,&#92;&quot;self_reported_ethnicity_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;assay_ontology_term_id&#92;&quot;:&#92;&quot;EFO:0009899&#92;&quot;,&#92;&quot;sex_ontology_term_id&#92;&quot;:&#92;&quot;n/a&#92;&quot;,&#92;&quot;development_stage_ontology_term_id&#92;&quot;:&#92;&quot;HsapDv:0000102&#92;&quot;,&#92;&quot;donor_id&#92;&quot;:&#92;&quot;b&#x27;BRC2006&#x27;&#92;&quot;,&#92;&quot;suspension_type&#92;&quot;:&#92;&quot;nucleus&#92;&quot;,&#92;&quot;dissection&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;sample_id&#92;&quot;:&#92;&quot;b&#x27;10X89_1&#x27;&#92;&quot;,&#92;&quot;cluster_id&#92;&quot;:240},{&#92;&quot;CellID&#92;&quot;:&#92;&quot;b&#x27;10X89_1:ACGAGGAAGAGCCTAG&#x27;&#92;&quot;,&#92;&quot;Age&#92;&quot;:8.0,&#92;&quot;CellClass&#92;&quot;:&#92;&quot;b&#x27;Erythrocyte&#x27;&#92;&quot;,&#92;&quot;Region&#92;&quot;:&#92;&quot;b&#x27;Telencephalon&#x27;&#92;&quot;,&#92;&quot;Subdivision&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;Subregion&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;Tissue&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;TopLevelCluster&#92;&quot;:25,&#92;&quot;organism_ontology_term_id&#92;&quot;:&#92;&quot;NCBITaxon:9606&#92;&quot;,&#92;&quot;disease_ontology_term_id&#92;&quot;:&#92;&quot;PATO:0000461&#92;&quot;,&#92;&quot;self_reported_ethnicity_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;assay_ontology_term_id&#92;&quot;:&#92;&quot;EFO:0009899&#92;&quot;,&#92;&quot;sex_ontology_term_id&#92;&quot;:&#92;&quot;n/a&#92;&quot;,&#92;&quot;development_stage_ontology_term_id&#92;&quot;:&#92;&quot;HsapDv:0000102&#92;&quot;,&#92;&quot;donor_id&#92;&quot;:&#92;&quot;b&#x27;BRC2006&#x27;&#92;&quot;,&#92;&quot;suspension_type&#92;&quot;:&#92;&quot;nucleus&#92;&quot;,&#92;&quot;dissection&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;sample_id&#92;&quot;:&#92;&quot;b&#x27;10X89_1&#x27;&#92;&quot;,&#92;&quot;cluster_id&#92;&quot;:240},{&#92;&quot;CellID&#92;&quot;:&#92;&quot;b&#x27;10X89_1:ACGCCAGTCGATAGAA&#x27;&#92;&quot;,&#92;&quot;Age&#92;&quot;:8.0,&#92;&quot;CellClass&#92;&quot;:&#92;&quot;b&#x27;Erythrocyte&#x27;&#92;&quot;,&#92;&quot;Region&#92;&quot;:&#92;&quot;b&#x27;Telencephalon&#x27;&#92;&quot;,&#92;&quot;Subdivision&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;Subregion&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;Tissue&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;TopLevelCluster&#92;&quot;:25,&#92;&quot;organism_ontology_term_id&#92;&quot;:&#92;&quot;NCBITaxon:9606&#92;&quot;,&#92;&quot;disease_ontology_term_id&#92;&quot;:&#92;&quot;PATO:0000461&#92;&quot;,&#92;&quot;self_reported_ethnicity_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;assay_ontology_term_id&#92;&quot;:&#92;&quot;EFO:0009899&#92;&quot;,&#92;&quot;sex_ontology_term_id&#92;&quot;:&#92;&quot;n/a&#92;&quot;,&#92;&quot;development_stage_ontology_term_id&#92;&quot;:&#92;&quot;HsapDv:0000102&#92;&quot;,&#92;&quot;donor_id&#92;&quot;:&#92;&quot;b&#x27;BRC2006&#x27;&#92;&quot;,&#92;&quot;suspension_type&#92;&quot;:&#92;&quot;nucleus&#92;&quot;,&#92;&quot;dissection&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;sample_id&#92;&quot;:&#92;&quot;b&#x27;10X89_1&#x27;&#92;&quot;,&#92;&quot;cluster_id&#92;&quot;:236},{&#92;&quot;CellID&#92;&quot;:&#92;&quot;b&#x27;10X89_1:CCGGGATCAGACACTT&#x27;&#92;&quot;,&#92;&quot;Age&#92;&quot;:8.0,&#92;&quot;CellClass&#92;&quot;:&#92;&quot;b&#x27;Erythrocyte&#x27;&#92;&quot;,&#92;&quot;Region&#92;&quot;:&#92;&quot;b&#x27;Telencephalon&#x27;&#92;&quot;,&#92;&quot;Subdivision&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;Subregion&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;Tissue&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;TopLevelCluster&#92;&quot;:25,&#92;&quot;organism_ontology_term_id&#92;&quot;:&#92;&quot;NCBITaxon:9606&#92;&quot;,&#92;&quot;disease_ontology_term_id&#92;&quot;:&#92;&quot;PATO:0000461&#92;&quot;,&#92;&quot;self_reported_ethnicity_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;assay_ontology_term_id&#92;&quot;:&#92;&quot;EFO:0009899&#92;&quot;,&#92;&quot;sex_ontology_term_id&#92;&quot;:&#92;&quot;n/a&#92;&quot;,&#92;&quot;development_stage_ontology_term_id&#92;&quot;:&#92;&quot;HsapDv:0000102&#92;&quot;,&#92;&quot;donor_id&#92;&quot;:&#92;&quot;b&#x27;BRC2006&#x27;&#92;&quot;,&#92;&quot;suspension_type&#92;&quot;:&#92;&quot;nucleus&#92;&quot;,&#92;&quot;dissection&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;sample_id&#92;&quot;:&#92;&quot;b&#x27;10X89_1&#x27;&#92;&quot;,&#92;&quot;cluster_id&#92;&quot;:240},{&#92;&quot;CellID&#92;&quot;:&#92;&quot;b&#x27;10X89_1:CGACTTCTCCCACTTG&#x27;&#92;&quot;,&#92;&quot;Age&#92;&quot;:8.0,&#92;&quot;CellClass&#92;&quot;:&#92;&quot;b&#x27;Erythrocyte&#x27;&#92;&quot;,&#92;&quot;Region&#92;&quot;:&#92;&quot;b&#x27;Telencephalon&#x27;&#92;&quot;,&#92;&quot;Subdivision&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;Subregion&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;Tissue&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;TopLevelCluster&#92;&quot;:25,&#92;&quot;organism_ontology_term_id&#92;&quot;:&#92;&quot;NCBITaxon:9606&#92;&quot;,&#92;&quot;disease_ontology_term_id&#92;&quot;:&#92;&quot;PATO:0000461&#92;&quot;,&#92;&quot;self_reported_ethnicity_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;assay_ontology_term_id&#92;&quot;:&#92;&quot;EFO:0009899&#92;&quot;,&#92;&quot;sex_ontology_term_id&#92;&quot;:&#92;&quot;n/a&#92;&quot;,&#92;&quot;development_stage_ontology_term_id&#92;&quot;:&#92;&quot;HsapDv:0000102&#92;&quot;,&#92;&quot;donor_id&#92;&quot;:&#92;&quot;b&#x27;BRC2006&#x27;&#92;&quot;,&#92;&quot;suspension_type&#92;&quot;:&#92;&quot;nucleus&#92;&quot;,&#92;&quot;dissection&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;sample_id&#92;&quot;:&#92;&quot;b&#x27;10X89_1&#x27;&#92;&quot;,&#92;&quot;cluster_id&#92;&quot;:233},{&#92;&quot;CellID&#92;&quot;:&#92;&quot;b&#x27;10X89_1:CTTCTCTAGTCAAGGC&#x27;&#92;&quot;,&#92;&quot;Age&#92;&quot;:8.0,&#92;&quot;CellClass&#92;&quot;:&#92;&quot;b&#x27;Erythrocyte&#x27;&#92;&quot;,&#92;&quot;Region&#92;&quot;:&#92;&quot;b&#x27;Telencephalon&#x27;&#92;&quot;,&#92;&quot;Subdivision&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;Subregion&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;Tissue&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;TopLevelCluster&#92;&quot;:25,&#92;&quot;organism_ontology_term_id&#92;&quot;:&#92;&quot;NCBITaxon:9606&#92;&quot;,&#92;&quot;disease_ontology_term_id&#92;&quot;:&#92;&quot;PATO:0000461&#92;&quot;,&#92;&quot;self_reported_ethnicity_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;assay_ontology_term_id&#92;&quot;:&#92;&quot;EFO:0009899&#92;&quot;,&#92;&quot;sex_ontology_term_id&#92;&quot;:&#92;&quot;n/a&#92;&quot;,&#92;&quot;development_stage_ontology_term_id&#92;&quot;:&#92;&quot;HsapDv:0000102&#92;&quot;,&#92;&quot;donor_id&#92;&quot;:&#92;&quot;b&#x27;BRC2006&#x27;&#92;&quot;,&#92;&quot;suspension_type&#92;&quot;:&#92;&quot;nucleus&#92;&quot;,&#92;&quot;dissection&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;sample_id&#92;&quot;:&#92;&quot;b&#x27;10X89_1&#x27;&#92;&quot;,&#92;&quot;cluster_id&#92;&quot;:235},{&#92;&quot;CellID&#92;&quot;:&#92;&quot;b&#x27;10X89_1:GGAAAGCCAAGGTTTC&#x27;&#92;&quot;,&#92;&quot;Age&#92;&quot;:8.0,&#92;&quot;CellClass&#92;&quot;:&#92;&quot;b&#x27;Erythrocyte&#x27;&#92;&quot;,&#92;&quot;Region&#92;&quot;:&#92;&quot;b&#x27;Telencephalon&#x27;&#92;&quot;,&#92;&quot;Subdivision&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;Subregion&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;Tissue&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;TopLevelCluster&#92;&quot;:25,&#92;&quot;organism_ontology_term_id&#92;&quot;:&#92;&quot;NCBITaxon:9606&#92;&quot;,&#92;&quot;disease_ontology_term_id&#92;&quot;:&#92;&quot;PATO:0000461&#92;&quot;,&#92;&quot;self_reported_ethnicity_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;assay_ontology_term_id&#92;&quot;:&#92;&quot;EFO:0009899&#92;&quot;,&#92;&quot;sex_ontology_term_id&#92;&quot;:&#92;&quot;n/a&#92;&quot;,&#92;&quot;development_stage_ontology_term_id&#92;&quot;:&#92;&quot;HsapDv:0000102&#92;&quot;,&#92;&quot;donor_id&#92;&quot;:&#92;&quot;b&#x27;BRC2006&#x27;&#92;&quot;,&#92;&quot;suspension_type&#92;&quot;:&#92;&quot;nucleus&#92;&quot;,&#92;&quot;dissection&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;sample_id&#92;&quot;:&#92;&quot;b&#x27;10X89_1&#x27;&#92;&quot;,&#92;&quot;cluster_id&#92;&quot;:240},{&#92;&quot;CellID&#92;&quot;:&#92;&quot;b&#x27;10X89_1:GGGCACTAGCGATATA&#x27;&#92;&quot;,&#92;&quot;Age&#92;&quot;:8.0,&#92;&quot;CellClass&#92;&quot;:&#92;&quot;b&#x27;Erythrocyte&#x27;&#92;&quot;,&#92;&quot;Region&#92;&quot;:&#92;&quot;b&#x27;Telencephalon&#x27;&#92;&quot;,&#92;&quot;Subdivision&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;Subregion&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;Tissue&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;TopLevelCluster&#92;&quot;:25,&#92;&quot;organism_ontology_term_id&#92;&quot;:&#92;&quot;NCBITaxon:9606&#92;&quot;,&#92;&quot;disease_ontology_term_id&#92;&quot;:&#92;&quot;PATO:0000461&#92;&quot;,&#92;&quot;self_reported_ethnicity_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;assay_ontology_term_id&#92;&quot;:&#92;&quot;EFO:0009899&#92;&quot;,&#92;&quot;sex_ontology_term_id&#92;&quot;:&#92;&quot;n/a&#92;&quot;,&#92;&quot;development_stage_ontology_term_id&#92;&quot;:&#92;&quot;HsapDv:0000102&#92;&quot;,&#92;&quot;donor_id&#92;&quot;:&#92;&quot;b&#x27;BRC2006&#x27;&#92;&quot;,&#92;&quot;suspension_type&#92;&quot;:&#92;&quot;nucleus&#92;&quot;,&#92;&quot;dissection&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;sample_id&#92;&quot;:&#92;&quot;b&#x27;10X89_1&#x27;&#92;&quot;,&#92;&quot;cluster_id&#92;&quot;:234},{&#92;&quot;CellID&#92;&quot;:&#92;&quot;b&#x27;10X89_1:GTCACGGCACCGCTAG&#x27;&#92;&quot;,&#92;&quot;Age&#92;&quot;:8.0,&#92;&quot;CellClass&#92;&quot;:&#92;&quot;b&#x27;Erythrocyte&#x27;&#92;&quot;,&#92;&quot;Region&#92;&quot;:&#92;&quot;b&#x27;Telencephalon&#x27;&#92;&quot;,&#92;&quot;Subdivision&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;Subregion&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;Tissue&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;TopLevelCluster&#92;&quot;:25,&#92;&quot;organism_ontology_term_id&#92;&quot;:&#92;&quot;NCBITaxon:9606&#92;&quot;,&#92;&quot;disease_ontology_term_id&#92;&quot;:&#92;&quot;PATO:0000461&#92;&quot;,&#92;&quot;self_reported_ethnicity_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;assay_ontology_term_id&#92;&quot;:&#92;&quot;EFO:0009899&#92;&quot;,&#92;&quot;sex_ontology_term_id&#92;&quot;:&#92;&quot;n/a&#92;&quot;,&#92;&quot;development_stage_ontology_term_id&#92;&quot;:&#92;&quot;HsapDv:0000102&#92;&quot;,&#92;&quot;donor_id&#92;&quot;:&#92;&quot;b&#x27;BRC2006&#x27;&#92;&quot;,&#92;&quot;suspension_type&#92;&quot;:&#92;&quot;nucleus&#92;&quot;,&#92;&quot;dissection&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;sample_id&#92;&quot;:&#92;&quot;b&#x27;10X89_1&#x27;&#92;&quot;,&#92;&quot;cluster_id&#92;&quot;:240},{&#92;&quot;CellID&#92;&quot;:&#92;&quot;b&#x27;10X89_1:TTCTACAAGGTGTGGT&#x27;&#92;&quot;,&#92;&quot;Age&#92;&quot;:8.0,&#92;&quot;CellClass&#92;&quot;:&#92;&quot;b&#x27;Erythrocyte&#x27;&#92;&quot;,&#92;&quot;Region&#92;&quot;:&#92;&quot;b&#x27;Telencephalon&#x27;&#92;&quot;,&#92;&quot;Subdivision&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;Subregion&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;Tissue&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;TopLevelCluster&#92;&quot;:25,&#92;&quot;organism_ontology_term_id&#92;&quot;:&#92;&quot;NCBITaxon:9606&#92;&quot;,&#92;&quot;disease_ontology_term_id&#92;&quot;:&#92;&quot;PATO:0000461&#92;&quot;,&#92;&quot;self_reported_ethnicity_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;assay_ontology_term_id&#92;&quot;:&#92;&quot;EFO:0009899&#92;&quot;,&#92;&quot;sex_ontology_term_id&#92;&quot;:&#92;&quot;n/a&#92;&quot;,&#92;&quot;development_stage_ontology_term_id&#92;&quot;:&#92;&quot;HsapDv:0000102&#92;&quot;,&#92;&quot;donor_id&#92;&quot;:&#92;&quot;b&#x27;BRC2006&#x27;&#92;&quot;,&#92;&quot;suspension_type&#92;&quot;:&#92;&quot;nucleus&#92;&quot;,&#92;&quot;dissection&#92;&quot;:&#92;&quot;b&#x27;Cortex&#x27;&#92;&quot;,&#92;&quot;sample_id&#92;&quot;:&#92;&quot;b&#x27;10X89_1&#x27;&#92;&quot;,&#92;&quot;cluster_id&#92;&quot;:234}]&quot;' data-total-rows='1665937' data-total-columns='18' data-max-columns='50' data-banner-text='&quot;&quot;' data-pagination='true' data-page-size='10' data-field-types='[[&quot;Age&quot;,[&quot;number&quot;,&quot;float32&quot;]],[&quot;CellClass&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;Region&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;Subdivision&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;Subregion&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;Tissue&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;TopLevelCluster&quot;,[&quot;integer&quot;,&quot;uint32&quot;]],[&quot;organism_ontology_term_id&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;disease_ontology_term_id&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;self_reported_ethnicity_ontology_term_id&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;assay_ontology_term_id&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;sex_ontology_term_id&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;development_stage_ontology_term_id&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;donor_id&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;suspension_type&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;dissection&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;sample_id&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;cluster_id&quot;,[&quot;integer&quot;,&quot;uint32&quot;]]]' data-show-filters='true' data-show-download='true' data-show-column-summaries='true' data-show-data-types='true' data-show-page-size-selector='true' data-show-column-explorer='true' data-show-chart-builder='true' data-row-headers='[[&quot;CellID&quot;,[&quot;string&quot;,&quot;object&quot;]]]' data-has-stable-row-id='false' data-lazy='false' data-preload='false'></marimo-table></marimo-ui-element>"
+            "text/html": "<marimo-ui-element object-id='Xref-0' random-id='5fe5fb1d-66a9-cf30-7613-eaaad20467ab'><marimo-table data-initial-value='[]' data-label='null' data-data='&quot;[{&#92;&quot;CellID&#92;&quot;:&#92;&quot;10X89_1:AAACGGGAGGCTACGA&#92;&quot;,&#92;&quot;Age&#92;&quot;:8.0,&#92;&quot;CellClass&#92;&quot;:&#92;&quot;Erythrocyte&#92;&quot;,&#92;&quot;Chemistry&#92;&quot;:&#92;&quot;v2&#92;&quot;,&#92;&quot;Region&#92;&quot;:&#92;&quot;Telencephalon&#92;&quot;,&#92;&quot;Subregion&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;organism_ontology_term_id&#92;&quot;:&#92;&quot;NCBITaxon:9606&#92;&quot;,&#92;&quot;disease_ontology_term_id&#92;&quot;:&#92;&quot;PATO:0000461&#92;&quot;,&#92;&quot;self_reported_ethnicity_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;assay_ontology_term_id&#92;&quot;:&#92;&quot;EFO:0009899&#92;&quot;,&#92;&quot;sex_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;development_stage_ontology_term_id&#92;&quot;:&#92;&quot;HsapDv_0000046&#92;&quot;,&#92;&quot;donor_id&#92;&quot;:&#92;&quot;BRC2006&#92;&quot;,&#92;&quot;suspension_type&#92;&quot;:&#92;&quot;cell&#92;&quot;,&#92;&quot;tissue_type&#92;&quot;:&#92;&quot;tissue&#92;&quot;,&#92;&quot;dissection&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;tissue_ontology_term_id&#92;&quot;:&#92;&quot;UBERON:0001851&#92;&quot;,&#92;&quot;cell_type_ontology_term_id&#92;&quot;:&#92;&quot;CL:0000232&#92;&quot;,&#92;&quot;fraction_mitochondrial&#92;&quot;:0.0,&#92;&quot;fraction_unspliced&#92;&quot;:0.351403892,&#92;&quot;cell_cycle_score&#92;&quot;:0.0,&#92;&quot;total_genes&#92;&quot;:121,&#92;&quot;total_UMIs&#92;&quot;:4630,&#92;&quot;sample_id&#92;&quot;:&#92;&quot;10X89_1&#92;&quot;,&#92;&quot;cluster_id&#92;&quot;:240},{&#92;&quot;CellID&#92;&quot;:&#92;&quot;10X89_1:ACGAGGAAGAGCCTAG&#92;&quot;,&#92;&quot;Age&#92;&quot;:8.0,&#92;&quot;CellClass&#92;&quot;:&#92;&quot;Erythrocyte&#92;&quot;,&#92;&quot;Chemistry&#92;&quot;:&#92;&quot;v2&#92;&quot;,&#92;&quot;Region&#92;&quot;:&#92;&quot;Telencephalon&#92;&quot;,&#92;&quot;Subregion&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;organism_ontology_term_id&#92;&quot;:&#92;&quot;NCBITaxon:9606&#92;&quot;,&#92;&quot;disease_ontology_term_id&#92;&quot;:&#92;&quot;PATO:0000461&#92;&quot;,&#92;&quot;self_reported_ethnicity_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;assay_ontology_term_id&#92;&quot;:&#92;&quot;EFO:0009899&#92;&quot;,&#92;&quot;sex_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;development_stage_ontology_term_id&#92;&quot;:&#92;&quot;HsapDv_0000046&#92;&quot;,&#92;&quot;donor_id&#92;&quot;:&#92;&quot;BRC2006&#92;&quot;,&#92;&quot;suspension_type&#92;&quot;:&#92;&quot;cell&#92;&quot;,&#92;&quot;tissue_type&#92;&quot;:&#92;&quot;tissue&#92;&quot;,&#92;&quot;dissection&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;tissue_ontology_term_id&#92;&quot;:&#92;&quot;UBERON:0001851&#92;&quot;,&#92;&quot;cell_type_ontology_term_id&#92;&quot;:&#92;&quot;CL:0000232&#92;&quot;,&#92;&quot;fraction_mitochondrial&#92;&quot;:0.0038568673,&#92;&quot;fraction_unspliced&#92;&quot;:0.3383329809,&#92;&quot;cell_cycle_score&#92;&quot;:0.0001071352,&#92;&quot;total_genes&#92;&quot;:271,&#92;&quot;total_UMIs&#92;&quot;:9334,&#92;&quot;sample_id&#92;&quot;:&#92;&quot;10X89_1&#92;&quot;,&#92;&quot;cluster_id&#92;&quot;:240},{&#92;&quot;CellID&#92;&quot;:&#92;&quot;10X89_1:ACGCCAGTCGATAGAA&#92;&quot;,&#92;&quot;Age&#92;&quot;:8.0,&#92;&quot;CellClass&#92;&quot;:&#92;&quot;Erythrocyte&#92;&quot;,&#92;&quot;Chemistry&#92;&quot;:&#92;&quot;v2&#92;&quot;,&#92;&quot;Region&#92;&quot;:&#92;&quot;Telencephalon&#92;&quot;,&#92;&quot;Subregion&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;organism_ontology_term_id&#92;&quot;:&#92;&quot;NCBITaxon:9606&#92;&quot;,&#92;&quot;disease_ontology_term_id&#92;&quot;:&#92;&quot;PATO:0000461&#92;&quot;,&#92;&quot;self_reported_ethnicity_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;assay_ontology_term_id&#92;&quot;:&#92;&quot;EFO:0009899&#92;&quot;,&#92;&quot;sex_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;development_stage_ontology_term_id&#92;&quot;:&#92;&quot;HsapDv_0000046&#92;&quot;,&#92;&quot;donor_id&#92;&quot;:&#92;&quot;BRC2006&#92;&quot;,&#92;&quot;suspension_type&#92;&quot;:&#92;&quot;cell&#92;&quot;,&#92;&quot;tissue_type&#92;&quot;:&#92;&quot;tissue&#92;&quot;,&#92;&quot;dissection&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;tissue_ontology_term_id&#92;&quot;:&#92;&quot;UBERON:0001851&#92;&quot;,&#92;&quot;cell_type_ontology_term_id&#92;&quot;:&#92;&quot;CL:0000232&#92;&quot;,&#92;&quot;fraction_mitochondrial&#92;&quot;:0.0087973392,&#92;&quot;fraction_unspliced&#92;&quot;:0.3174552023,&#92;&quot;cell_cycle_score&#92;&quot;:0.0,&#92;&quot;total_genes&#92;&quot;:674,&#92;&quot;total_UMIs&#92;&quot;:9321,&#92;&quot;sample_id&#92;&quot;:&#92;&quot;10X89_1&#92;&quot;,&#92;&quot;cluster_id&#92;&quot;:236},{&#92;&quot;CellID&#92;&quot;:&#92;&quot;10X89_1:CCGGGATCAGACACTT&#92;&quot;,&#92;&quot;Age&#92;&quot;:8.0,&#92;&quot;CellClass&#92;&quot;:&#92;&quot;Erythrocyte&#92;&quot;,&#92;&quot;Chemistry&#92;&quot;:&#92;&quot;v2&#92;&quot;,&#92;&quot;Region&#92;&quot;:&#92;&quot;Telencephalon&#92;&quot;,&#92;&quot;Subregion&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;organism_ontology_term_id&#92;&quot;:&#92;&quot;NCBITaxon:9606&#92;&quot;,&#92;&quot;disease_ontology_term_id&#92;&quot;:&#92;&quot;PATO:0000461&#92;&quot;,&#92;&quot;self_reported_ethnicity_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;assay_ontology_term_id&#92;&quot;:&#92;&quot;EFO:0009899&#92;&quot;,&#92;&quot;sex_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;development_stage_ontology_term_id&#92;&quot;:&#92;&quot;HsapDv_0000046&#92;&quot;,&#92;&quot;donor_id&#92;&quot;:&#92;&quot;BRC2006&#92;&quot;,&#92;&quot;suspension_type&#92;&quot;:&#92;&quot;cell&#92;&quot;,&#92;&quot;tissue_type&#92;&quot;:&#92;&quot;tissue&#92;&quot;,&#92;&quot;dissection&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;tissue_ontology_term_id&#92;&quot;:&#92;&quot;UBERON:0001851&#92;&quot;,&#92;&quot;cell_type_ontology_term_id&#92;&quot;:&#92;&quot;CL:0000232&#92;&quot;,&#92;&quot;fraction_mitochondrial&#92;&quot;:0.0015943878,&#92;&quot;fraction_unspliced&#92;&quot;:0.3258928657,&#92;&quot;cell_cycle_score&#92;&quot;:0.0009566327,&#92;&quot;total_genes&#92;&quot;:101,&#92;&quot;total_UMIs&#92;&quot;:3136,&#92;&quot;sample_id&#92;&quot;:&#92;&quot;10X89_1&#92;&quot;,&#92;&quot;cluster_id&#92;&quot;:240},{&#92;&quot;CellID&#92;&quot;:&#92;&quot;10X89_1:CGACTTCTCCCACTTG&#92;&quot;,&#92;&quot;Age&#92;&quot;:8.0,&#92;&quot;CellClass&#92;&quot;:&#92;&quot;Erythrocyte&#92;&quot;,&#92;&quot;Chemistry&#92;&quot;:&#92;&quot;v2&#92;&quot;,&#92;&quot;Region&#92;&quot;:&#92;&quot;Telencephalon&#92;&quot;,&#92;&quot;Subregion&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;organism_ontology_term_id&#92;&quot;:&#92;&quot;NCBITaxon:9606&#92;&quot;,&#92;&quot;disease_ontology_term_id&#92;&quot;:&#92;&quot;PATO:0000461&#92;&quot;,&#92;&quot;self_reported_ethnicity_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;assay_ontology_term_id&#92;&quot;:&#92;&quot;EFO:0009899&#92;&quot;,&#92;&quot;sex_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;development_stage_ontology_term_id&#92;&quot;:&#92;&quot;HsapDv_0000046&#92;&quot;,&#92;&quot;donor_id&#92;&quot;:&#92;&quot;BRC2006&#92;&quot;,&#92;&quot;suspension_type&#92;&quot;:&#92;&quot;cell&#92;&quot;,&#92;&quot;tissue_type&#92;&quot;:&#92;&quot;tissue&#92;&quot;,&#92;&quot;dissection&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;tissue_ontology_term_id&#92;&quot;:&#92;&quot;UBERON:0001851&#92;&quot;,&#92;&quot;cell_type_ontology_term_id&#92;&quot;:&#92;&quot;CL:0000232&#92;&quot;,&#92;&quot;fraction_mitochondrial&#92;&quot;:0.0018687223,&#92;&quot;fraction_unspliced&#92;&quot;:0.3585610986,&#92;&quot;cell_cycle_score&#92;&quot;:0.0,&#92;&quot;total_genes&#92;&quot;:113,&#92;&quot;total_UMIs&#92;&quot;:4281,&#92;&quot;sample_id&#92;&quot;:&#92;&quot;10X89_1&#92;&quot;,&#92;&quot;cluster_id&#92;&quot;:233},{&#92;&quot;CellID&#92;&quot;:&#92;&quot;10X89_1:CTTCTCTAGTCAAGGC&#92;&quot;,&#92;&quot;Age&#92;&quot;:8.0,&#92;&quot;CellClass&#92;&quot;:&#92;&quot;Erythrocyte&#92;&quot;,&#92;&quot;Chemistry&#92;&quot;:&#92;&quot;v2&#92;&quot;,&#92;&quot;Region&#92;&quot;:&#92;&quot;Telencephalon&#92;&quot;,&#92;&quot;Subregion&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;organism_ontology_term_id&#92;&quot;:&#92;&quot;NCBITaxon:9606&#92;&quot;,&#92;&quot;disease_ontology_term_id&#92;&quot;:&#92;&quot;PATO:0000461&#92;&quot;,&#92;&quot;self_reported_ethnicity_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;assay_ontology_term_id&#92;&quot;:&#92;&quot;EFO:0009899&#92;&quot;,&#92;&quot;sex_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;development_stage_ontology_term_id&#92;&quot;:&#92;&quot;HsapDv_0000046&#92;&quot;,&#92;&quot;donor_id&#92;&quot;:&#92;&quot;BRC2006&#92;&quot;,&#92;&quot;suspension_type&#92;&quot;:&#92;&quot;cell&#92;&quot;,&#92;&quot;tissue_type&#92;&quot;:&#92;&quot;tissue&#92;&quot;,&#92;&quot;dissection&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;tissue_ontology_term_id&#92;&quot;:&#92;&quot;UBERON:0001851&#92;&quot;,&#92;&quot;cell_type_ontology_term_id&#92;&quot;:&#92;&quot;CL:0000232&#92;&quot;,&#92;&quot;fraction_mitochondrial&#92;&quot;:0.0133680245,&#92;&quot;fraction_unspliced&#92;&quot;:0.1449847519,&#92;&quot;cell_cycle_score&#92;&quot;:0.0104970392,&#92;&quot;total_genes&#92;&quot;:2148,&#92;&quot;total_UMIs&#92;&quot;:11146,&#92;&quot;sample_id&#92;&quot;:&#92;&quot;10X89_1&#92;&quot;,&#92;&quot;cluster_id&#92;&quot;:235},{&#92;&quot;CellID&#92;&quot;:&#92;&quot;10X89_1:GGAAAGCCAAGGTTTC&#92;&quot;,&#92;&quot;Age&#92;&quot;:8.0,&#92;&quot;CellClass&#92;&quot;:&#92;&quot;Erythrocyte&#92;&quot;,&#92;&quot;Chemistry&#92;&quot;:&#92;&quot;v2&#92;&quot;,&#92;&quot;Region&#92;&quot;:&#92;&quot;Telencephalon&#92;&quot;,&#92;&quot;Subregion&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;organism_ontology_term_id&#92;&quot;:&#92;&quot;NCBITaxon:9606&#92;&quot;,&#92;&quot;disease_ontology_term_id&#92;&quot;:&#92;&quot;PATO:0000461&#92;&quot;,&#92;&quot;self_reported_ethnicity_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;assay_ontology_term_id&#92;&quot;:&#92;&quot;EFO:0009899&#92;&quot;,&#92;&quot;sex_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;development_stage_ontology_term_id&#92;&quot;:&#92;&quot;HsapDv_0000046&#92;&quot;,&#92;&quot;donor_id&#92;&quot;:&#92;&quot;BRC2006&#92;&quot;,&#92;&quot;suspension_type&#92;&quot;:&#92;&quot;cell&#92;&quot;,&#92;&quot;tissue_type&#92;&quot;:&#92;&quot;tissue&#92;&quot;,&#92;&quot;dissection&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;tissue_ontology_term_id&#92;&quot;:&#92;&quot;UBERON:0001851&#92;&quot;,&#92;&quot;cell_type_ontology_term_id&#92;&quot;:&#92;&quot;CL:0000232&#92;&quot;,&#92;&quot;fraction_mitochondrial&#92;&quot;:0.0,&#92;&quot;fraction_unspliced&#92;&quot;:0.3571214378,&#92;&quot;cell_cycle_score&#92;&quot;:0.0,&#92;&quot;total_genes&#92;&quot;:81,&#92;&quot;total_UMIs&#92;&quot;:3335,&#92;&quot;sample_id&#92;&quot;:&#92;&quot;10X89_1&#92;&quot;,&#92;&quot;cluster_id&#92;&quot;:240},{&#92;&quot;CellID&#92;&quot;:&#92;&quot;10X89_1:GGGCACTAGCGATATA&#92;&quot;,&#92;&quot;Age&#92;&quot;:8.0,&#92;&quot;CellClass&#92;&quot;:&#92;&quot;Erythrocyte&#92;&quot;,&#92;&quot;Chemistry&#92;&quot;:&#92;&quot;v2&#92;&quot;,&#92;&quot;Region&#92;&quot;:&#92;&quot;Telencephalon&#92;&quot;,&#92;&quot;Subregion&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;organism_ontology_term_id&#92;&quot;:&#92;&quot;NCBITaxon:9606&#92;&quot;,&#92;&quot;disease_ontology_term_id&#92;&quot;:&#92;&quot;PATO:0000461&#92;&quot;,&#92;&quot;self_reported_ethnicity_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;assay_ontology_term_id&#92;&quot;:&#92;&quot;EFO:0009899&#92;&quot;,&#92;&quot;sex_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;development_stage_ontology_term_id&#92;&quot;:&#92;&quot;HsapDv_0000046&#92;&quot;,&#92;&quot;donor_id&#92;&quot;:&#92;&quot;BRC2006&#92;&quot;,&#92;&quot;suspension_type&#92;&quot;:&#92;&quot;cell&#92;&quot;,&#92;&quot;tissue_type&#92;&quot;:&#92;&quot;tissue&#92;&quot;,&#92;&quot;dissection&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;tissue_ontology_term_id&#92;&quot;:&#92;&quot;UBERON:0001851&#92;&quot;,&#92;&quot;cell_type_ontology_term_id&#92;&quot;:&#92;&quot;CL:0000232&#92;&quot;,&#92;&quot;fraction_mitochondrial&#92;&quot;:0.006468589,&#92;&quot;fraction_unspliced&#92;&quot;:0.1361692846,&#92;&quot;cell_cycle_score&#92;&quot;:0.0003289113,&#92;&quot;total_genes&#92;&quot;:999,&#92;&quot;total_UMIs&#92;&quot;:9121,&#92;&quot;sample_id&#92;&quot;:&#92;&quot;10X89_1&#92;&quot;,&#92;&quot;cluster_id&#92;&quot;:234},{&#92;&quot;CellID&#92;&quot;:&#92;&quot;10X89_1:GTCACGGCACCGCTAG&#92;&quot;,&#92;&quot;Age&#92;&quot;:8.0,&#92;&quot;CellClass&#92;&quot;:&#92;&quot;Erythrocyte&#92;&quot;,&#92;&quot;Chemistry&#92;&quot;:&#92;&quot;v2&#92;&quot;,&#92;&quot;Region&#92;&quot;:&#92;&quot;Telencephalon&#92;&quot;,&#92;&quot;Subregion&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;organism_ontology_term_id&#92;&quot;:&#92;&quot;NCBITaxon:9606&#92;&quot;,&#92;&quot;disease_ontology_term_id&#92;&quot;:&#92;&quot;PATO:0000461&#92;&quot;,&#92;&quot;self_reported_ethnicity_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;assay_ontology_term_id&#92;&quot;:&#92;&quot;EFO:0009899&#92;&quot;,&#92;&quot;sex_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;development_stage_ontology_term_id&#92;&quot;:&#92;&quot;HsapDv_0000046&#92;&quot;,&#92;&quot;donor_id&#92;&quot;:&#92;&quot;BRC2006&#92;&quot;,&#92;&quot;suspension_type&#92;&quot;:&#92;&quot;cell&#92;&quot;,&#92;&quot;tissue_type&#92;&quot;:&#92;&quot;tissue&#92;&quot;,&#92;&quot;dissection&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;tissue_ontology_term_id&#92;&quot;:&#92;&quot;UBERON:0001851&#92;&quot;,&#92;&quot;cell_type_ontology_term_id&#92;&quot;:&#92;&quot;CL:0000232&#92;&quot;,&#92;&quot;fraction_mitochondrial&#92;&quot;:0.0004460303,&#92;&quot;fraction_unspliced&#92;&quot;:0.3307314813,&#92;&quot;cell_cycle_score&#92;&quot;:0.0,&#92;&quot;total_genes&#92;&quot;:136,&#92;&quot;total_UMIs&#92;&quot;:4484,&#92;&quot;sample_id&#92;&quot;:&#92;&quot;10X89_1&#92;&quot;,&#92;&quot;cluster_id&#92;&quot;:240},{&#92;&quot;CellID&#92;&quot;:&#92;&quot;10X89_1:TTCTACAAGGTGTGGT&#92;&quot;,&#92;&quot;Age&#92;&quot;:8.0,&#92;&quot;CellClass&#92;&quot;:&#92;&quot;Erythrocyte&#92;&quot;,&#92;&quot;Chemistry&#92;&quot;:&#92;&quot;v2&#92;&quot;,&#92;&quot;Region&#92;&quot;:&#92;&quot;Telencephalon&#92;&quot;,&#92;&quot;Subregion&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;organism_ontology_term_id&#92;&quot;:&#92;&quot;NCBITaxon:9606&#92;&quot;,&#92;&quot;disease_ontology_term_id&#92;&quot;:&#92;&quot;PATO:0000461&#92;&quot;,&#92;&quot;self_reported_ethnicity_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;assay_ontology_term_id&#92;&quot;:&#92;&quot;EFO:0009899&#92;&quot;,&#92;&quot;sex_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;development_stage_ontology_term_id&#92;&quot;:&#92;&quot;HsapDv_0000046&#92;&quot;,&#92;&quot;donor_id&#92;&quot;:&#92;&quot;BRC2006&#92;&quot;,&#92;&quot;suspension_type&#92;&quot;:&#92;&quot;cell&#92;&quot;,&#92;&quot;tissue_type&#92;&quot;:&#92;&quot;tissue&#92;&quot;,&#92;&quot;dissection&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;tissue_ontology_term_id&#92;&quot;:&#92;&quot;UBERON:0001851&#92;&quot;,&#92;&quot;cell_type_ontology_term_id&#92;&quot;:&#92;&quot;CL:0000232&#92;&quot;,&#92;&quot;fraction_mitochondrial&#92;&quot;:0.009070822,&#92;&quot;fraction_unspliced&#92;&quot;:0.1813001484,&#92;&quot;cell_cycle_score&#92;&quot;:0.0029073148,&#92;&quot;total_genes&#92;&quot;:1507,&#92;&quot;total_UMIs&#92;&quot;:8599,&#92;&quot;sample_id&#92;&quot;:&#92;&quot;10X89_1&#92;&quot;,&#92;&quot;cluster_id&#92;&quot;:234}]&quot;' data-total-rows='1665937' data-total-columns='24' data-max-columns='50' data-banner-text='&quot;&quot;' data-pagination='true' data-page-size='10' data-field-types='[[&quot;Age&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;CellClass&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;Chemistry&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;Region&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;Subregion&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;organism_ontology_term_id&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;disease_ontology_term_id&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;self_reported_ethnicity_ontology_term_id&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;assay_ontology_term_id&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;sex_ontology_term_id&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;development_stage_ontology_term_id&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;donor_id&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;suspension_type&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;tissue_type&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;dissection&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;tissue_ontology_term_id&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;cell_type_ontology_term_id&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;fraction_mitochondrial&quot;,[&quot;number&quot;,&quot;float32&quot;]],[&quot;fraction_unspliced&quot;,[&quot;number&quot;,&quot;float32&quot;]],[&quot;cell_cycle_score&quot;,[&quot;number&quot;,&quot;float32&quot;]],[&quot;total_genes&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;total_UMIs&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;sample_id&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;cluster_id&quot;,[&quot;string&quot;,&quot;category&quot;]]]' data-show-filters='true' data-show-download='true' data-show-column-summaries='true' data-show-data-types='true' data-show-page-size-selector='true' data-show-column-explorer='true' data-show-chart-builder='true' data-row-headers='[[&quot;CellID&quot;,[&quot;string&quot;,&quot;object&quot;]]]' data-has-stable-row-id='false' data-lazy='false' data-preload='false'></marimo-table></marimo-ui-element>"
           }
         }
       ],
       "console": []
     },
     {
-      "id": "VExc",
-      "code_hash": null,
-      "outputs": [],
-      "console": []
-    },
-    {
-      "id": "Xref",
+      "id": "BYtC",
       "code_hash": "066e5aa1acebdb20ae7de3ceb2468171",
       "outputs": [],
       "console": []
     },
     {
-      "id": "SFPL",
+      "id": "RGSE",
       "code_hash": "37d5994445fe33142c5d80b9fa1db7c5",
       "outputs": [],
       "console": []
     },
     {
-      "id": "BYtC",
+      "id": "Kclp",
       "code_hash": "337b8068a1c54bdc98db487c247707fb",
       "outputs": [],
       "console": []
     },
     {
-      "id": "RGSE",
+      "id": "emfo",
       "code_hash": "437d1a463025ff32b17e1d1eafc9ea44",
       "outputs": [],
       "console": []
     },
     {
-      "id": "Kclp",
+      "id": "Hstk",
       "code_hash": "0a11961d9391c17d8ad4e5b9de3f0444",
       "outputs": [],
       "console": []
     },
     {
-      "id": "emfo",
+      "id": "nWHF",
       "code_hash": "6b5c7e50959145e8f584be0386765487",
       "outputs": [],
       "console": []
     },
     {
-      "id": "Hstk",
+      "id": "iLit",
       "code_hash": "3b5e8dbf1d14c35c99ac2d7cefd7fc80",
       "outputs": [],
       "console": []
     },
     {
-      "id": "nWHF",
+      "id": "ZHCJ",
       "code_hash": "5bbf10781915c5837fca720da9eef12e",
       "outputs": [],
       "console": []
     },
     {
-      "id": "iLit",
+      "id": "ROlb",
       "code_hash": "17933517c0777fa955ece1ead1cdec60",
       "outputs": [],
       "console": []
     },
     {
-      "id": "ZHCJ",
+      "id": "qnkX",
       "code_hash": "9471d2285a2462a332a8d1c2a4f02aaa",
       "outputs": [],
       "console": []
     },
     {
-      "id": "ROlb",
+      "id": "TqIu",
       "code_hash": "da09f1fc00b271a9d3eb27f21b4b5f5e",
       "outputs": [],
       "console": []
     },
     {
-      "id": "qnkX",
+      "id": "Vxnm",
       "code_hash": "c6f3b6f4e08e8351166c4b99d5e1226e",
       "outputs": [],
       "console": []
     },
     {
-      "id": "TqIu",
+      "id": "DnEU",
       "code_hash": "05a16b829abbd19c206e475c8df273c4",
       "outputs": [],
       "console": []
     },
     {
-      "id": "Vxnm",
+      "id": "ulZA",
       "code_hash": "4cdd93cc54d6cce2118e22e39291e408",
       "outputs": [],
       "console": []
     },
     {
-      "id": "DnEU",
+      "id": "ecfG",
       "code_hash": "206fdea091a857552f791a550e8b59ac",
       "outputs": [],
       "console": []
     },
     {
-      "id": "ulZA",
+      "id": "Pvdt",
       "code_hash": "c7bf9e0bd0d9977a407c690014aff08e",
       "outputs": [],
       "console": []
     },
     {
-      "id": "ecfG",
+      "id": "ZBYS",
       "code_hash": "8967efc48ea4e9086930c76720fc8fcc",
       "outputs": [],
       "console": []
     },
     {
-      "id": "Pvdt",
+      "id": "aLJB",
       "code_hash": "b182d6c420f532bf37dc93a0a0728644",
       "outputs": [],
       "console": []
     },
     {
-      "id": "ZBYS",
+      "id": "nHfw",
       "code_hash": "4d9d689986d15d681ac0e1f8da98f8ff",
       "outputs": [],
       "console": []
     },
     {
-      "id": "aLJB",
-      "code_hash": "0e067fa17f595ef05ac131fa8ac04061",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"running-ges-score-and-pipeline\">Running GES Score and Pipeline</h1></span>"
-          }
-        }
-      ],
-      "console": []
-    },
-    {
-      "id": "nHfw",
+      "id": "AjVT",
       "code_hash": "d3c93dacfd1719365ac92a7de6e02cab",
       "outputs": [],
       "console": []
     },
     {
-      "id": "xXTn",
+      "id": "pHFh",
       "code_hash": "9d487d82c1918f6e8a8f57771123db66",
       "outputs": [],
       "console": []
     },
     {
-      "id": "AjVT",
-      "code_hash": "bdaecd8c76f0e0b6e77496694d4b99ad",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"analyzing-results\">Analyzing Results</h1></span>"
-          }
-        }
-      ],
-      "console": []
-    },
-    {
-      "id": "pHFh",
+      "id": "aqbW",
       "code_hash": "bd50e5b6a07e51f96609ce00dc9fbc9f",
       "outputs": [],
       "console": []
     },
     {
-      "id": "NCOB",
+      "id": "TRpd",
       "code_hash": "17301d35e4d0b778a9823ee8459845fc",
       "outputs": [],
       "console": []
     },
     {
-      "id": "aqbW",
+      "id": "TXez",
       "code_hash": "8764a0d1d7b9f534aa52cc3fcb631206",
       "outputs": [],
       "console": []
     },
     {
-      "id": "TRpd",
+      "id": "dNNg",
       "code_hash": "e3da95a18d852fc83f5abdd6572a17b0",
       "outputs": [],
       "console": []
     },
     {
-      "id": "TXez",
+      "id": "yCnT",
       "code_hash": "af79dfc2b6024c09af7fcee8b67a76c0",
       "outputs": [],
       "console": []
     },
     {
-      "id": "dNNg",
+      "id": "wlCL",
       "code_hash": "2133f9e04923f1826f48bd98f4722a79",
       "outputs": [],
       "console": []
     },
     {
-      "id": "yCnT",
+      "id": "kqZH",
       "code_hash": "01883f0953e27c4cf1fe915460a44c8d",
       "outputs": [],
       "console": []
     },
     {
-      "id": "wlCL",
+      "id": "wAgl",
       "code_hash": "4075876cee8a17a77147b5448b2c40e4",
       "outputs": [],
       "console": []
     },
     {
-      "id": "kqZH",
+      "id": "rEll",
       "code_hash": "3f07fe1d8135ba26d28035f4ecb46743",
       "outputs": [],
       "console": []
     },
     {
-      "id": "wAgl",
+      "id": "dGlV",
       "code_hash": "2b1bf33f680a0e804e7655954da3eae7",
       "outputs": [],
       "console": []
     },
     {
-      "id": "rEll",
+      "id": "SdmI",
       "code_hash": "2db96847d27a130346563b605960fd25",
       "outputs": [],
       "console": []
     },
     {
-      "id": "dGlV",
+      "id": "lgWD",
       "code_hash": "8430a8bc4829bdacde736dcdb066f639",
       "outputs": [],
       "console": []
     },
     {
-      "id": "SdmI",
+      "id": "yOPj",
       "code_hash": "2f879c05c0e876d6dc8bc1afbef3b094",
       "outputs": [],
       "console": []
     },
     {
-      "id": "lgWD",
+      "id": "fwwy",
       "code_hash": "5113848ef16f601f6b2f0823951069cb",
       "outputs": [],
       "console": []
     },
     {
-      "id": "yOPj",
+      "id": "LJZf",
       "code_hash": "d21b52b536ad8a7f2b7687645ff4bf89",
       "outputs": [],
       "console": []
     },
     {
-      "id": "fwwy",
+      "id": "urSm",
       "code_hash": "a5a96abaaba16e2ce76fdf5c9cb6f9db",
       "outputs": [],
       "console": []

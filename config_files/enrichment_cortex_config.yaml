@@ -1,9 +1,9 @@
-run_name: "autism_strong_cortex"
+run_name: "Microcephaly Cortex"
 ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules/"
 
 output_folder: "results/enrichment_results/"
 ges_results_folder: "results/ges_score_results/ges_score_for_cortex_20251221"
-gene_list_path: "data/genes/autism_strong.csv"
+gene_list_path: "data/genes/microcephaly_genes.csv"
 gmt_folder: "data/genes/"
 
 analysis_mode: "gsea"     # or "deseq" or "both"
@@ -19,10 +19,10 @@ column_conditions_for_gsea:
   CellClass:
     - "Radial glia"
     - "Neuronal IPC"
+    - "Neuroblast"
     - "Neuron"
     - "Glioblast"
-    - "Neuroblast"
-
+    
   NPCs:
     - True
     - False

@@ -29,7 +29,7 @@ def _():
 
 @app.cell
 def _(ssc):
-    ssc.run_ges_pipeline(config_path='/miridan-data/annaludmir/ndd_gene_modules/config_files/ges_score_cortex_config.yaml')
+    ssc.run_ges_pipeline(config_path='/miridan-data/annaludmir/ndd_gene_modules/config_files/ges_score_all_layers_config_proliferating.yaml')
     return
 
 
@@ -133,7 +133,7 @@ def _():
 def _():
     import modules.enrichment_cal_lists_loop as ecll
     reload(ecll)
-    ecll.main('/miridan-data/annaludmir/ndd_gene_modules/config_files/enrichment_cortex_config_tau.yaml','/miridan-data/annaludmir/ndd_gene_modules/data/genes/')
+    ecll.main('/miridan-data/annaludmir/ndd_gene_modules/config_files/enrichment_all_layers_config.yaml','/miridan-data/annaludmir/ndd_gene_modules/data/genes/schizophrenia_bipolar/')
     return
 
 
@@ -145,7 +145,7 @@ def _():
 
 @app.cell
 def _(pd):
-    summary = pd.read_csv('ndd_gene_modules/results/enrichment_results/batch_summary_20260110.csv')
+    summary = pd.read_csv('/miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/batch_summary_20260212_all_layers.csv')
     return (summary,)
 
 
@@ -164,9 +164,177 @@ def _(summary):
 
 @app.cell
 def _(summary):
-    queried_summary_1 = summary.query("run_name == 'updated_hsg_list_all_layers' & NES > 1.5")
+    queried_summary_1 = summary.query("column_condition_value == 'Fibroblast' & is_significant == True")
     queried_summary_1
     return
+
+
+@app.cell
+def _(pd):
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+
+
+    def plot_gsea_summary_relationships(summary_csv):
+        df = pd.read_csv(summary_csv)
+
+        # ensure numeric
+        cols = [
+            "FDR_qval_BH",
+            "NES",
+            "num_genes_in_gene_list",
+            "num_of_lead_genes",
+        ]
+        for c in cols:
+            df[c] = pd.to_numeric(df[c], errors="coerce")
+
+        df = df.dropna(subset=cols)
+
+        # nicer plotting style
+        sns.set(style="whitegrid", context="talk")
+
+        fig, axes = plt.subplots(2, 3, figsize=(18, 10))
+
+        # 1️⃣ FDR vs gene list size
+        sns.scatterplot(
+            data=df,
+            x="num_genes_in_gene_list",
+            y="FDR_qval_BH",
+            ax=axes[0, 0],
+            alpha=0.6
+        )
+        axes[0, 0].set_yscale("log")
+        axes[0, 0].set_title("FDR vs Gene List Size")
+        axes[0, 0].set_xlabel("Number of genes in gene list")
+        axes[0, 0].set_ylabel("FDR (log scale)")
+
+        # 2️⃣ NES vs gene list size
+        sns.scatterplot(
+            data=df,
+            x="num_genes_in_gene_list",
+            y="NES",
+            ax=axes[0, 1],
+            alpha=0.6
+        )
+        axes[0, 1].axhline(0, ls="--", c="black", lw=1)
+        axes[0, 1].set_title("NES vs Gene List Size")
+        axes[0, 1].set_xlabel("Number of genes in gene list")
+        axes[0, 1].set_ylabel("NES")
+
+        # 3️⃣ FDR vs leading genes
+        sns.scatterplot(
+            data=df,
+            x="num_of_lead_genes",
+            y="FDR_qval_BH",
+            ax=axes[0, 2],
+            alpha=0.6
+        )
+        axes[0, 2].set_yscale("log")
+        axes[0, 2].set_title("FDR vs Leading Genes")
+        axes[0, 2].set_xlabel("Number of leading genes")
+        axes[0, 2].set_ylabel("FDR (log scale)")
+
+        # 4️⃣ NES vs leading genes
+        sns.scatterplot(
+            data=df,
+            x="num_of_lead_genes",
+            y="NES",
+            ax=axes[1, 0],
+            alpha=0.6
+        )
+        axes[1, 0].axhline(0, ls="--", c="black", lw=1)
+        axes[1, 0].set_title("NES vs Leading Genes")
+        axes[1, 0].set_xlabel("Number of leading genes")
+        axes[1, 0].set_ylabel("NES")
+
+        # 5️⃣ NEW: leading genes vs gene list size
+        sns.scatterplot(
+            data=df,
+            x="num_genes_in_gene_list",
+            y="num_of_lead_genes",
+            ax=axes[1, 1],
+            alpha=0.6
+        )
+        axes[1, 1].set_title("Leading Genes vs Gene List Size")
+        axes[1, 1].set_xlabel("Number of genes in gene list")
+        axes[1, 1].set_ylabel("Number of leading genes")
+
+        # 6️⃣ empty panel → turn off
+        axes[1, 2].axis("off")
+
+        plt.tight_layout()
+        plt.show()
+    return (plot_gsea_summary_relationships,)
+
+
+@app.cell
+def _(plot_gsea_summary_relationships):
+    plot_gsea_summary_relationships('/miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/batch_summary_20260215_cell_phase.csv')
+    return
+
+
+@app.cell
+def _():
+    mo.md(r"""
+    ##Check similarity between leading genes
+    """)
+    return
+
+
+@app.cell
+def _():
+    from matplotlib import pyplot as plt
+    from matplotlib_venn import venn2, venn3
+    from upsetplot import UpSet, from_contents
+
+
+    def plot_gene_overlap(
+        gene_sets: dict,
+        cluster,
+        similiarity = 0):
+        """
+        Plot overlap for multiple gene lists.
+
+        Parameters
+        ----------
+        gene_sets : dict
+            {"label1": iterable_of_genes, "label2": iterable_of_genes, ...}
+        title : str
+        """
+
+        # convert everything to sets
+        gene_sets = {k: set(v) for k, v in gene_sets.items()}
+        n = len(gene_sets)
+
+        if n == 2:
+            labels = list(gene_sets.keys())
+            a, b = labels
+
+            plt.figure(figsize=(5, 5))
+            venn2([gene_sets[a], gene_sets[b]], set_labels=labels)
+            plt.title(f"{cluster} Leading Genes - Similarity {similiarity}")
+            plt.show()
+
+        elif n == 3:
+            labels = list(gene_sets.keys())
+            a, b, c = labels
+
+            plt.figure(figsize=(6, 6))
+            venn3([gene_sets[a], gene_sets[b], gene_sets[c]], set_labels=labels)
+            plt.title(f"{cluster} Leading Genes")
+            plt.show()
+
+        else:
+            # UpSet plot (best for 4+ sets)
+            contents = {k: list(v) for k, v in gene_sets.items()}
+            upset_data = from_contents(contents)
+
+            plt.figure(figsize=(10, 6))
+            UpSet(upset_data, show_counts=True).plot()
+            plt.suptitle(f"{cluster} Leading Genes")
+            plt.show()
+    return (plot_gene_overlap,)
 
 
 @app.function
@@ -205,7 +373,7 @@ def _(neoplasm_cortex):
 
 
 @app.cell
-def _(pd):
+def _(pd, plot_gene_overlap):
     import re
 
     def _parse_lead_genes(x):
@@ -222,6 +390,8 @@ def _(pd):
     def compare_leading_genes_similarity(
         micro_df: pd.DataFrame,
         neo_df: pd.DataFrame,
+        label_a: str,
+        label_b: str,
         lead_col: str = "Lead_genes",
     ):
         # Keep only needed columns
@@ -241,7 +411,7 @@ def _(pd):
         n["NES_neo"] = n["NES"]
         m["FDR_micro"] = m["FDR q-val (BH corrected)"]
         n["FDR_neo"] = n["FDR q-val (BH corrected)"]
-    
+
 
         # Merge on column+condition
         merged = m.merge(
@@ -264,16 +434,18 @@ def _(pd):
             b_nes = round(row["NES_neo"], 2)
             a_fdr = round(row["FDR_micro"], 3)
             b_fdr = round(row["FDR_neo"], 3)
-        
+
             score = check_similiarty(a, b)  # <-- your function
             print(f"{col} - {cond}: similarity = {score:.3f}  (micro n={len(a)};NES={a_nes};FDR={a_fdr}, neo n={len(b)};NES:{b_nes};FDR:{b_fdr})")
 
+            if score > 0.5:
+                plot_gene_overlap({label_a: a, label_b: b}, cond, round(score, 3))
     return compare_leading_genes_similarity, re
 
 
 @app.cell
 def _(compare_leading_genes_similarity, microcephaly_cortex, neoplasm_cortex):
-    compare_leading_genes_similarity(microcephaly_cortex,neoplasm_cortex)
+    compare_leading_genes_similarity(microcephaly_cortex,neoplasm_cortex, "Microchepahly", "IDD Neoplasm")
     return
 
 
@@ -351,7 +523,6 @@ def _(pd, re):
                 mat.to_csv(out_path / f"{safe_col}_condition_x_condition_similarity.csv")
 
         return matrices
-
     return (condition_x_condition_matrices_within_df,)
 
 
@@ -363,19 +534,45 @@ def _(condition_x_condition_matrices_within_df, microcephaly_cortex):
 
 @app.cell
 def _():
-    micro = ['BUB1','KIF14','CENPE','ASPM','CENPF','CEP55','CKAP2L','NUF2','NDE1','KNL1','BUB1B','CIT','KIF11','NCAPH','NCAPD2','STIL','WDR62','POC1A','PLK4','LMNB2','PPP1R35','RAD21','TRAIP','CEP135','LMNB1','FILIP1','CDK5RAP2','XRCC4','FANCM','TRIP13','CEP152','SLX4','FANCD2','SASS6','BRCA2','TRMT10A','HMGB1','FANCB','DNA2','NSD2','NCAPD3','NIPBL','HIST1H4C','LARP7','PCNT','TNPO2','ORC6']
-    return (micro,)
+    microcephaly_G1 = ["GINS2","CDC6","BRIP1","ORC1","GINS3","HPDL","CDT1","ATP1A2","MCM7","SLC38A3","BRCA2","GMNN","FANCA","CDK6","DDX11","ORC6","FANCB","BLM","RBBP8","PUS7","FANCI","FILIP1","DNA2","FANCE","MFSD2A","PALB2","SMO","FANCD2","PRIM1","MRE11","FANCG"]
+    return (microcephaly_G1,)
 
 
 @app.cell
 def _():
-    hsg = ['NEK2','FAM72C','FAM72D','ASPM','KIF18A','FAM72B','ARHGAP11A','SPAG5','ZNF492','NOTCH2','CDK5RAP2','AR','NBPF14','GKAP1','PDCD4','CDH12','ANKRD20A4','ZFP36L1','SRGAP2B','SRGAP2C','TLN1']
-    return (hsg,)
+    microcephaly_S = ["HIST1H4C","WDR62","BLM","FANCD2","FANCI","POC1A","CEP152","CDC6","STIL","CDT1","BRIP1","BRCA2","NCAPH","PLK4","FANCB","ORC6","KIF11","ORC1","DNA2","CKAP2L","GMNN","BUB1B","TRIP13","KNL1","NCAPD3","GINS3","TRAIP","FANCG","CIT","RBBP8","FANCA","NUF2","CEP55","NCAPD2","LMNB2","DDX11","CEP135","KIF14","CENPE","MCM7","ASPM","FILIP1","GINS2","BUB1","SASS6","PRIM1","CENPF","TUBG1","HMGB1","FANCM","TUBGCP3","NSD2","EOMES","CDK5RAP2","LMNB1","RMI1","RAD51C","VRK1","SMC1A","CDK6","NUP107","GPT2","MRE11","XRCC4","RTTN","SMO","FANCC","TRA2B","PSMC3","NDE1","PCNT","NUP188","LHX2","TTI1","SMC5","SMC3","FANCE","SLF2","RAD21","PPP1R35","CPSF3","PALB2","RRP7A","NSRP1","LARP7"]
+    return (microcephaly_S,)
 
 
 @app.cell
-def _(hsg, micro):
-    check_similiarty(micro,hsg)
+def _():
+    microcephaly_G2M = ["BUB1","KIF14","CENPE","ASPM","CENPF","CEP55","CKAP2L","NUF2","NDE1","KNL1","BUB1B","CIT","KIF11","NCAPH","NCAPD2","STIL","WDR62","POC1A","PLK4","LMNB2","PPP1R35","RAD21","TRAIP","CEP135","LMNB1","FILIP1","CDK5RAP2","XRCC4","FANCM","TRIP13","CEP152","SLX4","FANCD2","SASS6","BRCA2","TRMT10A","HMGB1","FANCB","DNA2","NSD2","NCAPD3","NIPBL","HIST1H4C","LARP7","PCNT","TNPO2","ORC6"]
+    return (microcephaly_G2M,)
+
+
+@app.cell
+def _():
+    microcephaly_forebrain = ["FOXG1","CDK6","HPDL","BRIP1","CIT","KIF11","CEP152","KNL1","BLM","ORC1","FANCI","CDT1","BUB1B","POC1A","NCAPH","CDC6","CKAP2L","DNA2","NCAPD2","WDR62","BUB1","STIL","ZEB2","PLK4","CENPF","BRCA2","ASPM","CCDC88A","FANCB","FANCA","CENPE","LMNB2","HHAT","FANCD2","CEP55","NDE1","GINS2","MRE11","DDX11","RBBP8","TRAIP","FANCL","KIF14","GINS3","CEP135","FANCE","NUF2","TRIP13","GMNN","CDK5RAP2","TUBGCP3","CCND2","ORC6","VRK1","MCM7","LMNB1","DIAPH1","PCNT","SMC1A","NUP107","NUP188","SMO","ATP1A2","FANCG","GPT2","SASS6","PUS7","HIST1H4C","TCF4","TOP3A","NCAPD3","NUP214","NSD2","RMI1","SMC5","RAD21","FBRSL1","OSGEP","EFTUD2","TUBGCP4","ATRIP","TTI1","ZNF526","SLF2","SMC3","ANKLE2"]
+    return (microcephaly_forebrain,)
+
+
+@app.cell
+def _(microcephaly_G1, microcephaly_forebrain):
+    check_similiarty(microcephaly_G1,microcephaly_forebrain)
+    return
+
+
+@app.cell
+def _(
+    microcephaly_G1,
+    microcephaly_G2M,
+    microcephaly_S,
+    microcephaly_forebrain,
+    plot_gene_overlap,
+):
+    plot_gene_overlap(
+        {'G1': microcephaly_G1, 'S': microcephaly_S, 'G2M': microcephaly_G2M, 'Forebrain': microcephaly_forebrain}, "Microcehpaly"
+    )
     return
 
 

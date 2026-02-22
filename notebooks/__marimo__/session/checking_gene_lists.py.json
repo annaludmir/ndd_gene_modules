@@ -1,0 +1,112 @@
+{
+  "version": "1",
+  "metadata": {
+    "marimo_version": "0.17.8"
+  },
+  "cells": [
+    {
+      "id": "Hbol",
+      "code_hash": "1d0db38904205bec4d6f6f6a1f6cec3e",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "SqFH",
+      "code_hash": "c1b7b1d18b5ff786fb8c4d2ef4e0138a",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "KXQX",
+      "code_hash": "096c3fb542f8f3a091fca416da36a7c3",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "hZeA",
+      "code_hash": "b89f8fc4d75f3c1daef9c0a6d30302ab",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "giBF",
+      "code_hash": "367e6fb69b468063a2bb45678e47aa66",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "application/json": "[\"AKT3\", \"ANKLE2\", \"ATP11A\", \"ATP6V0C\", \"ATRIP\", \"BLM\", \"BRCA2\", \"BRIP1\", \"BUB1\", \"CDC6\", \"CDT1\", \"COG3\", \"COPB1\", \"CPAP\", \"CTSF\", \"DDX11\", \"DNA2\", \"DROSHA\", \"EOMES\", \"ERCC6\", \"ERCC8\", \"FANCB\", \"FANCC\", \"FANCD2\", \"FANCE\", \"FANCG\", \"FANCI\", \"FANCL\", \"FANCM\", \"GINS2\", \"GINS3\", \"HHAT\", \"HIST1H4C\", \"IARS1\", \"IGF1\", \"KIF1BP\", \"KNL1\", \"MCM7\", \"MPLKIP\", \"MRE11\", \"NCAPD2\", \"NCAPD3\", \"NCAPH\", \"NHEJ1\", \"NIN\", \"NSMCE2\", \"NUF2\", \"ORC4\", \"ORC6\", \"PALB2\", \"PCDHGC4\", \"PDHA1\", \"PHC1\", \"POC1A\", \"PPP1R35\", \"PRIM1\", \"QARS\", \"RAD50\", \"RAD51\", \"RAD51C\", \"RING1\", \"RMI1\", \"RRP7A\", \"SLC38A3\", \"SLX4\", \"SMO\", \"TPR\", \"TRA2B\", \"TRAPPC12\", \"TRIP13\", \"TRRAPC14\", \"TUBGCP3\", \"TUBGCP4\", \"UBA5\", \"WDR11\", \"YIPF5\", \"ZNF668\", \"ZNHIT3\", \"ZPR1\"]"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "jipy",
+      "code_hash": "307f9a2124dad374b246711be9784a62",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "TzAF",
+      "code_hash": "cda4e92c97b0fdb3c208fffd541ea8ca",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": [
+        {
+          "type": "stream",
+          "name": "stdout",
+          "text": "214\n['ACBD6', 'ANKLE2', 'AP4B1', 'AP4E1', 'AP4M1', 'AP4S1', 'ARCN1', 'ARF3', 'ASPM', 'ATP1A2', 'ATP6V0A1', 'ATP9A', 'ATRIP', 'BLM', 'BRCA2', 'BRIP1', 'BUB1', 'BUB1B', 'CAMSAP1', 'CASK', 'CCDC88A', 'CCND2', 'CDC6', 'CDK5RAP2', 'CDK6', 'CDT1', 'CENPE', 'CENPF', 'CEP135', 'CEP152', 'CEP55', 'CEP57', 'CEP63', 'CHAMP1', 'CHKA', 'CIT', 'CKAP2L', 'COASY', 'COG3', 'COPB1', 'COPB2', 'CPSF3', 'CRIPT', 'CTCF', 'CTSF', 'CTU2', 'DDX11', 'DHCR7', 'DIAPH1', 'DNA2', 'DOHH', 'DONSON', 'DPM1', 'DPP6', 'DYNC1I2', 'EFTUD2', 'EIF2S3', 'EIF5A', 'EOMES', 'ERCC4', 'ERCC6', 'ERCC8', 'EXOC7', 'FANCA', 'FANCB', 'FANCC', 'FANCD2', 'FANCE', 'FANCG', 'FANCI', 'FANCL', 'FANCM', 'FBRSL1', 'FILIP1', 'FOXG1', 'FRA10AC1', 'GINS2', 'GINS3', 'GMNN', 'GPT2', 'GRM7', 'HDAC8', 'HHAT', 'HIKESHI', 'HIST1H4C', 'HPDL', 'IGF1R', 'INTS11', 'KIF11', 'KIF14', 'KIF1BP', 'KMT2B', 'KNL1', 'LAGE3', 'LARP7', 'LMNB1', 'LMNB2', 'MCM7', 'MCPH1', 'MECP2', 'MED11', 'METTL5', 'MFSD2A', 'MINPP1', 'MORC2', 'MPLKIP', 'MRE11', 'MSMO1', 'MYCN', 'NAA20', 'NBN', 'NCAPD2', 'NCAPD3', 'NCAPH', 'NDE1', 'NIN', 'NSD2', 'NSMCE2', 'NSRP1', 'NUF2', 'NUP107', 'NUP188', 'NUP214', 'ORC1', 'ORC4', 'ORC6', 'OSGEP', 'PALB2', 'PCNT', 'PDCD6IP', 'PDHA1', 'PHC1', 'PLAA', 'PLK4', 'POC1A', 'PPFIBP1', 'PPIL1', 'PPP1R15B', 'PPP1R35', 'PQBP1', 'PRIM1', 'PSMC3', 'PTPN23', 'PUF60', 'PUS7', 'QARS', 'RAD21', 'RAD51C', 'RBBP8', 'RING1', 'RMI1', 'RPL10', 'RTTN', 'RUSC2', 'SASS6', 'SLC1A4', 'SLC25A19', 'SLC9A6', 'SLF2', 'SLX4', 'SMARCA5', 'SMC1A', 'SMC3', 'SMC5', 'SMO', 'STAMBP', 'STIL', 'SVBP', 'TCF4', 'TNPO2', 'TOP3A', 'TP53RK', 'TPR', 'TPRKB', 'TRA2B', 'TRAIP', 'TRAPPC10', 'TRAPPC12', 'TRAPPC6B', 'TRAPPC9', 'TRIO', 'TRIP13', 'TRMT1', 'TRMT10A', 'TSEN15', 'TSEN54', 'TTC5', 'TTI1', 'TUBG1', 'TUBGCP2', 'TUBGCP3', 'TUBGCP4', 'TUBGCP6', 'UBA5', 'UBE3A', 'UFC1', 'UFM1', 'UNC80', 'VPS50', 'VRK1', 'WDFY3', 'WDR37', 'WDR4', 'WDR62', 'WDR73', 'WLS', 'XRCC4', 'YIF1B', 'ZEB2', 'ZNF335', 'ZNF526', 'ZNF668', 'ZNHIT3', 'ZPR1']\n",
+          "mimetype": "text/plain"
+        }
+      ]
+    },
+    {
+      "id": "cKAF",
+      "code_hash": null,
+      "outputs": [],
+      "console": []
+    }
+  ]
+}
