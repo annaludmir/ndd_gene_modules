@@ -310,7 +310,6 @@ def _():
         plt.show()
 
         return {"data": d, "term_order": term_order}
-
     return bubble_go_by_phase, load_enrichr_tables, np, pd, plt
 
 
@@ -326,49 +325,106 @@ def _(bubble_go_by_phase, load_enrichr_tables):
     df_all = load_enrichr_tables(phase_to_csv)
 
     out = bubble_go_by_phase(df_all, phase_order=["G1","S","G2M","PostM","Non-cycling"], top_terms=25, score_col_for_color="Combined Score")
-    return df_all, out
+    return (df_all,)
 
 
 @app.cell
 def _(np, pd, plt):
+    from scipy.cluster.hierarchy import linkage, leaves_list
+    from scipy.spatial.distance import pdist
+
+
     def _parse_gene_list(s):
         if pd.isna(s):
             return set()
         return set(g.strip() for g in str(s).split(";") if g.strip())
 
-    def go_gene_shift_heatmap(
+
+    def _cluster_row_order(mat: np.ndarray, method="average", metric="correlation"):
+        """
+        Returns row indices in clustered order.
+        NaNs are imputed with column means (fallback 0).
+        """
+        X = mat.copy()
+
+        col_means = np.nanmean(X, axis=0)
+        col_means = np.where(np.isnan(col_means), 0.0, col_means)
+        r, c = np.where(np.isnan(X))
+        X[r, c] = col_means[c]
+
+        # If all rows identical / too few rows, pdist/linkage can fail
+        if X.shape[0] < 2:
+            return np.arange(X.shape[0])
+
+        D = pdist(X, metric=metric)
+        Z = linkage(D, method=method)
+        return leaves_list(Z)
+
+
+    def go_gene_shift_heatmap_clustered(
         df: pd.DataFrame,
         phase_order: list,
-        term_order: list,
         *,
-        term_col="Term",
-        phase_col="Phase",
-        genes_col="Genes",
-        figsize=(14, 6),
+        term_col: str = "Term",
+        phase_col: str = "Phase",
+        genes_col: str = "Genes",
+        # optional filtering to keep plot readable
+        fdr_col: str | None = "Adjusted P-value",
+        fdr_max: float | None = 0.05,
+        top_terms: int | None = 40,  # set None to keep ALL terms (can be huge)
+        # clustering params
+        cluster_metric: str = "correlation",
+        cluster_method: str = "average",
+        figsize=(14, 8),
     ):
         """
-        Heatmap: rows=GO terms, cols=phase transitions (G1→S, S→G2M, ...)
-        values = Jaccard similarity of overlap genes for each term across phases.
+        Heatmap: rows=GO terms, cols=phase transitions, values=Jaccard similarity
+        of overlap genes between consecutive phases.
+
+        - Does NOT require term_order: terms are chosen from df.
+        - Rows are automatically reordered by hierarchical clustering so similar patterns
+          are adjacent.
+        - Optional: filter to significant terms and/or keep only top N terms.
         """
 
         d = df.copy()
-        d = d[d[phase_col].isin(phase_order) & d[term_col].isin(term_order)].copy()
+        d = d[d[phase_col].isin(phase_order)].copy()
 
-        # Build dict: (term, phase) -> gene set
+        # Optional: filter by FDR (if column exists and requested)
+        if fdr_col is not None and fdr_col in d.columns and fdr_max is not None:
+            d[fdr_col] = pd.to_numeric(d[fdr_col], errors="coerce")
+            d = d[d[fdr_col].notna() & (d[fdr_col] <= fdr_max)].copy()
+
+        if d.empty:
+            raise ValueError("No rows left after filtering. Check phase names / FDR filter.")
+
+        # Decide which terms to include (no manual term_order!)
+        if top_terms is None:
+            terms = sorted(d[term_col].dropna().unique().tolist())
+        else:
+            # pick top terms by best (min) FDR across phases if possible; otherwise by frequency
+            if fdr_col is not None and fdr_col in d.columns:
+                best = d.groupby(term_col)[fdr_col].min().sort_values()
+                terms = best.head(top_terms).index.tolist()
+            else:
+                terms = d[term_col].value_counts().head(top_terms).index.tolist()
+
+        d = d[d[term_col].isin(terms)].copy()
+
+        # Build dict: (term, phase) -> gene set (union if duplicates)
         gene_map = {}
         for (term, phase), sub in d.groupby([term_col, phase_col]):
-            # if multiple rows per term/phase, union them
             gs = set()
             for v in sub[genes_col].tolist():
                 gs |= _parse_gene_list(v)
             gene_map[(term, phase)] = gs
 
-        transitions = [(phase_order[i], phase_order[i+1]) for i in range(len(phase_order)-1)]
-        trans_labels = [f"{a}→{b}" for a,b in transitions]
+        transitions = [(phase_order[i], phase_order[i + 1]) for i in range(len(phase_order) - 1)]
+        trans_labels = [f"{a} ∪ {b}" for a, b in transitions]
 
-        mat = np.full((len(term_order), len(transitions)), np.nan, dtype=float)
+        mat = np.full((len(terms), len(transitions)), np.nan, dtype=float)
 
-        for ti, term in enumerate(term_order):
+        for ti, term in enumerate(terms):
             for j, (a, b) in enumerate(transitions):
                 A = gene_map.get((term, a), set())
                 B = gene_map.get((term, b), set())
@@ -377,25 +433,63 @@ def _(np, pd, plt):
                 else:
                     mat[ti, j] = len(A & B) / max(1, len(A | B))
 
+        # Cluster rows to make similar color patterns adjacent
+        order_idx = _cluster_row_order(mat, method=cluster_method, metric=cluster_metric)
+        mat_ord = mat[order_idx, :]
+        terms_ord = [terms[i] for i in order_idx]
+
+        # Plot
         plt.figure(figsize=figsize)
-        im = plt.imshow(mat, aspect="auto", interpolation="nearest")
+        im = plt.imshow(mat_ord, aspect="auto", interpolation="nearest", vmin=0, vmax=1)
         plt.colorbar(im, label="Jaccard similarity of overlap genes")
 
-        plt.yticks(range(len(term_order)), term_order)
+        plt.yticks(range(len(terms_ord)), terms_ord)
         plt.xticks(range(len(trans_labels)), trans_labels)
 
-        plt.title("GO-term gene-driver stability across phases")
+        plt.title("Microcephaly GO-term leading gene-driver stability across phases")
         plt.tight_layout()
         plt.show()
 
-        return mat
-
-    return (go_gene_shift_heatmap,)
+        return {
+            "mat": mat_ord,
+            "terms": terms_ord,
+            "transitions": transitions,
+            "trans_labels": trans_labels,
+            "raw_terms": terms,
+        }
+    return (go_gene_shift_heatmap_clustered,)
 
 
 @app.cell
-def _(df_all, go_gene_shift_heatmap, out):
-    go_gene_shift_heatmap(df_all, ["G1","S","G2M","PostM","Non-cycling"], out["term_order"])
+def _(df_all, go_gene_shift_heatmap_clustered):
+    result = go_gene_shift_heatmap_clustered(
+        df_all,  # your concatenated enrichr results across phases
+        phase_order=["G1", "S", "G2M", "PostM", "Non-cycling"],
+        fdr_col="Adjusted P-value",
+        fdr_max=0.05,
+        top_terms=50,               # bump to 50 if you want
+        cluster_metric="correlation"
+    )
+    return
+
+
+@app.cell
+def _(pd):
+    summary = pd.read_csv('/miridan-data/annaludmir/ndd_gene_modules/results/ges_score_results/ges_score_for_all_layers_proliferating_20260223/data/ges_spec_ProliferatingRegions_Midbrain.csv')
+
+    return (summary,)
+
+
+@app.cell
+def _(summary):
+    summary
+    return
+
+
+@app.cell
+def _(summary):
+    queried_summary = summary.query("gene == 'LHX2'")
+    queried_summary
     return
 
 

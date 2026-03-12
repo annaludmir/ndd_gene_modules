@@ -290,6 +290,25 @@ def _():
 
 @app.cell
 def _():
+    from scipy.stats import hypergeom
+
+    def overlap_pval(setA, setB, universe_size):
+        A = set(setA)
+        B = set(setB)
+
+        N = universe_size
+        K = len(A)
+        M = len(B)
+        k = len(A & B)
+
+        # survival function = P(X >= k)
+        pval = hypergeom.sf(k - 1, N, K, M)
+        return pval, k
+    return (overlap_pval,)
+
+
+@app.cell
+def _(overlap_pval, similarity):
     from matplotlib import pyplot as plt
     from matplotlib_venn import venn2, venn3
     from upsetplot import UpSet, from_contents
@@ -298,7 +317,8 @@ def _():
     def plot_gene_overlap(
         gene_sets: dict,
         cluster,
-        similiarity = 0):
+        similiarity = 0,
+        universe_size = None):
         """
         Plot overlap for multiple gene lists.
 
@@ -317,9 +337,18 @@ def _():
             labels = list(gene_sets.keys())
             a, b = labels
 
+            pval = None
+            if universe_size is not None:
+                pval, k = overlap_pval(gene_sets[a], gene_sets[b], universe_size)
+
             plt.figure(figsize=(5, 5))
             venn2([gene_sets[a], gene_sets[b]], set_labels=labels)
-            plt.title(f"{cluster} Leading Genes - Similarity {similiarity}")
+
+            title = f"{cluster} Leading Genes\nSimilarity={similarity}"
+            if pval is not None:
+                title += f"\nHypergeom p = {pval:.2e}"
+
+            plt.title(title)
             plt.show()
 
         elif n == 3:
@@ -563,6 +592,48 @@ def _():
 
 
 @app.cell
+def _():
+    microcephaly_NPCs = ['EOMES','KNL1','CEP55','BUB1B','WDR62','CKAP2L','KIF11','BUB1','CIT','STIL','NCAPH','ASPM','CEP152','NUF2','BRIP1','KIF14','DNA2','BLM','CENPE','POC1A','FANCD2','FANCI','PLK4','CENPF','NCAPD2','ORC1','BRCA2','CDT1','FANCB','FANCA','CDC6','ORC6','TRAIP','RBBP8','NDE1','NCAPD3','TRIP13','LMNB2','VRK1','CEP135','DDX11','GMNN','HIST1H4C','CDK6','CCND2','FANCG','FANCM','CDK5RAP2','LMNB1','MCM7','PRIM1','RTTN','GINS2','PCNT','TUBGCP3','SMC1A','RMI1','FOXG1','TOP3A','FANCL','GINS3','TUBG1','NSD2','FANCE','SASS6','MRE11','DONSON','XRCC4','NUP188']
+    return (microcephaly_NPCs,)
+
+
+@app.cell
+def _():
+    microcephaly_NPCs_cortex = ['EOMES','WDR62','CEP55','KNL1','CIT','KIF14','CENPE','BLM','CKAP2L','NUF2','KIF11','BUB1','NCAPH','FANCD2','BUB1B','ASPM','POC1A','FANCI','STIL','CDC6','CEP152','RBBP8','BRIP1','CENPF','DNA2','PLK4','BRCA2','NCAPD2','ORC6','ORC1','FANCB','CDT1','FANCG','NCAPD3','TRAIP','LMNB2','GINS3','GMNN','FANCA','DDX11','MFSD2A','CDK6','NDE1','MCM7','LMNB1','TUBG1','HIST1H4C','RMI1','PCNT','CDK5RAP2','NSD2','FANCM','CEP135','GINS2','NUP188','RTTN','TUBGCP3']
+    return
+
+
+@app.cell
+def _():
+    microcephaly_radial_glia = ['FILIP1','HPDL','CENPF','CEP55','NUF2','POC1A','CDC6','BUB1','BRCA2','CKAP2L','CENPE','ASPM','GINS2','NCAPH','TRIP13','CDT1','BUB1B','ORC1','FANCD2','KIF14','KIF11','ORC6','TRAIP','STIL','KNL1','GINS3','BLM','PLK4','FANCB','GMNN','MCM7','WDR62','BRIP1','FANCI','WLS','NCAPD2','CEP152','NDE1','MYCN','SLC25A19','CIT','CEP135','MFSD2A','TSEN15','DDX11','DNA2','RBBP8','SASS6','PPIL1','CDK6','FANCA','FANCG','TRMT10A','SMO']
+    return (microcephaly_radial_glia,)
+
+
+@app.cell
+def _():
+    microcephaly_radial_glia_cortex = ['FILIP1','BUB1B','BUB1','HPDL','ASPM','CKAP2L','CENPE','KIF14','CEP55','NUF2','POC1A','CENPF','NCAPH','CDT1','NDE1','KIF11','CIT','ORC1','GINS3','GINS2','TRAIP','KNL1','NCAPD2','CDC6','SASS6','ORC6','STIL','BLM','BRCA2','FANCB','GMNN','CEP152','MCM7','CEP135','TRMT10A','SMO','LMNB2','FANCD2','XRCC4','DDX11','PLK4','CDK6','DNA2','PNKP','PPFIBP1','WDR62','PRIM1','MFSD2A','CTNNB1','GPT2','METTL5']
+    return
+
+
+@app.cell
+def _():
+    microcephaly_glioblasts = ['ZEB2','HMGB1','DOHH','PDCD6IP','DYRK1A','NSD2','PTPN23','CKAP2L','EIF2S3','KIF14','UFM1','COPB1','UBA5','NUF2','PPP1R35','AKT3','ASPM','TPR','PSMC3','MCM7','PRUNE1','VPS50','BPTF','ANKLE2','RAD21','CTNNB1','RAD51C','INTS11','YIF1B','LMNB2','WDR73','CRIPT','WDFY3','CREBBP','TRAIP','RING1','TRMT1','POGZ','NAA20','HDAC8','CTU2','TUBGCP4','RTTN','NCAPD2','AP4E1','KNL1','SMC1A','QARS','OSGEP','EXOC7','ORC1','SASS6','NCAPH','TUBGCP2','NUP188','TUBGCP6','PUF60','DROSHA','PPP1R15B','BUB1B','TAF13','TRAPPC12','ERCC4','METTL5','LARP7','POC1A','STAMBP','TNPO2','TSEN54','TRIP13','DONSON','XRCC4','WDR62','TOP3A','NCAPD3','SLC9A6','HHAT','FANCG','STIL','RBBP8','FANCE','CDC6','NUP107','CIT','AP4S1','TTI1','FILIP1','DNA2','LAGE3','EFTUD2','GMNN','BLM','CDK5RAP2','NUP214','FANCL','UFC1','ORC6','NSMCE2','TUBGCP3','UGP2','FANCC','KIF1BP','COASY','NSRP1','PNKP','FOXG1','NBN','WDR11','NDE1','MYCN','KIF11','SMC5','TCF4','MSMO1','MRE11','PLK4','FANCB','GINS2','DDX11','CHKA']
+    return (microcephaly_glioblasts,)
+
+
+@app.cell
+def _():
+    microcephaly_glioblasts_cortex = ['ATP1A2','SLC38A3','BRIP1','FILIP1','PUS7','BRCA2','CDK6','FANCA','FANCI','SMO','GINS2','PLK4','FANCB','CDT1','ORC1','GINS3','FANCC','GMNN','FANCD2','CDC6','CEP135','CTSF','ATP11A','DDX11','ORC6','LHX2','MED11','MRE11','GPT2','FANCG','SMC5','AP4S1','KIF1BP','CTNNB1','SLF2','TUBGCP3','RBBP8','CEP152','STIL','ATR','FANCE','BLM','TRAIP','KIF11','WDR62','TTI1','DNA2','NCAPH','PNKP','NCAPD3','HPDL','MCM7','CCND2','NUP107','STAMBP','NSRP1','LARP7','WDR11','MSMO1','RING1','POC1A','COASY','CHKA','NDE1','NBN','TSEN54','SMC1A','ZNF526','NSD2','FANCM','TUBGCP4','QARS','EFTUD2','TAF13','PPP1R15B','ARCN1','SASS6','ANKLE2','PPFIBP1','TRMT1','RMI1','TRA2B','NUP188','TUBG1','CIT','FANCL','UFM1','MYCN','WDR73','LAGE3','PPIL1','XRCC4','PPP1R35','NAA20','PHC1','UGP2','TRMT10A','NUF2','RAD21','CKAP2L','CRIPT','NCAPD2']
+    return
+
+
+@app.cell
+def _():
+    microcephaly_fibroblasts = ['INTS11','SVBP','CKAP2L','NSRP1','RTTN','FANCA','TRAPPC12','ERCC8','WDR73','PALB2','TP53RK','HIKESHI','TRIO','RAD51C','FANCD2','CEP135','PTPN23','KIF11','HDAC8','TRAPPC10','WDR4','WDR11','DNMT3A','CCND2','FANCC','TRIP13','ATRIP','TRAIP','MPLKIP','RAD50','PDHA1','STIL','KMT2B','TUBG1','TCF4','FRA10AC1','SMC1A','TUBGCP6','PQBP1','NUP188','CDT1','TUBGCP2','ACBD6','BLM','CTNNB1','NCAPH','BRD4','ADARB1','LARP7','RPL10','PPIL1','NUP214','ORC6','KNL1','SLF2','ANKLE2','MRE11','TAF13','EFTUD2','COASY','AP4S1','CENPF','GINS2','NDE1','COG3','CENPE','TSEN54','ORC1','PSMC3','CREBBP','UGP2','SLC25A19','TRA2B','TRMT10A','DPM1','GTF2E2','DOHH','POC1A','YIF1B','PPP1R15B','DONSON','RING1','FANCL','EIF5A','SMC5','BRIP1','CDK6','DDX11','UFM1','LMNB2','NSMCE2','TRMT1','CTU2','NAA20','RRP7A','HIST1H4C','GINS3','ZNF335','EIF2S3','TPR','CHKA','METTL5','COPB2','PNKP','COPB1','CDC6','AP4M1','UFC1','ARPC4']
+    return
+
+
+@app.cell
 def _(microcephaly_G1, microcephaly_forebrain):
     check_similiarty(microcephaly_G1,microcephaly_forebrain)
     return
@@ -579,6 +650,39 @@ def _(
     plot_gene_overlap(
         {'G1': microcephaly_G1, 'S': microcephaly_S, 'G2M': microcephaly_G2M, 'Forebrain': microcephaly_forebrain}, "Microcehpaly"
     )
+    return
+
+
+@app.cell
+def _():
+    regions = {
+        'Forebrain': ['FOXG1','CDK6','HPDL','BRIP1','CIT','KIF11','CEP152','KNL1','BLM','ORC1','FANCI','CDT1','BUB1B','POC1A','NCAPH','CDC6','CKAP2L','DNA2','NCAPD2','WDR62','BUB1','STIL','ZEB2','PLK4','CENPF','BRCA2','ASPM','CCDC88A','FANCB','FANCA','CENPE','LMNB2','HHAT','FANCD2','CEP55','NDE1','GINS2','MRE11','DDX11','RBBP8','TRAIP','FANCL','KIF14','GINS3','CEP135','FANCE','NUF2','TRIP13','GMNN','CDK5RAP2','TUBGCP3','CCND2','ORC6','VRK1','MCM7','LMNB1','DIAPH1','PCNT','SMC1A','NUP107','NUP188','SMO','ATP1A2','FANCG','GPT2','SASS6','PUS7','HIST1H4C','TCF4','TOP3A','NCAPD3','NUP214','NSD2','RMI1','SMC5','RAD21','FBRSL1','OSGEP','EFTUD2','TUBGCP4','ATRIP','TTI1','ZNF526','SLF2','SMC3','ANKLE2'],
+        'Telecenphalon':
+    ['EOMES','FOXG1','LHX2','VRK1','CCND2','TCF4','PUS7','BUB1B','FANCL','AKT3','PCNT','ASPM','BUB1','FANCA','DNA2','CKAP2L','CEP135','TRAPPC9','MYCN','KIF11','BRIP1','KNL1','DIAPH1','CEP152','TP53RK','CDK5RAP2','FANCI','PLK4','AP4B1','NCAPH','NUF2','CEP63','ATP11A','NDE1','SLF2','TUBGCP3','TRIP13','TRIO','ZEB2','NUP188','CENPF','PCLO','ACBD6','NCAPD2','HIST1H4C','FANCD2','CDT1','PDHA1','MCPH1','TOP3A','LMNB1','POC1A','ORC6','POGZ','PRIM1','CEP55','DROSHA','NUP107','WDR62','NCAPD3','KIF14','GINS2','BRCA2','LMNB2','ATRIP','CAMSAP1','STIL','ADARB1','ATRX','PALB2','FANCE','ATR','SMC1A','EXOC7','FANCB','TUBGCP6','KMT2B','ZNF526','EFTUD2','MCM7','DDX11','VPS50','SMC5','IGF1R','ZPR1','GPT2','CCDC88A','CENPE','MRE11','SMC3','WDFY3','FANCM','NSD2','OSGEP','PTPN23','CREBBP','CIT','NIPBL','TUBGCP2','FRA10AC1','RBBP8','WDR11','UBE3A','GMNN','UNC80','CTCF','RTTN','HDAC8','NUP214','TTI1','RMI1','ATP9A','RUSC2','TRAIP','FBRSL1','ERCC6','MORC2','TUBGCP4','PQBP1','AP4E1','TNPO2','PRUNE1','NSRP1','HMGB1'],
+        'Diencephalon':
+    ['ZNHIT3','PLK4','MFSD2A','HIKESHI','LMNB2','NCAPD2','SASS6','RMI1','TUBG1','CEP135','CRIPT','MSMO1','LARP7','RRP7A','SLC9A6','DPP6','LAGE3','KIF11','PRIM1','SVBP','NCAPH','FANCB','TPRKB','TRMT10A','MPLKIP','UNC80','HMGB1','CENPE','POC1A','FANCD2','ORC6','DYNC1I2','DHCR7','MED11','BUB1B','UFC1','CIT','KIF14','CTNNB1','ASPM','BUB1','KNL1','CEP55','HIST1H4C','CDK6','METTL5','CENPF','ATP1A2','NUF2','CKAP2L'],
+        'Midbrain':
+    ['EIF2S3','ARCN1','MINPP1','NSRP1','ERCC4','NBN','RAD21','MSMO1','ATP1A2','TUBG1','DHCR7','SMO','UBA5','UFC1','TRMT1','QARS','RPL10','AP4S1','RAD51C','STAMBP','CRIPT','ATP6V0A1','PUF60','WDR73','CEP63','NIN','NAA20','COPB2','PPFIBP1','ZNHIT3','TPRKB','GINS2','TRA2B','COASY','SVBP'],
+        'Hindbrain':
+    ['SMC1A','PPP1R35','FBRSL1','KMT2B','RPL10','NSMCE2','SMC3','TPR','MCPH1','ATP9A','CHAMP1','PDHA1','TUBGCP2','XRCC4','PTPN23','PUF60','PSMC3','ERCC6','ZNF335','COPB2','TTC5','MECP2','DPM1','CHKA','CAMSAP1','SLC1A4','COPB1','QARS','CRIPT','RAD51C','LMNB1','DYNC1I2','TUBG1','TRAPPC12','TUBGCP4','SLX4','CTCF','PQBP1','ZPR1','TRA2B','CPSF3','MSMO1','ERCC8','ARF3','ATP1A2','AP4E1','UFM1','WDR4','RING1','ANKLE2','COG3','SMARCA5','METTL5','MPLKIP','PLAA','TP53RK','MED11','LARP7','EIF5A','KIF1BP','WDR73','UBA5','GRM7','SVBP','TPRKB','DPP6','DOHH','YIF1B','PALB2','HIKESHI','STAMBP','ERCC4','LAGE3','ARCN1','MORC2','NIN','ZNF668','AP4S1','PPP1R15B','MINPP1','TRAPPC10','CTU2','ZNHIT3','PPIL1','TSEN15','TRMT10A','NBN'],
+        'Pons':
+        ['TSEN15','NAA20','YIF1B','MPLKIP','LIG4','MED11','TPRKB','UFC1','RPL10','NIN'],
+        'Cerebellum':
+    ['TNPO2','TRAPPC9','DIAPH1','UFM1','COPB2','WDFY3','DHCR7','MYCN','ATP1A2','MSMO1','TUBGCP2','HDAC8','WDR4','KMT2B','RPL10','SLC9A6','MECP2','ARF3','CAMSAP1','ATP6V0A1','ZNF335','PTPN23','TRAPPC12','FANCC','ZNHIT3','TUBGCP4','ATRIP','GINS3','TSEN54','ACBD6','PDHA1','CEP57','PALB2','ORC4','CHKA','TTC5','MCPH1','PPFIBP1','INTS11','TUBGCP6','UBE3A','PHC1','PDCD6IP','DYNC1I2','UNC80','ZPR1','WDR37','RUSC2','RING1','SLX4','AP4B1','SVBP','DOHH','FRA10AC1','EXOC7','CTU2','CASK','FANCG','MORC2','VPS50','EOMES','IGF1R','DPP6','TRIO','AP4M1','TRMT1','YIF1B','SLC1A4','AP4S1','NIN','CTSF','TRAPPC6B','ATP9A','ZNF668','ERCC6'],
+        'Medulla':
+    ['UNC80','HMGB1','NAA20','GPT2','UFC1','GRM7','ZPR1','DHCR7','KIF1BP','EIF5A','ARF3','COASY','RPL10','HIKESHI','CRIPT','TSEN15','TAF13','DPP6','MINPP1','MSMO1','WLS','MED11','METTL5','TCF4','YIF1B']
+    }
+    return
+
+
+@app.cell
+def _(
+    microcephaly_NPCs,
+    microcephaly_glioblasts,
+    microcephaly_radial_glia,
+    plot_gene_overlap,
+):
+    plot_gene_overlap({'NPCs':microcephaly_NPCs, 'Radial glia':microcephaly_radial_glia, 'Glioblast':microcephaly_glioblasts}, 'Microcephaly (All layers)')
     return
 
 

@@ -617,9 +617,9 @@ def calculate_ges(
         subset = adata_f[ct_idx]
 
         if subset.n_obs == 0:
-            print(f"⚠️ No cells for {cell_type} – skipping")
+            print(f"⚠️ No cells for {ct} – skipping")
             continue
-        
+
         ct_mean_expr = np.asarray(adata_f[ct_idx].X.mean(axis=0)).ravel()
         weighted_sum += ct_fraction * ct_mean_expr
 

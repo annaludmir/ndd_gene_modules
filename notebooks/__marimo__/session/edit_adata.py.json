@@ -5,66 +5,7 @@
   },
   "cells": [
     {
-      "id": "Hbol",
-      "code_hash": "1d0db38904205bec4d6f6f6a1f6cec3e",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
-      "console": []
-    },
-    {
-      "id": "CRsF",
-      "code_hash": "8c6b9aca9b0cdab578d179c55536396c",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
-      "console": []
-    },
-    {
-      "id": "frfl",
-      "code_hash": "ae8b7dba850ce235f369cb4cd8aa4d01",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
-      "console": []
-    },
-    {
-      "id": "SAPu",
-      "code_hash": "ab890f2579abf0d9de31bb18be74e615",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/html": "<pre style='font-size: 12px'>AnnData object with n_obs \u00d7 n_vars = 1665937 \u00d7 33538\n    obs: &#x27;Age&#x27;, &#x27;CellClass&#x27;, &#x27;Region&#x27;, &#x27;Subdivision&#x27;, &#x27;Subregion&#x27;, &#x27;Tissue&#x27;, &#x27;TopLevelCluster&#x27;, &#x27;organism_ontology_term_id&#x27;, &#x27;disease_ontology_term_id&#x27;, &#x27;self_reported_ethnicity_ontology_term_id&#x27;, &#x27;assay_ontology_term_id&#x27;, &#x27;sex_ontology_term_id&#x27;, &#x27;development_stage_ontology_term_id&#x27;, &#x27;donor_id&#x27;, &#x27;suspension_type&#x27;, &#x27;dissection&#x27;, &#x27;sample_id&#x27;, &#x27;cluster_id&#x27;, &#x27;Chemistry&#x27;\n    var: &#x27;Chromosome&#x27;, &#x27;End&#x27;, &#x27;Gene&#x27;, &#x27;Start&#x27;, &#x27;Strand&#x27;\n    uns: &#x27;batch_condition&#x27;, &#x27;schema_version&#x27;, &#x27;title&#x27;\n    layers: &#x27;ambiguous&#x27;, &#x27;spliced&#x27;, &#x27;unspliced&#x27;</pre>"
-          }
-        }
-      ],
-      "console": [
-        {
-          "type": "stream",
-          "name": "stdout",
-          "text": "Chemistry value counts:\nChemistry\nv3    887838\nv2    778099\nName: count, dtype: int64\nSaved: /miridan-data/annaludmir/ndd_gene_modules/data/human_dev-GRCh38-3.0.0_all_layers_from_github_with_chemistry.h5ad\n",
-          "mimetype": "text/plain"
-        }
-      ]
-    },
-    {
-      "id": "FEOx",
+      "id": "lEQa",
       "code_hash": "0130e4e710207c9bc6c4ad5bc5ebd731",
       "outputs": [
         {
@@ -77,54 +18,44 @@
       "console": []
     },
     {
-      "id": "vciy",
-      "code_hash": "c5a6c4afb3df969a083dd449b4671040",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
+      "id": "Hbol",
+      "code_hash": "1d0db38904205bec4d6f6f6a1f6cec3e",
+      "outputs": [],
       "console": []
     },
     {
-      "id": "mXrY",
-      "code_hash": "cf22f49c52e99b06f846da53a60480b3",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
-      "console": [
-        {
-          "type": "stream",
-          "name": "stderr",
-          "text": "/tmp/marimo_1196632/__marimo__cell_vciy_.py:15: DeprecationWarning: is_categorical_dtype is deprecated and will be removed in a future version. Use isinstance(dtype, pd.CategoricalDtype) instead\n  if s.dtype == \"object\" or pd.api.types.is_categorical_dtype(s):\n/tmp/marimo_1196632/__marimo__cell_vciy_.py:15: DeprecationWarning: is_categorical_dtype is deprecated and will be removed in a future version. Use isinstance(dtype, pd.CategoricalDtype) instead\n  if s.dtype == \"object\" or pd.api.types.is_categorical_dtype(s):\n/tmp/marimo_1196632/__marimo__cell_vciy_.py:15: DeprecationWarning: is_categorical_dtype is deprecated and will be removed in a future version. Use isinstance(dtype, pd.CategoricalDtype) instead\n  if s.dtype == \"object\" or pd.api.types.is_categorical_dtype(s):\n/tmp/marimo_1196632/__marimo__cell_vciy_.py:15: DeprecationWarning: is_categorical_dtype is deprecated and will be removed in a future version. Use isinstance(dtype, pd.CategoricalDtype) instead\n  if s.dtype == \"object\" or pd.api.types.is_categorical_dtype(s):\n/tmp/marimo_1196632/__marimo__cell_vciy_.py:15: DeprecationWarning: is_categorical_dtype is deprecated and will be removed in a future version. Use isinstance(dtype, pd.CategoricalDtype) instead\n  if s.dtype == \"object\" or pd.api.types.is_categorical_dtype(s):\n/tmp/marimo_1196632/__marimo__cell_vciy_.py:15: DeprecationWarning: is_categorical_dtype is deprecated and will be removed in a future version. Use isinstance(dtype, pd.CategoricalDtype) instead\n  if s.dtype == \"object\" or pd.api.types.is_categorical_dtype(s):\n/tmp/marimo_1196632/__marimo__cell_vciy_.py:15: DeprecationWarning: is_categorical_dtype is deprecated and will be removed in a future version. Use isinstance(dtype, pd.CategoricalDtype) instead\n  if s.dtype == \"object\" or pd.api.types.is_categorical_dtype(s):\n/tmp/marimo_1196632/__marimo__cell_vciy_.py:15: DeprecationWarning: is_categorical_dtype is deprecated and will be removed in a future version. Use isinstance(dtype, pd.CategoricalDtype) instead\n  if s.dtype == \"object\" or pd.api.types.is_categorical_dtype(s):\n/tmp/marimo_1196632/__marimo__cell_vciy_.py:15: DeprecationWarning: is_categorical_dtype is deprecated and will be removed in a future version. Use isinstance(dtype, pd.CategoricalDtype) instead\n  if s.dtype == \"object\" or pd.api.types.is_categorical_dtype(s):\n/tmp/marimo_1196632/__marimo__cell_vciy_.py:15: DeprecationWarning: is_categorical_dtype is deprecated and will be removed in a future version. Use isinstance(dtype, pd.CategoricalDtype) instead\n  if s.dtype == \"object\" or pd.api.types.is_categorical_dtype(s):\n/tmp/marimo_1196632/__marimo__cell_vciy_.py:15: DeprecationWarning: is_categorical_dtype is deprecated and will be removed in a future version. Use isinstance(dtype, pd.CategoricalDtype) instead\n  if s.dtype == \"object\" or pd.api.types.is_categorical_dtype(s):\n/tmp/marimo_1196632/__marimo__cell_vciy_.py:15: DeprecationWarning: is_categorical_dtype is deprecated and will be removed in a future version. Use isinstance(dtype, pd.CategoricalDtype) instead\n  if s.dtype == \"object\" or pd.api.types.is_categorical_dtype(s):\n/tmp/marimo_1196632/__marimo__cell_vciy_.py:15: DeprecationWarning: is_categorical_dtype is deprecated and will be removed in a future version. Use isinstance(dtype, pd.CategoricalDtype) instead\n  if s.dtype == \"object\" or pd.api.types.is_categorical_dtype(s):\n/tmp/marimo_1196632/__marimo__cell_vciy_.py:15: DeprecationWarning: is_categorical_dtype is deprecated and will be removed in a future version. Use isinstance(dtype, pd.CategoricalDtype) instead\n  if s.dtype == \"object\" or pd.api.types.is_categorical_dtype(s):\n/tmp/marimo_1196632/__marimo__cell_vciy_.py:15: DeprecationWarning: is_categorical_dtype is deprecated and will be removed in a future version. Use isinstance(dtype, pd.CategoricalDtype) instead\n  if s.dtype == \"object\" or pd.api.types.is_categorical_dtype(s):\n/tmp/marimo_1196632/__marimo__cell_vciy_.py:15: DeprecationWarning: is_categorical_dtype is deprecated and will be removed in a future version. Use isinstance(dtype, pd.CategoricalDtype) instead\n  if s.dtype == \"object\" or pd.api.types.is_categorical_dtype(s):\n",
-          "mimetype": "text/plain"
-        }
-      ]
+      "id": "MJUe",
+      "code_hash": "8c6b9aca9b0cdab578d179c55536396c",
+      "outputs": [],
+      "console": []
     },
     {
-      "id": "SWrE",
+      "id": "vblA",
+      "code_hash": "ae8b7dba850ce235f369cb4cd8aa4d01",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "bkHC",
+      "code_hash": "ab890f2579abf0d9de31bb18be74e615",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "PKri",
+      "code_hash": "2d2afe372b64f3f0c5e2fb9b80b058c7",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "Xref",
+      "code_hash": "05dbe4d2ffe9cb1f591a5053bede0cbb",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "SFPL",
       "code_hash": "9cb1ceb271210327cf124163360054f3",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/html": "<marimo-ui-element object-id='SWrE-0' random-id='c0578911-3c07-3f13-45f6-f6870994f8a3'><marimo-table data-initial-value='[]' data-label='null' data-data='&quot;[{&#92;&quot;CellID&#92;&quot;:&#92;&quot;b&#x27;10X89_1:AAACGGGAGGCTACGA&#x27;&#92;&quot;,&#92;&quot;Age&#92;&quot;:8.0,&#92;&quot;CellClass&#92;&quot;:&#92;&quot;Erythrocyte&#92;&quot;,&#92;&quot;Region&#92;&quot;:&#92;&quot;Telencephalon&#92;&quot;,&#92;&quot;Subdivision&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;Subregion&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;Tissue&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;TopLevelCluster&#92;&quot;:25,&#92;&quot;organism_ontology_term_id&#92;&quot;:&#92;&quot;NCBITaxon:9606&#92;&quot;,&#92;&quot;disease_ontology_term_id&#92;&quot;:&#92;&quot;PATO:0000461&#92;&quot;,&#92;&quot;self_reported_ethnicity_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;assay_ontology_term_id&#92;&quot;:&#92;&quot;EFO:0009899&#92;&quot;,&#92;&quot;sex_ontology_term_id&#92;&quot;:&#92;&quot;n/a&#92;&quot;,&#92;&quot;development_stage_ontology_term_id&#92;&quot;:&#92;&quot;HsapDv:0000102&#92;&quot;,&#92;&quot;donor_id&#92;&quot;:&#92;&quot;BRC2006&#92;&quot;,&#92;&quot;suspension_type&#92;&quot;:&#92;&quot;nucleus&#92;&quot;,&#92;&quot;dissection&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;sample_id&#92;&quot;:&#92;&quot;10X89_1&#92;&quot;,&#92;&quot;cluster_id&#92;&quot;:240,&#92;&quot;Chemistry&#92;&quot;:&#92;&quot;v2&#92;&quot;},{&#92;&quot;CellID&#92;&quot;:&#92;&quot;b&#x27;10X89_1:ACGAGGAAGAGCCTAG&#x27;&#92;&quot;,&#92;&quot;Age&#92;&quot;:8.0,&#92;&quot;CellClass&#92;&quot;:&#92;&quot;Erythrocyte&#92;&quot;,&#92;&quot;Region&#92;&quot;:&#92;&quot;Telencephalon&#92;&quot;,&#92;&quot;Subdivision&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;Subregion&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;Tissue&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;TopLevelCluster&#92;&quot;:25,&#92;&quot;organism_ontology_term_id&#92;&quot;:&#92;&quot;NCBITaxon:9606&#92;&quot;,&#92;&quot;disease_ontology_term_id&#92;&quot;:&#92;&quot;PATO:0000461&#92;&quot;,&#92;&quot;self_reported_ethnicity_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;assay_ontology_term_id&#92;&quot;:&#92;&quot;EFO:0009899&#92;&quot;,&#92;&quot;sex_ontology_term_id&#92;&quot;:&#92;&quot;n/a&#92;&quot;,&#92;&quot;development_stage_ontology_term_id&#92;&quot;:&#92;&quot;HsapDv:0000102&#92;&quot;,&#92;&quot;donor_id&#92;&quot;:&#92;&quot;BRC2006&#92;&quot;,&#92;&quot;suspension_type&#92;&quot;:&#92;&quot;nucleus&#92;&quot;,&#92;&quot;dissection&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;sample_id&#92;&quot;:&#92;&quot;10X89_1&#92;&quot;,&#92;&quot;cluster_id&#92;&quot;:240,&#92;&quot;Chemistry&#92;&quot;:&#92;&quot;v2&#92;&quot;},{&#92;&quot;CellID&#92;&quot;:&#92;&quot;b&#x27;10X89_1:ACGCCAGTCGATAGAA&#x27;&#92;&quot;,&#92;&quot;Age&#92;&quot;:8.0,&#92;&quot;CellClass&#92;&quot;:&#92;&quot;Erythrocyte&#92;&quot;,&#92;&quot;Region&#92;&quot;:&#92;&quot;Telencephalon&#92;&quot;,&#92;&quot;Subdivision&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;Subregion&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;Tissue&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;TopLevelCluster&#92;&quot;:25,&#92;&quot;organism_ontology_term_id&#92;&quot;:&#92;&quot;NCBITaxon:9606&#92;&quot;,&#92;&quot;disease_ontology_term_id&#92;&quot;:&#92;&quot;PATO:0000461&#92;&quot;,&#92;&quot;self_reported_ethnicity_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;assay_ontology_term_id&#92;&quot;:&#92;&quot;EFO:0009899&#92;&quot;,&#92;&quot;sex_ontology_term_id&#92;&quot;:&#92;&quot;n/a&#92;&quot;,&#92;&quot;development_stage_ontology_term_id&#92;&quot;:&#92;&quot;HsapDv:0000102&#92;&quot;,&#92;&quot;donor_id&#92;&quot;:&#92;&quot;BRC2006&#92;&quot;,&#92;&quot;suspension_type&#92;&quot;:&#92;&quot;nucleus&#92;&quot;,&#92;&quot;dissection&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;sample_id&#92;&quot;:&#92;&quot;10X89_1&#92;&quot;,&#92;&quot;cluster_id&#92;&quot;:236,&#92;&quot;Chemistry&#92;&quot;:&#92;&quot;v2&#92;&quot;},{&#92;&quot;CellID&#92;&quot;:&#92;&quot;b&#x27;10X89_1:CCGGGATCAGACACTT&#x27;&#92;&quot;,&#92;&quot;Age&#92;&quot;:8.0,&#92;&quot;CellClass&#92;&quot;:&#92;&quot;Erythrocyte&#92;&quot;,&#92;&quot;Region&#92;&quot;:&#92;&quot;Telencephalon&#92;&quot;,&#92;&quot;Subdivision&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;Subregion&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;Tissue&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;TopLevelCluster&#92;&quot;:25,&#92;&quot;organism_ontology_term_id&#92;&quot;:&#92;&quot;NCBITaxon:9606&#92;&quot;,&#92;&quot;disease_ontology_term_id&#92;&quot;:&#92;&quot;PATO:0000461&#92;&quot;,&#92;&quot;self_reported_ethnicity_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;assay_ontology_term_id&#92;&quot;:&#92;&quot;EFO:0009899&#92;&quot;,&#92;&quot;sex_ontology_term_id&#92;&quot;:&#92;&quot;n/a&#92;&quot;,&#92;&quot;development_stage_ontology_term_id&#92;&quot;:&#92;&quot;HsapDv:0000102&#92;&quot;,&#92;&quot;donor_id&#92;&quot;:&#92;&quot;BRC2006&#92;&quot;,&#92;&quot;suspension_type&#92;&quot;:&#92;&quot;nucleus&#92;&quot;,&#92;&quot;dissection&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;sample_id&#92;&quot;:&#92;&quot;10X89_1&#92;&quot;,&#92;&quot;cluster_id&#92;&quot;:240,&#92;&quot;Chemistry&#92;&quot;:&#92;&quot;v2&#92;&quot;},{&#92;&quot;CellID&#92;&quot;:&#92;&quot;b&#x27;10X89_1:CGACTTCTCCCACTTG&#x27;&#92;&quot;,&#92;&quot;Age&#92;&quot;:8.0,&#92;&quot;CellClass&#92;&quot;:&#92;&quot;Erythrocyte&#92;&quot;,&#92;&quot;Region&#92;&quot;:&#92;&quot;Telencephalon&#92;&quot;,&#92;&quot;Subdivision&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;Subregion&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;Tissue&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;TopLevelCluster&#92;&quot;:25,&#92;&quot;organism_ontology_term_id&#92;&quot;:&#92;&quot;NCBITaxon:9606&#92;&quot;,&#92;&quot;disease_ontology_term_id&#92;&quot;:&#92;&quot;PATO:0000461&#92;&quot;,&#92;&quot;self_reported_ethnicity_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;assay_ontology_term_id&#92;&quot;:&#92;&quot;EFO:0009899&#92;&quot;,&#92;&quot;sex_ontology_term_id&#92;&quot;:&#92;&quot;n/a&#92;&quot;,&#92;&quot;development_stage_ontology_term_id&#92;&quot;:&#92;&quot;HsapDv:0000102&#92;&quot;,&#92;&quot;donor_id&#92;&quot;:&#92;&quot;BRC2006&#92;&quot;,&#92;&quot;suspension_type&#92;&quot;:&#92;&quot;nucleus&#92;&quot;,&#92;&quot;dissection&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;sample_id&#92;&quot;:&#92;&quot;10X89_1&#92;&quot;,&#92;&quot;cluster_id&#92;&quot;:233,&#92;&quot;Chemistry&#92;&quot;:&#92;&quot;v2&#92;&quot;},{&#92;&quot;CellID&#92;&quot;:&#92;&quot;b&#x27;10X89_1:CTTCTCTAGTCAAGGC&#x27;&#92;&quot;,&#92;&quot;Age&#92;&quot;:8.0,&#92;&quot;CellClass&#92;&quot;:&#92;&quot;Erythrocyte&#92;&quot;,&#92;&quot;Region&#92;&quot;:&#92;&quot;Telencephalon&#92;&quot;,&#92;&quot;Subdivision&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;Subregion&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;Tissue&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;TopLevelCluster&#92;&quot;:25,&#92;&quot;organism_ontology_term_id&#92;&quot;:&#92;&quot;NCBITaxon:9606&#92;&quot;,&#92;&quot;disease_ontology_term_id&#92;&quot;:&#92;&quot;PATO:0000461&#92;&quot;,&#92;&quot;self_reported_ethnicity_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;assay_ontology_term_id&#92;&quot;:&#92;&quot;EFO:0009899&#92;&quot;,&#92;&quot;sex_ontology_term_id&#92;&quot;:&#92;&quot;n/a&#92;&quot;,&#92;&quot;development_stage_ontology_term_id&#92;&quot;:&#92;&quot;HsapDv:0000102&#92;&quot;,&#92;&quot;donor_id&#92;&quot;:&#92;&quot;BRC2006&#92;&quot;,&#92;&quot;suspension_type&#92;&quot;:&#92;&quot;nucleus&#92;&quot;,&#92;&quot;dissection&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;sample_id&#92;&quot;:&#92;&quot;10X89_1&#92;&quot;,&#92;&quot;cluster_id&#92;&quot;:235,&#92;&quot;Chemistry&#92;&quot;:&#92;&quot;v2&#92;&quot;},{&#92;&quot;CellID&#92;&quot;:&#92;&quot;b&#x27;10X89_1:GGAAAGCCAAGGTTTC&#x27;&#92;&quot;,&#92;&quot;Age&#92;&quot;:8.0,&#92;&quot;CellClass&#92;&quot;:&#92;&quot;Erythrocyte&#92;&quot;,&#92;&quot;Region&#92;&quot;:&#92;&quot;Telencephalon&#92;&quot;,&#92;&quot;Subdivision&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;Subregion&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;Tissue&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;TopLevelCluster&#92;&quot;:25,&#92;&quot;organism_ontology_term_id&#92;&quot;:&#92;&quot;NCBITaxon:9606&#92;&quot;,&#92;&quot;disease_ontology_term_id&#92;&quot;:&#92;&quot;PATO:0000461&#92;&quot;,&#92;&quot;self_reported_ethnicity_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;assay_ontology_term_id&#92;&quot;:&#92;&quot;EFO:0009899&#92;&quot;,&#92;&quot;sex_ontology_term_id&#92;&quot;:&#92;&quot;n/a&#92;&quot;,&#92;&quot;development_stage_ontology_term_id&#92;&quot;:&#92;&quot;HsapDv:0000102&#92;&quot;,&#92;&quot;donor_id&#92;&quot;:&#92;&quot;BRC2006&#92;&quot;,&#92;&quot;suspension_type&#92;&quot;:&#92;&quot;nucleus&#92;&quot;,&#92;&quot;dissection&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;sample_id&#92;&quot;:&#92;&quot;10X89_1&#92;&quot;,&#92;&quot;cluster_id&#92;&quot;:240,&#92;&quot;Chemistry&#92;&quot;:&#92;&quot;v2&#92;&quot;},{&#92;&quot;CellID&#92;&quot;:&#92;&quot;b&#x27;10X89_1:GGGCACTAGCGATATA&#x27;&#92;&quot;,&#92;&quot;Age&#92;&quot;:8.0,&#92;&quot;CellClass&#92;&quot;:&#92;&quot;Erythrocyte&#92;&quot;,&#92;&quot;Region&#92;&quot;:&#92;&quot;Telencephalon&#92;&quot;,&#92;&quot;Subdivision&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;Subregion&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;Tissue&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;TopLevelCluster&#92;&quot;:25,&#92;&quot;organism_ontology_term_id&#92;&quot;:&#92;&quot;NCBITaxon:9606&#92;&quot;,&#92;&quot;disease_ontology_term_id&#92;&quot;:&#92;&quot;PATO:0000461&#92;&quot;,&#92;&quot;self_reported_ethnicity_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;assay_ontology_term_id&#92;&quot;:&#92;&quot;EFO:0009899&#92;&quot;,&#92;&quot;sex_ontology_term_id&#92;&quot;:&#92;&quot;n/a&#92;&quot;,&#92;&quot;development_stage_ontology_term_id&#92;&quot;:&#92;&quot;HsapDv:0000102&#92;&quot;,&#92;&quot;donor_id&#92;&quot;:&#92;&quot;BRC2006&#92;&quot;,&#92;&quot;suspension_type&#92;&quot;:&#92;&quot;nucleus&#92;&quot;,&#92;&quot;dissection&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;sample_id&#92;&quot;:&#92;&quot;10X89_1&#92;&quot;,&#92;&quot;cluster_id&#92;&quot;:234,&#92;&quot;Chemistry&#92;&quot;:&#92;&quot;v2&#92;&quot;},{&#92;&quot;CellID&#92;&quot;:&#92;&quot;b&#x27;10X89_1:GTCACGGCACCGCTAG&#x27;&#92;&quot;,&#92;&quot;Age&#92;&quot;:8.0,&#92;&quot;CellClass&#92;&quot;:&#92;&quot;Erythrocyte&#92;&quot;,&#92;&quot;Region&#92;&quot;:&#92;&quot;Telencephalon&#92;&quot;,&#92;&quot;Subdivision&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;Subregion&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;Tissue&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;TopLevelCluster&#92;&quot;:25,&#92;&quot;organism_ontology_term_id&#92;&quot;:&#92;&quot;NCBITaxon:9606&#92;&quot;,&#92;&quot;disease_ontology_term_id&#92;&quot;:&#92;&quot;PATO:0000461&#92;&quot;,&#92;&quot;self_reported_ethnicity_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;assay_ontology_term_id&#92;&quot;:&#92;&quot;EFO:0009899&#92;&quot;,&#92;&quot;sex_ontology_term_id&#92;&quot;:&#92;&quot;n/a&#92;&quot;,&#92;&quot;development_stage_ontology_term_id&#92;&quot;:&#92;&quot;HsapDv:0000102&#92;&quot;,&#92;&quot;donor_id&#92;&quot;:&#92;&quot;BRC2006&#92;&quot;,&#92;&quot;suspension_type&#92;&quot;:&#92;&quot;nucleus&#92;&quot;,&#92;&quot;dissection&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;sample_id&#92;&quot;:&#92;&quot;10X89_1&#92;&quot;,&#92;&quot;cluster_id&#92;&quot;:240,&#92;&quot;Chemistry&#92;&quot;:&#92;&quot;v2&#92;&quot;},{&#92;&quot;CellID&#92;&quot;:&#92;&quot;b&#x27;10X89_1:TTCTACAAGGTGTGGT&#x27;&#92;&quot;,&#92;&quot;Age&#92;&quot;:8.0,&#92;&quot;CellClass&#92;&quot;:&#92;&quot;Erythrocyte&#92;&quot;,&#92;&quot;Region&#92;&quot;:&#92;&quot;Telencephalon&#92;&quot;,&#92;&quot;Subdivision&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;Subregion&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;Tissue&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;TopLevelCluster&#92;&quot;:25,&#92;&quot;organism_ontology_term_id&#92;&quot;:&#92;&quot;NCBITaxon:9606&#92;&quot;,&#92;&quot;disease_ontology_term_id&#92;&quot;:&#92;&quot;PATO:0000461&#92;&quot;,&#92;&quot;self_reported_ethnicity_ontology_term_id&#92;&quot;:&#92;&quot;unknown&#92;&quot;,&#92;&quot;assay_ontology_term_id&#92;&quot;:&#92;&quot;EFO:0009899&#92;&quot;,&#92;&quot;sex_ontology_term_id&#92;&quot;:&#92;&quot;n/a&#92;&quot;,&#92;&quot;development_stage_ontology_term_id&#92;&quot;:&#92;&quot;HsapDv:0000102&#92;&quot;,&#92;&quot;donor_id&#92;&quot;:&#92;&quot;BRC2006&#92;&quot;,&#92;&quot;suspension_type&#92;&quot;:&#92;&quot;nucleus&#92;&quot;,&#92;&quot;dissection&#92;&quot;:&#92;&quot;Cortex&#92;&quot;,&#92;&quot;sample_id&#92;&quot;:&#92;&quot;10X89_1&#92;&quot;,&#92;&quot;cluster_id&#92;&quot;:234,&#92;&quot;Chemistry&#92;&quot;:&#92;&quot;v2&#92;&quot;}]&quot;' data-total-rows='1665937' data-total-columns='19' data-max-columns='50' data-banner-text='&quot;&quot;' data-pagination='true' data-page-size='10' data-field-types='[[&quot;Age&quot;,[&quot;number&quot;,&quot;float32&quot;]],[&quot;CellClass&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;Region&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;Subdivision&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;Subregion&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;Tissue&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;TopLevelCluster&quot;,[&quot;integer&quot;,&quot;uint32&quot;]],[&quot;organism_ontology_term_id&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;disease_ontology_term_id&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;self_reported_ethnicity_ontology_term_id&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;assay_ontology_term_id&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;sex_ontology_term_id&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;development_stage_ontology_term_id&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;donor_id&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;suspension_type&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;dissection&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;sample_id&quot;,[&quot;string&quot;,&quot;category&quot;]],[&quot;cluster_id&quot;,[&quot;integer&quot;,&quot;uint32&quot;]],[&quot;Chemistry&quot;,[&quot;string&quot;,&quot;category&quot;]]]' data-show-filters='true' data-show-download='true' data-show-column-summaries='true' data-show-data-types='true' data-show-page-size-selector='true' data-show-column-explorer='true' data-show-chart-builder='true' data-row-headers='[[&quot;CellID&quot;,[&quot;string&quot;,&quot;object&quot;]]]' data-has-stable-row-id='false' data-lazy='false' data-preload='false'></marimo-table></marimo-ui-element>"
-          }
-        }
-      ],
-      "console": []
-    },
-    {
-      "id": "IAvJ",
-      "code_hash": null,
       "outputs": [],
       "console": []
     }

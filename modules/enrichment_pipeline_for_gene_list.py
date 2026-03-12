@@ -240,3 +240,10 @@ def run_gene_list_pipeline(config_path: str):
   
     print("\n🎉 PIPELINE COMPLETE — enrichment steps finished.")
     
+if __name__ == "__main__":
+    # Example:
+    #   python ges_score_calculations.py /path/to/config.yaml
+    import sys
+    if len(sys.argv) != 2:
+        raise SystemExit("Usage: python enrichment_pipeline_for_gene_list.py <config.yaml>")
+    run_gene_list_pipeline(sys.argv[1])

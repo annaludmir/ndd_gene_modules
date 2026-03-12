@@ -43,13 +43,6 @@ def _(mo):
 
 
 @app.cell
-def _(sc):
-    #upload data
-    adata=sc.read_h5ad("/miridan-data/annaludmir/ndd_gene_modules/data/human_dev.h5ad")
-    return (adata,)
-
-
-@app.cell
 def _(adata):
     adata.obs
     return
@@ -81,7 +74,7 @@ def _(adata, sc):
 @app.cell
 def _(adata):
     genes_adata=adata.var_names.tolist()
-    return
+    return (genes_adata,)
 
 
 @app.cell
@@ -190,6 +183,7 @@ def _(
     PECENTAGE_OF_CELLS_EXRESSING_GENE,
     adata,
     color_vars,
+    genes_adata,
     np,
     rc_context,
     sc,
@@ -197,7 +191,7 @@ def _(
     import scipy.sparse as sp
 
     # Extract expression matrix only for these genes
-    X = adata[:, color_vars].X
+    X = adata[:, genes_adata].X
 
     # Convert to dense if sparse
     if sp.issparse(X):
@@ -207,10 +201,10 @@ def _(
     expr_frac = (X > 0).mean(axis=0)
 
     # Make sure it's a flat 1D numpy array
-    expr_frac = np.ravel(expr_frac)
+    expr_frac = np.ravel(genes_adata)
 
     # Filter: keep genes expressed in ≥5% of cells
-    filtered_genes = [g for g, frac in zip(color_vars, expr_frac) if frac >= PECENTAGE_OF_CELLS_EXRESSING_GENE]
+    filtered_genes = [g for g, frac in zip(genes_adata, expr_frac) if frac >= PECENTAGE_OF_CELLS_EXRESSING_GENE]
     # remove duplicates
     filtered_genes = list(set(filtered_genes))
 
@@ -492,6 +486,113 @@ def _(adata, g1_genes, np, rc_context, sc, sp):
         print(f'Plotting genes {i_2 + 1}–{i_2 + len(subset_2)} of {len(filtered_genes_3)}')
         with rc_context({'figure.figsize': (3, 3)}):
             sc.pl.umap(adata, color=subset_2, s=1, frameon=False, ncols=4, vmax='p99')
+    return
+
+
+@app.cell
+def _(adata, sc):
+    sc.pp.neighbors(adata)
+    sc.tl.umap(adata)
+    return
+
+
+@app.cell
+def _(adata, pd, rc_context, sc):
+    import re
+
+    def _strip_ensembl_version(x: str) -> str:
+        return re.sub(r"\.\d+$", "", str(x))
+
+    sym_col = "Gene"  # change if your symbols are in another column
+
+    # symbol -> exact var_names (with version)
+    sym2varname = pd.Series(adata.var_names.values, index=adata.var[sym_col].astype(str)).to_dict()
+
+    filtered_symbols = ["FOXG1", "LHX2", "EOMES"]
+
+    filtered_varnames = [sym2varname[s] for s in filtered_symbols if s in sym2varname]
+    missing = sorted(set(filtered_symbols) - set(sym2varname))
+    print("Missing symbols:", missing)
+    print("Using var_names:", filtered_varnames)
+
+    for sym in filtered_symbols:
+        ens = sym2varname.get(sym)
+        if ens is None:
+            print(f"⚠️ {sym} not found in adata.var[{sym_col}]")
+            continue
+
+        with rc_context({"figure.figsize": (3, 3)}):
+            sc.pl.umap(
+                adata,
+                color=ens,          # ✅ must be something in var_names
+                s=1,
+                frameon=False,
+                vmax="p99",
+                title=sym           # ✅ show symbol as title
+            )
+    return
+
+
+@app.cell
+def _(expr, np, pd, sc, sp):
+    #upload data
+    print('uploading data')
+    adata=sc.read_h5ad("/miridan-data/annaludmir/ndd_gene_modules/data/human_dev.h5ad")
+
+    #upload data
+    import seaborn as sns
+    from matplotlib import pyplot as plt
+
+    print('filtering data')
+    adata_prolif = adata[adata.obs["cell_cycle_score"] > 0.004].copy()
+    print('normalizing data')
+    sc.pp.normalize_total(adata)
+    sc.pp.log1p(adata)
+
+    genes = ["FOXG1", "LHX2", "EOMES"]
+    region_col = "Region"
+
+    sym_col = "Gene"  # change if your symbols are in another column
+
+    # symbol -> exact var_names (with version)
+    sym2varname = pd.Series(adata.var_names.values, index=adata.var[sym_col].astype(str)).to_dict()
+
+    filtered_varnames = [sym2varname[s] for s in genes if s in sym2varname]
+    missing = sorted(set(genes) - set(sym2varname))
+    print("Missing symbols:", missing)
+    print("Using var_names:", filtered_varnames)
+
+    X = adata_prolif[:, filtered_varnames].X
+    if sp.issparse(X):
+        X = X.toarray()
+    expr_frac = (X > 0).mean(axis=0)
+    expr_frac = np.ravel(expr_frac)
+
+    for sym in genes:
+        print(sym)
+        ens = sym2varname.get(sym)
+        df = pd.DataFrame({
+            region_col: adata_prolif.obs[region_col].values,
+            sym: expr
+        })
+
+        plt.figure(figsize=(10, 4))
+        sns.boxplot(data=df, x=region_col, y=sym)
+        plt.xticks(rotation=45, ha="right")
+        plt.title(f"{sym} expression in proliferating cells")
+        plt.tight_layout()
+        plt.show()
+    return adata, expr_frac
+
+
+@app.cell
+def _(adata):
+    adata.obs
+    return
+
+
+@app.cell
+def _():
     return
 
 
