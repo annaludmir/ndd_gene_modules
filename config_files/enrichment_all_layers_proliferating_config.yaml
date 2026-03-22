@@ -1,8 +1,8 @@
-run_name: "Microcephaly All Data Proliferating"
+run_name: "Microcephaly All Data Proliferating (Without Week 5)"
 ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules/"
 
 output_folder: "results/enrichment_results/"
-ges_results_folder: "results/ges_score_results/ges_score_for_all_layers_proliferating_20260223"
+ges_results_folder: "results/ges_score_results/ges_score_for_all_layers_without_week_5_proliferating_20260321"
 
 gene_list_path: "data/genes/microcephaly_genes.csv"
 gmt_folder: "data/genes/"

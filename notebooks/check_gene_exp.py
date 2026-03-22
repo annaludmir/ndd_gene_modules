@@ -43,6 +43,14 @@ def _(mo):
 
 
 @app.cell
+def _(sc):
+    #upload data
+    print('uploading data')
+    adata=sc.read_h5ad("/miridan-data/annaludmir/ndd_gene_modules/data/human_dev.h5ad")
+    return (adata,)
+
+
+@app.cell
 def _(adata):
     adata.obs
     return
@@ -289,58 +297,6 @@ def _(adata_in_memory_2, filtered_genes_1, sc):
 @app.cell
 def _(mo):
     mo.md(r"""
-    #Running GES Score and Pipeline
-    """)
-    return
-
-
-@app.cell
-def _(mo):
-    import subprocess
-
-    mo.md(
-        """
-        # Running Bash Commands with `subprocess`
-
-        We are running the GES score calculation
-        """
-    )
-
-    # Execute a Bash command and capture its output
-    try:
-        result = subprocess.run(
-            [
-                "python",
-                "-u",
-        "./notebooks/ges_score_corrected_no_permutations.py",
-                "['region_general']",
-                "['radialglia','Cerebellum','Diencephalon','Fibroblast','Glioblast','Forebrain_general','hindbrain_general','Immune','Midbrain_general','Neural_crest','IPC','Neuroblast','Neuron','Oligo','Forebrain','Hindbrain','Placodes','Pons','Medulla','Telencephalon','Vascular']",
-                "data_all",
-                "/miridan-data/annaludmir/data/ges_results/"
-            ],
-            capture_output=True,
-            text=True,
-            check=True
-        )
-
-    except subprocess.CalledProcessError as e:
-        print("STDOUT:\n", e.stdout)
-        print("\nSTDERR:\n", e.stderr)
-        raise
-    return
-
-
-app._unparsable_cell(
-    r"""
-    !python -u gene_list_pipeline.py /miridan-data/annaludmir/data/genes/sysndd_id_abnormal_facial_shape_abnormal_heart_morphology_for_pipeline.csv /miridan-data/annaludmir/data/enrichment_results/ ges_enrichment data_all /miridan-data/annaludmir/data/genes/ ['radialglia','Cerebellum','Diencephalon','Fibroblast','Glioblast','Forebrain_general','hindbrain_general','Immune','Midbrain_general','Neural_crest','IPC','Neuroblast','Neuron','Oligo','Forebrain','Hindbrain','Placodes','Pons','Medulla','Telencephalon','Vascular']
-    """,
-    name="_"
-)
-
-
-@app.cell
-def _(mo):
-    mo.md(r"""
     # Analyzing Results
     """)
     return
@@ -534,10 +490,7 @@ def _(adata, pd, rc_context, sc):
 
 
 @app.cell
-def _(expr, np, pd, sc, sp):
-    #upload data
-    print('uploading data')
-    adata=sc.read_h5ad("/miridan-data/annaludmir/ndd_gene_modules/data/human_dev.h5ad")
+def _(adata, expr, np, pd, sc, sp):
 
     #upload data
     import seaborn as sns
@@ -582,7 +535,7 @@ def _(expr, np, pd, sc, sp):
         plt.title(f"{sym} expression in proliferating cells")
         plt.tight_layout()
         plt.show()
-    return adata, expr_frac
+    return (expr_frac,)
 
 
 @app.cell

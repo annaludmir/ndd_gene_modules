@@ -1,6 +1,6 @@
-name_of_run: "ges_score_for_all_layers_from_github"
+name_of_run: "ges_score_for_all_layers_without_week_5"
 ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules"
-data_path: "data/human_dev.h5ad"
+data_path: "data/human_dev_without_week_5.h5ad"
 output_folder: "results/ges_score_results/"
 
 column_conditions:

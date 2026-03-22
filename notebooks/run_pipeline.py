@@ -672,6 +672,17 @@ def _():
         'Medulla':
     ['UNC80','HMGB1','NAA20','GPT2','UFC1','GRM7','ZPR1','DHCR7','KIF1BP','EIF5A','ARF3','COASY','RPL10','HIKESHI','CRIPT','TSEN15','TAF13','DPP6','MINPP1','MSMO1','WLS','MED11','METTL5','TCF4','YIF1B']
     }
+    return (regions,)
+
+
+@app.cell
+def _(
+    microcephaly_NPCs,
+    microcephaly_glioblasts,
+    microcephaly_radial_glia,
+    plot_gene_overlap,
+):
+    plot_gene_overlap({'NPCs':microcephaly_NPCs, 'Radial glia':microcephaly_radial_glia, 'Glioblast':microcephaly_glioblasts}, 'Microcephaly (All layers)')
     return
 
 
@@ -683,6 +694,18 @@ def _(
     plot_gene_overlap,
 ):
     plot_gene_overlap({'NPCs':microcephaly_NPCs, 'Radial glia':microcephaly_radial_glia, 'Glioblast':microcephaly_glioblasts}, 'Microcephaly (All layers)')
+    return
+
+
+@app.cell
+def _(
+    microcephaly_G1,
+    microcephaly_G2M,
+    microcephaly_S,
+    plot_gene_overlap,
+    regions,
+):
+    plot_gene_overlap({'G1':microcephaly_G1, 'S':microcephaly_S, 'G2M':microcephaly_G2M, 'Hindbrain': regions['Hindbrain']}, 'Microcephaly (All layers)')
     return
 
 

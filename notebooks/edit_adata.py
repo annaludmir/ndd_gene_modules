@@ -113,7 +113,6 @@ def _(pd):
                 )
 
         return adata
-
     return (decode_obs_bytes,)
 
 
@@ -123,13 +122,44 @@ def _(decode_obs_bytes, sc):
     adata=sc.read_h5ad("/miridan-data/annaludmir/ndd_gene_modules/data/human_dev-GRCh38-3.0.0_all_layers_from_github_with_chemistry.h5ad")
     adata_decoded = decode_obs_bytes(adata)
     adata_decoded.write_h5ad("/miridan-data/annaludmir/ndd_gene_modules/data/human_dev-GRCh38-3.0.0_all_layers_from_github_with_chemistry_no_bytes.h5ad")
-
     return (adata_decoded,)
 
 
 @app.cell
 def _(adata_decoded):
     adata_decoded.obs
+    return
+
+
+@app.cell
+def _(sc):
+    # load file
+    adata_full = sc.read_h5ad("/miridan-data/annaludmir/ndd_gene_modules/data/human_dev.h5ad")
+
+    # inspect unique values first (recommended)
+    print(adata_full.obs["Age"].unique())
+
+
+    return (adata_full,)
+
+
+@app.cell
+def _(adata_full):
+    # remove week 5
+    adata_filtered = adata_full[adata_full.obs["Age"] != "5"].copy()
+
+    # save new file
+    adata_filtered.write("/miridan-data/annaludmir/ndd_gene_modules/data/human_dev_without_week_5.h5ad")
+
+    print("Saved successfully")
+    print(adata_filtered.shape)
+    return
+
+
+@app.cell
+def _(adata_full):
+    for i in sorted(adata_full.obs["Age"].unique()):
+        print(i)
     return
 
 

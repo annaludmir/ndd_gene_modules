@@ -32,3 +32,7 @@ normalize_data: true
 chemistry: "v3"
 permutations: false
 # n_permutations: 500  # optional
+per_age_analysis: true
+age_column: "Age"
+age_values: [5.0,5.5,6.0,6.599999904632568,6.699999809265137,6.900000095367432,7.0,7.5,8.0,8.100000381469727,8.5,9.199999809265137,9.5,10.0,11.5,12.0,13.0,14.0]        # or a list, e.g. ["5", "5.5", "6"]
+min_cells_per_age: 100

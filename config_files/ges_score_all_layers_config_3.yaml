@@ -1,6 +1,6 @@
 name_of_run: "ges_score_for_all_layers_from_github"
 ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules"
-data_path: "data/human_dev-GRCh38-3.0.0_all_layers_from_github_with_chemistry_no_bytes.h5ad"
+data_path: "data/human_dev_without_week_5.h5ad"
 output_folder: "results/ges_score_results/"
 
 column_conditions:
@@ -23,7 +23,7 @@ column_conditions:
     - "Oligo"
     - "Fibroblast"
     - "Neural crest"
-    #- "Placode"
+    - "Placode"
     #- "Immune"
     #- "Vascular"
     #- "Erythrocyte"

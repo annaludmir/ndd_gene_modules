@@ -1,8 +1,8 @@
-run_name: "Microcephaly All Data"
+run_name: "Microcephaly All Data (Without Week 5)"
 ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules/"
 
 output_folder: "results/enrichment_results/"
-ges_results_folder: "results/ges_score_results/ges_score_for_all_layers_from_github_20260108"
+ges_results_folder: "results/ges_score_results/ges_score_for_all_layers_without_week_5_20260322"
 
 gene_list_path: "data/genes/microcephaly_genes.csv"
 gmt_folder: "data/genes/"
@@ -19,13 +19,13 @@ deseq:
 column_conditions_for_gsea:
   Region:
     - "Forebrain"
-    #- "Telencephalon"
-    #- "Diencephalon"
+    - "Telencephalon"
+    - "Diencephalon"
     - "Midbrain"
     - "Hindbrain"
-    #- "Cerebellum"
-    #- "Pons"
-    #- "Medulla"
+    - "Cerebellum"
+    - "Pons"
+    - "Medulla"
 
   CellClass:
     - "Radial glia"
@@ -41,5 +41,5 @@ column_conditions_for_gsea:
     - "Vascular"
     - "Erythrocyte"
 
-keep_only_significant: true
+keep_only_significant: false
 nes_keep_threshold: 1.5
