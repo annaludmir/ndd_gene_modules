@@ -152,7 +152,6 @@ def run_gsea(ges_score_path,
             except LookupError:
               print("Probably not enough relevant genes were found for encrichment.")
               gsea_res = None
-              shutil.rmtree(cond_dir)
 
             if gsea_res:
               # Save main results

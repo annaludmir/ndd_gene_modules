@@ -139,7 +139,6 @@ def _(sc):
     # inspect unique values first (recommended)
     print(adata_full.obs["Age"].unique())
 
-
     return (adata_full,)
 
 
