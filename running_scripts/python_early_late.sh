@@ -24,9 +24,14 @@ set -euo pipefail
 module load mamba/mamba-1.5.8
 #mamba activate /scratch200/reutj/conda-envs/jupyter-scanpy
 mamba activate /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new
-cd /miridan-data/annaludmir/ndd_gene_modules/modules
+cd /miridan-data/annaludmir/ndd_gene_modules
 
-mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new python -u enrichment_pipeline_for_gene_list.py /miridan-data/annaludmir/ndd_gene_modules/config_files/enrichment_all_layers_proliferating_config.yaml
+mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new python modules/early_late_go_heatmap.py \
+  --gsea-summary-file results/enrichment_results/Microcephaly\ All\ Data\ \(Without\ Week\ 5\)_threshold_1_20260323/data/enrichment_results/GSEA/GSEA_final_summary.csv \
+  --condition Forebrain\
+  --go-term-file GO_terms/microcephaly_GO_enrichment/Region_-_Forebrain/enrichr_results.csv \
+  --h5ad-path data/human_dev_without_week_5.h5ad \
+  --subfolder-name microcephaly_forebrain_leading_genes
 
 rc=$?
 echo "Python exit code: $rc"

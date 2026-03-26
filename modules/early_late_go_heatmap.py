@@ -44,6 +44,44 @@ def parse_go_genes(genes_text):
     return [g.strip() for g in text.split() if g.strip()]
 
 
+def get_leading_genes_from_summary(summary_file, condition):
+    """Extract leading genes from the summary row matching the requested condition."""
+    summary_file = Path(summary_file)
+    if not summary_file.exists():
+        raise FileNotFoundError(f"GSEA summary file not found: {summary_file}")
+
+    if summary_file.suffix.lower() in {".tsv", ".txt"}:
+        summary_df = pd.read_csv(summary_file, sep="\t")
+    else:
+        summary_df = pd.read_csv(summary_file)
+
+    required_cols = {"condition", "Lead_genes"}
+    missing_cols = required_cols - set(summary_df.columns)
+    if missing_cols:
+        raise ValueError(
+            f"GSEA summary file is missing required columns: {sorted(missing_cols)}"
+        )
+
+    matched = summary_df.loc[summary_df["condition"].astype(str) == str(condition)]
+    if matched.empty:
+        raise ValueError(
+            f"Condition '{condition}' was not found in the summary file column 'condition'."
+        )
+    if len(matched) > 1:
+        print(
+            f"Warning: found {len(matched)} rows for condition '{condition}'. "
+            "Using the first match."
+        )
+
+    lead_genes_value = matched.iloc[0]["Lead_genes"]
+    leading_genes = parse_gene_list(str(lead_genes_value).replace(";", " "))
+    if not leading_genes:
+        raise ValueError(
+            f"No leading genes were parsed from Lead_genes for condition '{condition}'."
+        )
+    return leading_genes
+
+
 def classify_stage(age_value):
     """
     Map age into the requested developmental bins.
@@ -222,7 +260,8 @@ def save_outputs(
 
 
 def create_early_late_go_heatmap(
-    leading_genes,
+    gsea_summary_file,
+    condition,
     go_term_file,
     h5ad_path=DEFAULT_DATA_PATH,
     output_dir=DEFAULT_OUTPUT_DIR,
@@ -235,8 +274,10 @@ def create_early_late_go_heatmap(
 
     Parameters
     ----------
-    leading_genes
-        List of gene symbols, or a delimited string.
+    gsea_summary_file
+        GSEA summary CSV/TSV containing 'condition' and 'Lead_genes' columns.
+    condition
+        Value to match in the summary file 'condition' column.
     go_term_file
         CSV/TSV file containing at least 'Genes' and 'Term' columns.
     h5ad_path
@@ -246,10 +287,8 @@ def create_early_late_go_heatmap(
     subfolder_name
         Optional subfolder created under output_dir for this run.
     """
-    leading_genes = parse_gene_list(leading_genes)
-    if not leading_genes:
-        raise ValueError("leading_genes is empty.")
-
+    leading_genes = get_leading_genes_from_summary(gsea_summary_file, condition)
+    gsea_summary_file = Path(gsea_summary_file)
     go_term_file = Path(go_term_file)
     h5ad_path = Path(h5ad_path)
     output_dir = Path(output_dir)
@@ -293,6 +332,7 @@ def create_early_late_go_heatmap(
     return {
         "heatmap_path": str(heatmap_path),
         "output_dir": str(output_dir),
+        "condition": str(condition),
         "n_found_genes": len(found_genes),
         "n_missing_genes": len(missing_genes),
     }
@@ -300,13 +340,17 @@ def create_early_late_go_heatmap(
 
 def build_arg_parser():
     parser = argparse.ArgumentParser(
-        description="Create an Early/Mid/Late heatmap for leading genes grouped by GO terms."
+        description="Create an Early/Mid/Late heatmap using leading genes from a GSEA summary file."
     )
     parser.add_argument(
-        "--leading-genes",
-        nargs="+",
+        "--gsea-summary-file",
         required=True,
-        help="Leading genes as space-separated symbols.",
+        help="GSEA summary CSV/TSV containing 'condition' and 'Lead_genes' columns.",
+    )
+    parser.add_argument(
+        "--condition",
+        required=True,
+        help="Condition to select from the GSEA summary file.",
     )
     parser.add_argument(
         "--go-term-file",
@@ -336,7 +380,8 @@ def build_arg_parser():
 if __name__ == "__main__":
     args = build_arg_parser().parse_args()
     result = create_early_late_go_heatmap(
-        leading_genes=args.leading_genes,
+        gsea_summary_file=args.gsea_summary_file,
+        condition=args.condition,
         go_term_file=args.go_term_file,
         h5ad_path=args.h5ad_path,
         output_dir=args.output_dir,

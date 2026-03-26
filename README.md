@@ -188,7 +188,7 @@ Before the second command, update `ges_results_folder` in `config_files/enrichme
 
 ## Early/Mid/Late GO heatmap example
 
-The module `modules/early_late_go_heatmap.py` creates a heatmap for a set of leading genes grouped by GO terms and summarizes their expression across developmental stages:
+The module `modules/early_late_go_heatmap.py` creates a heatmap for the leading genes of a selected GSEA condition, groups them by GO terms, and summarizes their expression across developmental stages:
 
 - `Early`: weeks 5.5 to 7.0
 - `Mid`: weeks 7.1 to 8.9
@@ -198,11 +198,14 @@ Example call:
 
 ```bash
 python modules/early_late_go_heatmap.py \
-  --leading-genes CENPK CENPV EZH2 HMGB1 HMGB3 MCM2 MCM7 \
+  --gsea-summary-file path/to/GSEA_final_summary.csv \
+  --condition Radial_glia \
   --go-term-file path/to/go_enrichment.csv \
   --h5ad-path data/human_dev.h5ad \
   --subfolder-name radial_glia_cell_cycle
 ```
+
+The script reads the `Lead_genes` value from the row where the summary file `condition` column matches the provided `--condition`.
 
 By default, outputs are written to:
 
