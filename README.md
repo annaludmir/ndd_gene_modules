@@ -185,3 +185,33 @@ Before the second command, update `ges_results_folder` in `config_files/enrichme
 - GES output folders are date-stamped, so the enrichment config usually needs to be updated after each new GES run.
 - Several configs in `config_files/` are specialized for cortex, all-layers, proliferating cells, and cell-cycle analyses.
 - `project_description.md` contains broader biological and historical context, including older scripts in `old_stuff/`.
+
+## Early/Mid/Late GO heatmap example
+
+The module `modules/early_late_go_heatmap.py` creates a heatmap for a set of leading genes grouped by GO terms and summarizes their expression across developmental stages:
+
+- `Early`: weeks 5.5 to 7.0
+- `Mid`: weeks 7.1 to 8.9
+- `Late`: weeks 9.0 to 14.0
+
+Example call:
+
+```bash
+python modules/early_late_go_heatmap.py \
+  --leading-genes CENPK CENPV EZH2 HMGB1 HMGB3 MCM2 MCM7 \
+  --go-term-file path/to/go_enrichment.csv \
+  --h5ad-path data/human_dev.h5ad \
+  --subfolder-name radial_glia_cell_cycle
+```
+
+By default, outputs are written to:
+
+```text
+results/time_analysis/early_late/
+```
+
+If `--subfolder-name` is provided, outputs are written under:
+
+```text
+results/time_analysis/early_late/<your_subfolder_name>/
+```
