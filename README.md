@@ -218,3 +218,29 @@ If `--subfolder-name` is provided, outputs are written under:
 ```text
 results/time_analysis/early_late/<your_subfolder_name>/
 ```
+
+## Pseudotime leading-gene heatmap example
+
+The module `modules/pseudotime_leading_genes_heatmap.py` creates a pseudotime-style heatmap for the leading genes of a selected GSEA condition. It reads the matching row from the GSEA summary file, uses the row `column` and `condition` values to filter cells, and plots gene-expression changes across ordered ages.
+
+Example call:
+
+```bash
+python modules/pseudotime_leading_genes_heatmap.py \
+  --gsea-summary-file path/to/GSEA_final_summary.csv \
+  --condition Forebrain \
+  --h5ad-path data/human_dev_without_week_5.h5ad \
+  --subfolder-name microcephaly_forebrain_pseudotime
+```
+
+By default, outputs are written to:
+
+```text
+results/time_analysis/pseudotime/
+```
+
+If `--subfolder-name` is provided, outputs are written under:
+
+```text
+results/time_analysis/pseudotime/<your_subfolder_name>/
+```
