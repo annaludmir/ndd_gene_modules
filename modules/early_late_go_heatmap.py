@@ -181,6 +181,9 @@ def compute_stage_expression(
 
 def plot_stage_heatmap(zscore_expr, grouped_terms, output_path):
     """Plot a 3-row early/mid/late heatmap with GO-term group labels."""
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
     ordered_genes = [gene for _, genes in grouped_terms for gene in genes]
     plot_df = zscore_expr[ordered_genes]
 

@@ -139,6 +139,9 @@ def build_condition_time_matrices(
 
 def plot_pseudotime_heatmap(zscore_expr, condition, output_path):
     """Plot genes x age heatmap resembling a pseudotime progression."""
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
     plot_df = zscore_expr.T
 
     fig, ax = plt.subplots(
