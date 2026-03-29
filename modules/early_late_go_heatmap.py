@@ -1,5 +1,6 @@
 import argparse
 import re
+import textwrap
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -50,6 +51,29 @@ def parse_go_genes(genes_text):
 def clean_go_term_name(term):
     """Remove trailing GO accession text from a term label."""
     return re.sub(r"\s*\(GO:[^)]+\)\s*$", "", str(term).strip())
+
+
+def format_go_term_label(term, span_width):
+    """Shorten and wrap a GO term label when there is enough room to show it."""
+    term = str(term).strip()
+    if not term:
+        return None
+
+    max_chars = max(10, int(span_width * 4.5))
+    shortened = textwrap.shorten(term, width=max_chars, placeholder="...")
+
+    if span_width < 3.0:
+        return None
+    if span_width < 5.5:
+        return shortened if len(shortened) <= max(10, int(span_width * 3.0)) else None
+
+    wrap_width = max(10, int(span_width * 2.6))
+    wrapped = textwrap.wrap(shortened, width=wrap_width, max_lines=2, break_long_words=False)
+    if not wrapped:
+        return None
+    if len(wrapped) == 2 and len(wrapped[1]) >= wrap_width:
+        wrapped[1] = textwrap.shorten(wrapped[1], width=wrap_width, placeholder="...")
+    return "\n".join(wrapped[:2])
 
 
 def get_leading_genes_from_summary(summary_file, condition):
@@ -273,13 +297,24 @@ def plot_stage_heatmap(zscore_expr, gene_order, output_path, grouped_terms=None)
 
             start = boundary
             end = start + len(genes)
+            span_width = end - start
             center = (start + end) / 2
+            term_label = format_go_term_label(term, span_width)
 
             if start > 0:
                 ax.axvline(start, color="#6f6f6f", linewidth=1.0)
 
             label_ax.plot([start + 0.08, end - 0.08], [0.8, 0.8], color="#505050", linewidth=1.2)
-            label_ax.text(center, 0.15, term, ha="center", va="bottom", fontsize=10)
+            if term_label:
+                label_ax.text(
+                    center,
+                    0.15,
+                    term_label,
+                    ha="center",
+                    va="bottom",
+                    fontsize=9,
+                    linespacing=1.0,
+                )
             boundary = end
 
         label_ax.set_xlim(0, len(gene_order))
