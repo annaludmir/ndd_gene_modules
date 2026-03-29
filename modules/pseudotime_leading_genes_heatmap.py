@@ -253,9 +253,17 @@ def plot_pseudotime_heatmap(
 
     fig_width = max(5.8, len(zscore_expr.index) * 0.55)
     fig_height = max(6, len(plot_df.index) * 0.34)
-    left_margin = 0.36 if show_group_labels else 0.18
-
-    fig, ax = plt.subplots(figsize=(fig_width, fig_height), constrained_layout=False)
+    if show_group_labels:
+        fig, (label_ax, ax) = plt.subplots(
+            1,
+            2,
+            figsize=(fig_width + 2.4, fig_height),
+            constrained_layout=False,
+            gridspec_kw={"width_ratios": [1.8, 5.4], "wspace": 0.02},
+        )
+    else:
+        fig, ax = plt.subplots(figsize=(fig_width, fig_height), constrained_layout=False)
+        label_ax = None
 
     sns.heatmap(
         plot_df,
@@ -280,6 +288,10 @@ def plot_pseudotime_heatmap(
         ax.set_xticklabels([age_labels[i] for i in tick_idx], rotation=0, fontsize=9)
 
     if show_group_labels:
+        label_ax.set_xlim(0, 1)
+        label_ax.set_ylim(plot_df.shape[0], 0)
+        label_ax.axis("off")
+
         boundary = 0
         for term, genes in grouped_terms:
             if not genes:
@@ -291,21 +303,28 @@ def plot_pseudotime_heatmap(
 
             if start > 0:
                 ax.hlines(start, *ax.get_xlim(), colors="white", linewidth=2.2)
+                label_ax.hlines(start, 0.08, 0.98, colors="#b8b8b8", linewidth=1.2)
 
-            ax.text(
-                -1.15,
+            label_ax.vlines(0.98, start, end, colors="#505050", linewidth=1.2)
+            label_ax.hlines(start, 0.9, 0.98, colors="#505050", linewidth=1.2)
+            label_ax.hlines(end, 0.9, 0.98, colors="#505050", linewidth=1.2)
+
+            label_ax.text(
+                0.86,
                 center,
                 term,
                 ha="right",
                 va="center",
                 fontsize=10,
                 fontweight="bold",
-                clip_on=False,
             )
             boundary = end
 
     _add_pseudotime_arrow(ax)
-    fig.subplots_adjust(left=left_margin, right=0.92, top=0.94, bottom=0.11)
+    if show_group_labels:
+        fig.subplots_adjust(left=0.06, right=0.92, top=0.94, bottom=0.11, wspace=0.02)
+    else:
+        fig.subplots_adjust(left=0.18, right=0.92, top=0.94, bottom=0.11)
     fig.savefig(output_path, dpi=300, bbox_inches="tight")
     plt.close(fig)
 
