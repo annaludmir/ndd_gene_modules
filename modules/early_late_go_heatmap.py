@@ -1,4 +1,5 @@
 import argparse
+import re
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -7,6 +8,8 @@ import pandas as pd
 import scanpy as sc
 import scipy.sparse as sp
 import seaborn as sns
+from scipy.cluster.hierarchy import leaves_list, linkage
+from scipy.spatial.distance import pdist
 
 
 DEFAULT_OUTPUT_DIR = Path("results/time_analysis/early_late")
@@ -42,6 +45,11 @@ def parse_go_genes(genes_text):
     for sep in [";", ",", "\n", "\t", "|", "/"]:
         text = text.replace(sep, " ")
     return [g.strip() for g in text.split() if g.strip()]
+
+
+def clean_go_term_name(term):
+    """Remove trailing GO accession text from a term label."""
+    return re.sub(r"\s*\(GO:[^)]+\)\s*$", "", str(term).strip())
 
 
 def get_leading_genes_from_summary(summary_file, condition):
@@ -105,7 +113,26 @@ def classify_stage(age_value):
     return np.nan
 
 
-def build_gene_order(leading_genes, go_df):
+def load_go_term_file(go_term_file):
+    """Load the GO-term enrichment table."""
+    go_term_file = Path(go_term_file)
+    if not go_term_file.exists():
+        raise FileNotFoundError(f"GO term file not found: {go_term_file}")
+
+    if go_term_file.suffix.lower() in {".tsv", ".txt"}:
+        go_df = pd.read_csv(go_term_file, sep="\t")
+    else:
+        go_df = pd.read_csv(go_term_file)
+
+    required_cols = {"Genes", "Term"}
+    missing_cols = required_cols - set(go_df.columns)
+    if missing_cols:
+        raise ValueError(f"GO term file is missing required columns: {sorted(missing_cols)}")
+
+    return go_df
+
+
+def build_go_grouped_gene_order(leading_genes, go_df):
     """
     Assign genes to GO terms in GO-file order.
     Each gene is assigned once, to the first matching term.
@@ -114,7 +141,7 @@ def build_gene_order(leading_genes, go_df):
     grouped = []
 
     for _, row in go_df.iterrows():
-        term = str(row["Term"]).strip()
+        term = clean_go_term_name(row["Term"])
         term_genes = parse_go_genes(row["Genes"])
         matched = [gene for gene in leading_genes if gene in remaining and gene in term_genes]
         if matched:
@@ -126,6 +153,24 @@ def build_gene_order(leading_genes, go_df):
 
     ordered_genes = [gene for _, genes in grouped for gene in genes]
     return grouped, ordered_genes
+
+
+def cluster_genes_by_pattern(zscore_expr):
+    """Order genes by similarity of their Early/Mid/Late expression profiles."""
+    genes = zscore_expr.columns.tolist()
+    if len(genes) <= 2:
+        return genes
+
+    gene_matrix = zscore_expr[genes].T.to_numpy()
+    if np.allclose(gene_matrix, gene_matrix[0]):
+        return genes
+
+    distances = pdist(gene_matrix, metric="euclidean")
+    if np.allclose(distances, 0):
+        return genes
+
+    linkage_matrix = linkage(distances, method="average", optimal_ordering=True)
+    return [genes[i] for i in leaves_list(linkage_matrix)]
 
 
 def compute_stage_expression(
@@ -166,7 +211,6 @@ def compute_stage_expression(
 
     mean_expr = expr_df.groupby("time_stage")[found_genes].mean().reindex(STAGE_ORDER)
 
-    # Gene-wise z-score across the 3 stages to match the reference style.
     zscore_expr = mean_expr.copy()
     for gene in found_genes:
         values = mean_expr[gene].astype(float)
@@ -179,21 +223,29 @@ def compute_stage_expression(
     return mean_expr, zscore_expr, found_genes, missing_genes
 
 
-def plot_stage_heatmap(zscore_expr, grouped_terms, output_path):
-    """Plot a 3-row early/mid/late heatmap with GO-term group labels."""
+def plot_stage_heatmap(zscore_expr, gene_order, output_path, grouped_terms=None):
+    """Plot a 3-row Early/Mid/Late heatmap with optional GO-term brackets below."""
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    ordered_genes = [gene for _, genes in grouped_terms for gene in genes]
-    plot_df = zscore_expr[ordered_genes]
+    plot_df = zscore_expr[gene_order]
+    show_group_labels = bool(grouped_terms)
 
-    fig, (ax, label_ax) = plt.subplots(
-        2,
-        1,
-        figsize=(max(12, len(ordered_genes) * 0.32), 4.8),
-        gridspec_kw={"height_ratios": [10, 2]},
-        constrained_layout=True,
-    )
+    if show_group_labels:
+        fig, (ax, label_ax) = plt.subplots(
+            2,
+            1,
+            figsize=(max(12, len(gene_order) * 0.34), 4.9),
+            gridspec_kw={"height_ratios": [9, 2.7]},
+            constrained_layout=False,
+            sharex=True,
+        )
+    else:
+        fig, ax = plt.subplots(
+            figsize=(max(12, len(gene_order) * 0.34), 3.8),
+            constrained_layout=False,
+        )
+        label_ax = None
 
     sns.heatmap(
         plot_df,
@@ -202,32 +254,40 @@ def plot_stage_heatmap(zscore_expr, grouped_terms, output_path):
         center=0,
         vmin=-1.5,
         vmax=1.5,
-        linewidths=0.5,
-        linecolor="#d0d0d0",
-        cbar_kws={"label": "Mean z-score"},
+        linewidths=0.35,
+        linecolor="#9f9f9f",
+        cbar_kws={"label": "Mean z-score", "shrink": 0.7},
     )
 
     ax.set_xlabel("")
     ax.set_ylabel("")
     ax.set_yticklabels(STAGE_ORDER, rotation=0, fontsize=11)
-    ax.set_xticklabels(ordered_genes, rotation=90, fontsize=9)
+    ax.set_xticklabels(gene_order, rotation=90, fontsize=9)
+    ax.tick_params(axis="x", length=0)
 
-    boundary = 0
-    for term, genes in grouped_terms:
-        start = boundary
-        end = start + len(genes)
-        center = (start + end) / 2
+    if show_group_labels:
+        boundary = 0
+        for term, genes in grouped_terms:
+            if not genes:
+                continue
 
-        if start > 0:
-            ax.axvline(start, color="black", linewidth=1.2)
+            start = boundary
+            end = start + len(genes)
+            center = (start + end) / 2
 
-        label_ax.plot([start, end], [0.8, 0.8], color="black", linewidth=1.0)
-        label_ax.text(center, 0.15, term, ha="center", va="bottom", fontsize=10)
-        boundary = end
+            if start > 0:
+                ax.axvline(start, color="#6f6f6f", linewidth=1.0)
 
-    label_ax.set_xlim(0, len(ordered_genes))
-    label_ax.set_ylim(0, 1)
-    label_ax.axis("off")
+            label_ax.plot([start + 0.08, end - 0.08], [0.8, 0.8], color="#505050", linewidth=1.2)
+            label_ax.text(center, 0.15, term, ha="center", va="bottom", fontsize=10)
+            boundary = end
+
+        label_ax.set_xlim(0, len(gene_order))
+        label_ax.set_ylim(0, 1)
+        label_ax.axis("off")
+        fig.subplots_adjust(left=0.08, right=0.95, top=0.96, bottom=0.23, hspace=0.42)
+    else:
+        fig.subplots_adjust(left=0.08, right=0.95, top=0.96, bottom=0.32)
 
     fig.savefig(output_path, dpi=300, bbox_inches="tight")
     plt.close(fig)
@@ -236,6 +296,7 @@ def plot_stage_heatmap(zscore_expr, grouped_terms, output_path):
 def save_outputs(
     output_dir,
     grouped_terms,
+    clustered_genes,
     mean_expr,
     zscore_expr,
     found_genes,
@@ -250,6 +311,9 @@ def save_outputs(
             gene_order_rows.append({"Term": term, "gene": gene, "term_order": order})
 
     pd.DataFrame(gene_order_rows).to_csv(output_dir / "go_term_gene_order.csv", index=False)
+    pd.DataFrame(
+        {"gene": clustered_genes, "expression_pattern_order": range(1, len(clustered_genes) + 1)}
+    ).to_csv(output_dir / "expression_pattern_gene_order.csv", index=False)
     mean_expr.T.reset_index(names="gene").to_csv(
         output_dir / "leading_genes_mean_expression_by_stage.csv",
         index=False,
@@ -273,47 +337,20 @@ def create_early_late_go_heatmap(
     sym_col="Gene",
 ):
     """
-    Build an Early/Mid/Late heatmap for a list of leading genes grouped by GO term.
-
-    Parameters
-    ----------
-    gsea_summary_file
-        GSEA summary CSV/TSV containing 'condition' and 'Lead_genes' columns.
-    condition
-        Value to match in the summary file 'condition' column.
-    go_term_file
-        CSV/TSV file containing at least 'Genes' and 'Term' columns.
-    h5ad_path
-        AnnData file used to compute expression.
-    output_dir
-        Base output folder. Defaults to results/time_analysis/early_late.
-    subfolder_name
-        Optional subfolder created under output_dir for this run.
+    Build Early/Mid/Late heatmaps for a list of leading genes.
     """
     leading_genes = get_leading_genes_from_summary(gsea_summary_file, condition)
-    gsea_summary_file = Path(gsea_summary_file)
-    go_term_file = Path(go_term_file)
     h5ad_path = Path(h5ad_path)
     output_dir = Path(output_dir)
     if subfolder_name:
         output_dir = output_dir / str(subfolder_name).strip()
 
-    if not go_term_file.exists():
-        raise FileNotFoundError(f"GO term file not found: {go_term_file}")
     if not h5ad_path.exists():
         raise FileNotFoundError(f"AnnData file not found: {h5ad_path}")
 
-    if go_term_file.suffix.lower() in {".tsv", ".txt"}:
-        go_df = pd.read_csv(go_term_file, sep="\t")
-    else:
-        go_df = pd.read_csv(go_term_file)
+    go_df = load_go_term_file(go_term_file)
+    grouped_terms, ordered_genes = build_go_grouped_gene_order(leading_genes, go_df)
 
-    required_cols = {"Genes", "Term"}
-    missing_cols = required_cols - set(go_df.columns)
-    if missing_cols:
-        raise ValueError(f"GO term file is missing required columns: {sorted(missing_cols)}")
-
-    grouped_terms, ordered_genes = build_gene_order(leading_genes, go_df)
     adata = sc.read_h5ad(h5ad_path)
     mean_expr, zscore_expr, found_genes, missing_genes = compute_stage_expression(
         adata=adata,
@@ -327,13 +364,38 @@ def create_early_late_go_heatmap(
         for term, genes in grouped_terms
     ]
     grouped_terms = [(term, genes) for term, genes in grouped_terms if genes]
+    go_gene_order = [gene for _, genes in grouped_terms for gene in genes]
+    clustered_genes = cluster_genes_by_pattern(zscore_expr[go_gene_order])
 
-    heatmap_path = output_dir / "leading_genes_early_mid_late_heatmap.png"
-    plot_stage_heatmap(zscore_expr, grouped_terms, heatmap_path)
-    save_outputs(output_dir, grouped_terms, mean_expr, zscore_expr, found_genes, missing_genes)
+    go_heatmap_path = output_dir / "leading_genes_early_mid_late_heatmap_go_terms.png"
+    pattern_heatmap_path = output_dir / "leading_genes_early_mid_late_heatmap_expression_patterns.png"
+
+    plot_stage_heatmap(
+        zscore_expr=zscore_expr,
+        gene_order=go_gene_order,
+        output_path=go_heatmap_path,
+        grouped_terms=grouped_terms,
+    )
+    plot_stage_heatmap(
+        zscore_expr=zscore_expr,
+        gene_order=clustered_genes,
+        output_path=pattern_heatmap_path,
+        grouped_terms=None,
+    )
+
+    save_outputs(
+        output_dir=output_dir,
+        grouped_terms=grouped_terms,
+        clustered_genes=clustered_genes,
+        mean_expr=mean_expr,
+        zscore_expr=zscore_expr,
+        found_genes=found_genes,
+        missing_genes=missing_genes,
+    )
 
     return {
-        "heatmap_path": str(heatmap_path),
+        "go_heatmap_path": str(go_heatmap_path),
+        "expression_pattern_heatmap_path": str(pattern_heatmap_path),
         "output_dir": str(output_dir),
         "condition": str(condition),
         "n_found_genes": len(found_genes),
@@ -343,7 +405,7 @@ def create_early_late_go_heatmap(
 
 def build_arg_parser():
     parser = argparse.ArgumentParser(
-        description="Create an Early/Mid/Late heatmap using leading genes from a GSEA summary file."
+        description="Create Early/Mid/Late heatmaps using leading genes from a GSEA summary file."
     )
     parser.add_argument(
         "--gsea-summary-file",

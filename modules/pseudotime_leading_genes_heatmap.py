@@ -1,4 +1,5 @@
 import argparse
+import re
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -7,6 +8,8 @@ import pandas as pd
 import scanpy as sc
 import scipy.sparse as sp
 import seaborn as sns
+from scipy.cluster.hierarchy import leaves_list, linkage
+from scipy.spatial.distance import pdist
 
 
 DEFAULT_OUTPUT_DIR = Path("results/time_analysis/pseudotime")
@@ -29,6 +32,22 @@ def parse_gene_list(genes_value):
             seen.add(gene)
             genes.append(gene)
     return genes
+
+
+def parse_go_genes(genes_text):
+    """Parse the GO enrichment 'Genes' column into a clean gene list."""
+    if pd.isna(genes_text):
+        return []
+
+    text = str(genes_text)
+    for sep in [";", ",", "\n", "\t", "|", "/"]:
+        text = text.replace(sep, " ")
+    return [g.strip() for g in text.split() if g.strip()]
+
+
+def clean_go_term_name(term):
+    """Remove trailing GO accession text from a term label."""
+    return re.sub(r"\s*\(GO:[^)]+\)\s*$", "", str(term).strip())
 
 
 def load_summary_row(summary_file, condition):
@@ -72,6 +91,72 @@ def load_summary_row(summary_file, condition):
         "condition": str(row["condition"]),
         "leading_genes": genes,
     }
+
+
+def load_go_term_file(go_term_file):
+    """Load a GO-term enrichment table if provided."""
+    if go_term_file is None:
+        return None
+
+    go_term_file = Path(go_term_file)
+    if not go_term_file.exists():
+        raise FileNotFoundError(f"GO term file not found: {go_term_file}")
+
+    if go_term_file.suffix.lower() in {".tsv", ".txt"}:
+        go_df = pd.read_csv(go_term_file, sep="\t")
+    else:
+        go_df = pd.read_csv(go_term_file)
+
+    required_cols = {"Genes", "Term"}
+    missing_cols = required_cols - set(go_df.columns)
+    if missing_cols:
+        raise ValueError(f"GO term file is missing required columns: {sorted(missing_cols)}")
+
+    return go_df
+
+
+def build_go_grouped_gene_order(leading_genes, go_df):
+    """
+    Assign genes to GO terms in GO-file order.
+    Each gene is assigned once, to the first matching term.
+    """
+    if go_df is None:
+        return [("All genes", list(leading_genes))], list(leading_genes)
+
+    remaining = set(leading_genes)
+    grouped = []
+
+    for _, row in go_df.iterrows():
+        term = clean_go_term_name(row["Term"])
+        term_genes = parse_go_genes(row["Genes"])
+        matched = [gene for gene in leading_genes if gene in remaining and gene in term_genes]
+        if matched:
+            grouped.append((term, matched))
+            remaining -= set(matched)
+
+    if remaining:
+        grouped.append(("Unassigned", [gene for gene in leading_genes if gene in remaining]))
+
+    ordered_genes = [gene for _, genes in grouped for gene in genes]
+    return grouped, ordered_genes
+
+
+def cluster_genes_by_pattern(zscore_expr):
+    """Order genes by similarity of their pseudotime expression profiles."""
+    genes = zscore_expr.columns.tolist()
+    if len(genes) <= 2:
+        return genes
+
+    gene_matrix = zscore_expr[genes].T.to_numpy()
+    if np.allclose(gene_matrix, gene_matrix[0]):
+        return genes
+
+    distances = pdist(gene_matrix, metric="euclidean")
+    if np.allclose(distances, 0):
+        return genes
+
+    linkage_matrix = linkage(distances, method="average", optimal_ordering=True)
+    return [genes[i] for i in leaves_list(linkage_matrix)]
 
 
 def build_condition_time_matrices(
@@ -137,17 +222,40 @@ def build_condition_time_matrices(
     return mean_expr, zscore_expr, found_genes, missing_genes, adata_f.n_obs
 
 
-def plot_pseudotime_heatmap(zscore_expr, condition, output_path):
-    """Plot genes x age heatmap resembling a pseudotime progression."""
+def _add_pseudotime_arrow(ax):
+    """Add a centered two-headed Early/Late arrow just below the heatmap."""
+    y_pos = -0.065
+    ax.text(0.12, y_pos, "Early", transform=ax.transAxes, ha="center", va="center", fontsize=12)
+    ax.text(0.88, y_pos, "Late", transform=ax.transAxes, ha="center", va="center", fontsize=12)
+    ax.annotate(
+        "",
+        xy=(0.78, y_pos),
+        xytext=(0.22, y_pos),
+        xycoords="axes fraction",
+        textcoords="axes fraction",
+        arrowprops={"arrowstyle": "<->", "lw": 1.6, "color": "black"},
+    )
+
+
+def plot_pseudotime_heatmap(
+    zscore_expr,
+    condition,
+    output_path,
+    gene_order,
+    grouped_terms=None,
+):
+    """Plot a pseudotime heatmap, optionally with GO-term labels on the far left."""
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    plot_df = zscore_expr.T
+    plot_df = zscore_expr[gene_order].T
+    show_group_labels = bool(grouped_terms) and any(term != "All genes" for term, _ in grouped_terms)
 
-    fig, ax = plt.subplots(
-        figsize=(max(5.5, len(zscore_expr.index) * 0.55), max(6, len(plot_df.index) * 0.34)),
-        constrained_layout=True,
-    )
+    fig_width = max(5.8, len(zscore_expr.index) * 0.55)
+    fig_height = max(6, len(plot_df.index) * 0.34)
+    left_margin = 0.36 if show_group_labels else 0.18
+
+    fig, ax = plt.subplots(figsize=(fig_width, fig_height), constrained_layout=False)
 
     sns.heatmap(
         plot_df,
@@ -155,7 +263,7 @@ def plot_pseudotime_heatmap(zscore_expr, condition, output_path):
         cmap="Spectral_r",
         center=0,
         linewidths=0,
-        cbar_kws={"label": "Gene expression z-score"},
+        cbar_kws={"label": "Gene expression z-score", "shrink": 0.9},
     )
 
     ax.set_title(str(condition), fontsize=16, pad=10)
@@ -171,17 +279,33 @@ def plot_pseudotime_heatmap(zscore_expr, condition, output_path):
         ax.set_xticks(tick_idx + 0.5)
         ax.set_xticklabels([age_labels[i] for i in tick_idx], rotation=0, fontsize=9)
 
-    ax.text(0.0, -0.12, "Early", transform=ax.transAxes, ha="left", va="center", fontsize=14)
-    ax.text(1.0, -0.12, "Late", transform=ax.transAxes, ha="right", va="center", fontsize=14)
-    ax.annotate(
-        "",
-        xy=(0.98, -0.12),
-        xytext=(0.02, -0.12),
-        xycoords="axes fraction",
-        textcoords="axes fraction",
-        arrowprops={"arrowstyle": "->", "lw": 1.8, "color": "black"},
-    )
+    if show_group_labels:
+        boundary = 0
+        for term, genes in grouped_terms:
+            if not genes:
+                continue
 
+            start = boundary
+            end = start + len(genes)
+            center = (start + end) / 2
+
+            if start > 0:
+                ax.hlines(start, *ax.get_xlim(), colors="white", linewidth=2.2)
+
+            ax.text(
+                -1.15,
+                center,
+                term,
+                ha="right",
+                va="center",
+                fontsize=10,
+                fontweight="bold",
+                clip_on=False,
+            )
+            boundary = end
+
+    _add_pseudotime_arrow(ax)
+    fig.subplots_adjust(left=left_margin, right=0.92, top=0.94, bottom=0.11)
     fig.savefig(output_path, dpi=300, bbox_inches="tight")
     plt.close(fig)
 
@@ -194,8 +318,10 @@ def save_outputs(
     missing_genes,
     condition,
     filter_column,
+    go_grouped_terms,
+    clustered_genes,
 ):
-    """Save supporting output tables for the pseudotime plot."""
+    """Save supporting output tables for the pseudotime plots."""
     output_dir.mkdir(parents=True, exist_ok=True)
 
     mean_expr.T.reset_index(names="gene").to_csv(
@@ -212,6 +338,16 @@ def save_outputs(
         [{"column": filter_column, "condition": condition, "n_genes": len(found_genes)}]
     ).to_csv(output_dir / "selection_metadata.csv", index=False)
 
+    go_rows = []
+    for term, genes in go_grouped_terms:
+        for order, gene in enumerate(genes, start=1):
+            go_rows.append({"Term": term, "gene": gene, "term_order": order})
+    pd.DataFrame(go_rows).to_csv(output_dir / "go_term_gene_order.csv", index=False)
+
+    pd.DataFrame(
+        {"gene": clustered_genes, "expression_pattern_order": range(1, len(clustered_genes) + 1)}
+    ).to_csv(output_dir / "expression_pattern_gene_order.csv", index=False)
+
 
 def create_pseudotime_leading_gene_plot(
     gsea_summary_file,
@@ -221,9 +357,10 @@ def create_pseudotime_leading_gene_plot(
     subfolder_name=None,
     age_col="Age",
     sym_col="Gene",
+    go_term_file=None,
 ):
     """
-    Create a pseudotime-style heatmap for leading genes from a GSEA condition.
+    Create pseudotime-style heatmaps for leading genes from a GSEA condition.
     """
     summary_info = load_summary_row(gsea_summary_file, condition)
     h5ad_path = Path(h5ad_path)
@@ -234,18 +371,47 @@ def create_pseudotime_leading_gene_plot(
     if subfolder_name:
         output_dir = output_dir / str(subfolder_name).strip()
 
+    go_df = load_go_term_file(go_term_file)
+    go_grouped_terms, go_ordered_genes = build_go_grouped_gene_order(
+        summary_info["leading_genes"], go_df
+    )
+
     adata = sc.read_h5ad(h5ad_path)
     mean_expr, zscore_expr, found_genes, missing_genes, n_cells = build_condition_time_matrices(
         adata=adata,
         filter_column=summary_info["column"],
         filter_value=summary_info["condition"],
-        leading_genes=summary_info["leading_genes"],
+        leading_genes=go_ordered_genes,
         age_col=age_col,
         sym_col=sym_col,
     )
 
-    heatmap_path = output_dir / "leading_genes_pseudotime_heatmap.png"
-    plot_pseudotime_heatmap(zscore_expr, summary_info["condition"], heatmap_path)
+    go_grouped_terms = [
+        (term, [gene for gene in genes if gene in found_genes])
+        for term, genes in go_grouped_terms
+    ]
+    go_grouped_terms = [(term, genes) for term, genes in go_grouped_terms if genes]
+    go_gene_order = [gene for _, genes in go_grouped_terms for gene in genes]
+    clustered_genes = cluster_genes_by_pattern(zscore_expr[go_gene_order])
+
+    go_heatmap_path = output_dir / "leading_genes_pseudotime_heatmap_go_terms.png"
+    pattern_heatmap_path = output_dir / "leading_genes_pseudotime_heatmap_expression_patterns.png"
+
+    plot_pseudotime_heatmap(
+        zscore_expr=zscore_expr,
+        condition=summary_info["condition"],
+        output_path=go_heatmap_path,
+        gene_order=go_gene_order,
+        grouped_terms=go_grouped_terms,
+    )
+    plot_pseudotime_heatmap(
+        zscore_expr=zscore_expr,
+        condition=summary_info["condition"],
+        output_path=pattern_heatmap_path,
+        gene_order=clustered_genes,
+        grouped_terms=None,
+    )
+
     save_outputs(
         output_dir=output_dir,
         mean_expr=mean_expr,
@@ -254,10 +420,13 @@ def create_pseudotime_leading_gene_plot(
         missing_genes=missing_genes,
         condition=summary_info["condition"],
         filter_column=summary_info["column"],
+        go_grouped_terms=go_grouped_terms,
+        clustered_genes=clustered_genes,
     )
 
     return {
-        "heatmap_path": str(heatmap_path),
+        "go_heatmap_path": str(go_heatmap_path),
+        "expression_pattern_heatmap_path": str(pattern_heatmap_path),
         "output_dir": str(output_dir),
         "column": summary_info["column"],
         "condition": summary_info["condition"],
@@ -269,7 +438,7 @@ def create_pseudotime_leading_gene_plot(
 
 def build_arg_parser():
     parser = argparse.ArgumentParser(
-        description="Create a pseudotime-style heatmap for GSEA leading genes."
+        description="Create pseudotime-style heatmaps for GSEA leading genes."
     )
     parser.add_argument(
         "--gsea-summary-file",
@@ -285,6 +454,11 @@ def build_arg_parser():
         "--h5ad-path",
         required=True,
         help="Path to the AnnData file used for expression summaries.",
+    )
+    parser.add_argument(
+        "--go-term-file",
+        default=None,
+        help="Optional CSV/TSV enrichment file containing 'Genes' and 'Term' columns.",
     )
     parser.add_argument(
         "--output-dir",
@@ -311,6 +485,7 @@ if __name__ == "__main__":
         subfolder_name=args.subfolder_name,
         age_col=args.age_col,
         sym_col=args.sym_col,
+        go_term_file=args.go_term_file,
     )
     print("Saved pseudotime leading-gene heatmap results:")
     for key, value in result.items():

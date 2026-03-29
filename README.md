@@ -188,7 +188,7 @@ Before the second command, update `ges_results_folder` in `config_files/enrichme
 
 ## Early/Mid/Late GO heatmap example
 
-The module `modules/early_late_go_heatmap.py` creates a heatmap for the leading genes of a selected GSEA condition, groups them by GO terms, and summarizes their expression across developmental stages:
+The module `modules/early_late_go_heatmap.py` creates Early/Mid/Late heatmaps for the leading genes of a selected GSEA condition. It writes one GO-grouped heatmap with GO labels under the gene blocks and one expression-pattern-ordered heatmap, using these developmental stages:
 
 - `Early`: weeks 5.5 to 7.0
 - `Mid`: weeks 7.1 to 8.9
@@ -221,7 +221,7 @@ results/time_analysis/early_late/<your_subfolder_name>/
 
 ## Pseudotime leading-gene heatmap example
 
-The module `modules/pseudotime_leading_genes_heatmap.py` creates a pseudotime-style heatmap for the leading genes of a selected GSEA condition. It reads the matching row from the GSEA summary file, uses the row `column` and `condition` values to filter cells, and plots gene-expression changes across ordered ages.
+The module `modules/pseudotime_leading_genes_heatmap.py` creates pseudotime-style heatmaps for the leading genes of a selected GSEA condition. It reads the matching row from the GSEA summary file, uses the row `column` and `condition` values to filter cells, and plots gene-expression changes across ordered ages. If you provide `--go-term-file`, it writes both a GO-grouped heatmap and an expression-pattern-ordered heatmap.
 
 Example call:
 
@@ -230,6 +230,7 @@ python modules/pseudotime_leading_genes_heatmap.py \
   --gsea-summary-file path/to/GSEA_final_summary.csv \
   --condition Forebrain \
   --h5ad-path data/human_dev_without_week_5.h5ad \
+  --go-term-file path/to/enrichr_results.csv \
   --subfolder-name microcephaly_forebrain_pseudotime
 ```
 
