@@ -39,6 +39,45 @@ def sanitize_name(text):
     return cleaned or "correlations"
 
 
+def parse_run_name_from_config(config_path):
+    """Extract run_name from a metadata YAML file with a simple line parser."""
+    try:
+        for line in config_path.read_text(encoding="utf-8").splitlines():
+            match = re.match(r"^\s*run_name\s*:\s*(.+?)\s*$", line)
+            if not match:
+                continue
+
+            value = match.group(1).strip()
+            if value and value[0] == value[-1] and value[0] in {'"', "'"}:
+                value = value[1:-1]
+            return value.strip()
+    except Exception:
+        return None
+    return None
+
+
+def find_run_name_for_summary(summary_path):
+    """Locate the nearest metadata config for a summary file and read its run name."""
+    summary_path = Path(summary_path).resolve()
+
+    for parent in [summary_path.parent, *summary_path.parents]:
+        metadata_dir = parent / "metadata"
+        if not metadata_dir.is_dir():
+            continue
+
+        preferred_paths = [metadata_dir / "config_used.yaml"]
+        preferred_paths.extend(sorted(metadata_dir.glob("*_config.yaml")))
+
+        for config_path in preferred_paths:
+            if not config_path.exists():
+                continue
+            run_name = parse_run_name_from_config(config_path)
+            if run_name:
+                return run_name, str(config_path.resolve())
+
+    return summary_path.parent.parent.name, ""
+
+
 def discover_summary_files(input_folder):
     """Find summary-like tables that contain leading genes."""
     input_folder = Path(input_folder)
@@ -77,8 +116,11 @@ def discover_summary_files(input_folder):
 def load_condition_entries(summary_files):
     """Load all valid condition rows from the discovered summary files."""
     entries = []
+    seen_keys = set()
 
     for summary_path in summary_files:
+        run_name, metadata_config_path = find_run_name_for_summary(summary_path)
+
         if summary_path.suffix.lower() in {".tsv", ".txt"}:
             df = pd.read_csv(summary_path, sep="\t")
         else:
@@ -91,14 +133,20 @@ def load_condition_entries(summary_files):
 
             column_name = str(row["column"]).strip()
             condition_value = str(row["condition"]).strip()
-            label = f"{column_name}: {condition_value}"
+            label = f"{run_name} | {column_name}: {condition_value}"
+            entry_key = (run_name, column_name, condition_value)
+            if entry_key in seen_keys:
+                continue
+            seen_keys.add(entry_key)
 
             entries.append(
                 {
+                    "run_name": run_name,
                     "column": column_name,
                     "condition": condition_value,
                     "condition_label": label,
                     "summary_file": str(summary_path.resolve()),
+                    "metadata_config_path": metadata_config_path,
                     "leading_genes": genes,
                     "leading_gene_set": set(genes),
                 }
@@ -129,15 +177,19 @@ def build_pairwise_correlation_table(entries):
 
         rows.append(
             {
+                "left_run_name": left_entry["run_name"],
                 "left_column": left_entry["column"],
                 "left_condition": left_entry["condition"],
                 "left_condition_label": left_entry["condition_label"],
                 "left_summary_file": left_entry["summary_file"],
+                "left_metadata_config_path": left_entry["metadata_config_path"],
                 "left_n_leading_genes": len(left_entry["leading_genes"]),
+                "right_run_name": right_entry["run_name"],
                 "right_column": right_entry["column"],
                 "right_condition": right_entry["condition"],
                 "right_condition_label": right_entry["condition_label"],
                 "right_summary_file": right_entry["summary_file"],
+                "right_metadata_config_path": right_entry["metadata_config_path"],
                 "right_n_leading_genes": len(right_entry["leading_genes"]),
                 "correlation_score": score,
                 "n_overlap_genes": len(overlap_genes),
