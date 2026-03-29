@@ -245,3 +245,21 @@ If `--subfolder-name` is provided, outputs are written under:
 ```text
 results/time_analysis/pseudotime/<your_subfolder_name>/
 ```
+
+## Leading-gene correlation example
+
+The module `modules/leading_gene_condition_correlations.py` scans a folder tree for GSEA summary files, compares all leading-gene condition pairs, and writes a pairwise correlation table plus a heatmap of the strongest overlaps.
+
+Example call:
+
+```bash
+python modules/leading_gene_condition_correlations.py \
+  results/enrichment_results/ \
+  --top-n 25
+```
+
+By default, outputs are written under:
+
+```text
+results/correlations/<input_folder_name>/
+```
