@@ -11,6 +11,7 @@ import seaborn as sns
 
 DEFAULT_OUTPUT_DIR = Path("results/correlations")
 DEFAULT_TOP_N = 25
+DEFAULT_MIN_CORRELATION = 0.5
 
 
 def parse_gene_list(genes_value):
@@ -204,6 +205,18 @@ def build_pairwise_correlation_table(entries):
     return pairwise_df.reset_index(drop=True)
 
 
+def build_filtered_correlation_export(pairwise_df, min_correlation=DEFAULT_MIN_CORRELATION):
+    """Build a simple condition-pair export for strong, non-self correlations."""
+    filtered_df = pairwise_df.loc[
+        (pairwise_df["correlation_score"] > min_correlation)
+        & (pairwise_df["left_condition_label"] != pairwise_df["right_condition_label"]),
+        ["left_condition_label", "right_condition_label", "correlation_score"],
+    ].copy()
+
+    filtered_df.columns = ["Condition 1", "Condition 2", "Correlation Value"]
+    return filtered_df.reset_index(drop=True)
+
+
 def build_full_correlation_matrix(entries):
     """Build a symmetric condition-by-condition matrix."""
     labels = []
@@ -293,24 +306,23 @@ def create_leading_gene_condition_correlations(
     entries = load_condition_entries(summary_files)
 
     pairwise_df = build_pairwise_correlation_table(entries)
+    filtered_export_df = build_filtered_correlation_export(pairwise_df)
     full_matrix = build_full_correlation_matrix(entries)
     top_matrix = select_top_conditions(full_matrix, top_n=top_n)
 
     csv_path = output_dir / "leading_gene_condition_correlations.csv"
-    matrix_csv_path = output_dir / "leading_gene_condition_correlation_matrix.csv"
     heatmap_path = output_dir / "leading_gene_condition_correlation_heatmap.png"
 
-    pairwise_df.to_csv(csv_path, index=False)
-    full_matrix.to_csv(matrix_csv_path, index=True)
+    filtered_export_df.to_csv(csv_path, index=False)
     plot_top_correlation_heatmap(top_matrix, heatmap_path)
 
     return {
         "output_dir": str(output_dir),
-        "pairwise_csv_path": str(csv_path),
-        "matrix_csv_path": str(matrix_csv_path),
+        "filtered_csv_path": str(csv_path),
         "heatmap_path": str(heatmap_path),
         "n_summary_files": len(summary_files),
         "n_conditions": len(entries),
+        "n_exported_condition_pairs": len(filtered_export_df),
         "heatmap_n_conditions": int(top_matrix.shape[0]),
     }
 
