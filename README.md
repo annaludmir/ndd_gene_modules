@@ -186,6 +186,33 @@ Before the second command, update `ges_results_folder` in `config_files/enrichme
 - Several configs in `config_files/` are specialized for cortex, all-layers, proliferating cells, and cell-cycle analyses.
 - `project_description.md` contains broader biological and historical context, including older scripts in `old_stuff/`.
 
+## Gene expression summary example
+
+The module `modules/gene_expression_summary.py` reads the leading genes for one selected GSEA summary condition, summarizes their expression across Forebrain/Midbrain/Hindbrain, and writes:
+
+- a long per-gene-per-region CSV
+- a final one-row-per-gene CSV
+
+The final summary also includes a one-sided paired Wilcoxon signed-rank test comparing `top_region_score` versus `second_region_score` across genes. If you provide an extra summary file and condition list, the output adds boolean columns such as `S_leading_gene` and `G2M_leading_gene`.
+
+Example call:
+
+```bash
+python modules/gene_expression_summary.py \
+  --h5ad-path data/human_dev.h5ad \
+  --gsea-summary-file path/to/GSEA_final_summary.csv \
+  --condition Forebrain \
+  --leading-gene-summary-file path/to/GSEA_final_summary.csv \
+  --leading-gene-conditions S G2M G1 \
+  --subfolder-name forebrain_gene_expression_summary
+```
+
+By default, outputs are written under:
+
+```text
+results/additional_analyses/gene_expression_summary/
+```
+
 ## Early/Mid/Late GO heatmap example
 
 The module `modules/early_late_go_heatmap.py` creates Early/Mid/Late heatmaps for the leading genes of a selected GSEA condition. It writes one GO-grouped heatmap with GO labels under the gene blocks and one expression-pattern-ordered heatmap, using these developmental stages:

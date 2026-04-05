@@ -1,10 +1,129 @@
+import argparse
+import re
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
-import scipy.sparse as sp
-import scanpy as sc
 
 
-def collapse_region(region: str):
+DEFAULT_OUTPUT_DIR = Path("results/additional_analyses/gene_expression_summary")
+
+
+def parse_gene_list(genes_value):
+    """Parse Lead_genes text into a unique, ordered list of gene symbols."""
+    if pd.isna(genes_value):
+        return []
+
+    text = str(genes_value)
+    for sep in [";", ",", "\n", "\t", "|", "/"]:
+        text = text.replace(sep, " ")
+
+    seen = set()
+    genes = []
+    for gene in text.split():
+        gene = gene.strip()
+        if gene and gene not in seen:
+            seen.add(gene)
+            genes.append(gene)
+    return genes
+
+
+def sanitize_name(text):
+    """Convert free text to a filesystem-friendly stem."""
+    cleaned = re.sub(r"[^A-Za-z0-9._-]+", "_", str(text).strip())
+    cleaned = cleaned.strip("._")
+    return cleaned or "gene_expression_summary"
+
+
+def read_table(path):
+    """Read CSV/TSV/TXT tables using the file suffix to choose a separator."""
+    path = Path(path)
+    if not path.exists():
+        raise FileNotFoundError(f"File not found: {path}")
+
+    if path.suffix.lower() in {".tsv", ".txt"}:
+        return pd.read_csv(path, sep="\t")
+    return pd.read_csv(path)
+
+
+def load_summary_row(summary_file, condition):
+    """Load the GSEA summary row for the requested condition."""
+    summary_df = read_table(summary_file)
+
+    required_cols = {"column", "condition", "Lead_genes"}
+    missing_cols = required_cols - set(summary_df.columns)
+    if missing_cols:
+        raise ValueError(
+            f"GSEA summary file is missing required columns: {sorted(missing_cols)}"
+        )
+
+    matched = summary_df.loc[summary_df["condition"].astype(str) == str(condition)].copy()
+    if matched.empty:
+        raise ValueError(f"Condition '{condition}' was not found in the summary file.")
+
+    if len(matched) > 1:
+        if "NES" in matched.columns:
+            matched["NES_abs"] = pd.to_numeric(matched["NES"], errors="coerce").abs()
+            matched = matched.sort_values("NES_abs", ascending=False)
+        print(
+            f"Warning: found {len(matched)} rows for condition '{condition}'. "
+            "Using the first match."
+        )
+
+    row = matched.iloc[0]
+    leading_genes = parse_gene_list(row["Lead_genes"])
+    if not leading_genes:
+        raise ValueError(f"No leading genes found for condition '{condition}'.")
+
+    return {
+        "column": str(row["column"]),
+        "condition": str(row["condition"]),
+        "leading_genes": leading_genes,
+    }
+
+
+def load_condition_leading_gene_sets(summary_file, conditions=None):
+    """Load leading-gene sets for requested summary conditions."""
+    summary_df = read_table(summary_file)
+
+    required_cols = {"condition", "Lead_genes"}
+    missing_cols = required_cols - set(summary_df.columns)
+    if missing_cols:
+        raise ValueError(
+            f"Leading-gene summary file is missing required columns: {sorted(missing_cols)}"
+        )
+
+    if conditions is None:
+        ordered_conditions = summary_df["condition"].astype(str).drop_duplicates().tolist()
+    else:
+        ordered_conditions = [str(condition) for condition in conditions]
+
+    condition_gene_sets = {}
+    for condition in ordered_conditions:
+        matched = summary_df.loc[summary_df["condition"].astype(str) == condition].copy()
+        if matched.empty:
+            raise ValueError(f"Condition '{condition}' was not found in {summary_file}.")
+
+        if len(matched) > 1 and "NES" in matched.columns:
+            matched["NES_abs"] = pd.to_numeric(matched["NES"], errors="coerce").abs()
+            matched = matched.sort_values("NES_abs", ascending=False)
+
+        genes = parse_gene_list(matched.iloc[0]["Lead_genes"])
+        condition_gene_sets[condition] = set(genes)
+
+    return condition_gene_sets
+
+
+def build_leading_gene_flag_columns(genes, condition_gene_sets):
+    """Create per-gene leading-gene membership flags for additional conditions."""
+    flag_df = pd.DataFrame({"gene": list(genes)})
+    for condition, gene_set in condition_gene_sets.items():
+        column_name = f"{sanitize_name(condition)}_leading_gene"
+        flag_df[column_name] = flag_df["gene"].isin(gene_set)
+    return flag_df
+
+
+def collapse_region(region):
     """Map detailed regions to meta-regions."""
     if pd.isna(region):
         return np.nan
@@ -15,12 +134,53 @@ def collapse_region(region: str):
 
     if region in forebrain:
         return "Forebrain"
-    elif region in hindbrain:
+    if region in hindbrain:
         return "Hindbrain"
-    elif region in midbrain:
+    if region in midbrain:
         return "Midbrain"
-    else:
-        return np.nan  # ignore Brain / Head / others
+    return np.nan
+
+
+def compute_top_vs_second_wilcoxon(final_summary):
+    """Run a one-sided paired Wilcoxon signed-rank test across genes."""
+    from scipy.stats import wilcoxon
+
+    valid = final_summary.loc[
+        final_summary["top_region_score"].notna() & final_summary["second_region_score"].notna()
+    ].copy()
+
+    result = {
+        "wilcoxon_top_vs_second_statistic": np.nan,
+        "wilcoxon_top_vs_second_pvalue": np.nan,
+        "wilcoxon_top_vs_second_n_pairs": int(len(valid)),
+        "wilcoxon_top_vs_second_alternative": "greater",
+        "wilcoxon_top_vs_second_note": "",
+    }
+
+    if valid.empty:
+        result["wilcoxon_top_vs_second_note"] = "No genes had both top and second region scores."
+        return result
+
+    differences = valid["top_region_score"] - valid["second_region_score"]
+    nonzero_mask = differences != 0
+    if not nonzero_mask.any():
+        result["wilcoxon_top_vs_second_note"] = (
+            "All top-vs-second region score differences were zero."
+        )
+        return result
+
+    valid_nonzero = valid.loc[nonzero_mask]
+    result["wilcoxon_top_vs_second_n_pairs"] = int(len(valid_nonzero))
+
+    test = wilcoxon(
+        valid_nonzero["top_region_score"],
+        valid_nonzero["second_region_score"],
+        alternative="greater",
+        zero_method="wilcox",
+    )
+    result["wilcoxon_top_vs_second_statistic"] = float(test.statistic)
+    result["wilcoxon_top_vs_second_pvalue"] = float(test.pvalue)
+    return result
 
 
 def summarize_gene_expression_top_region(
@@ -31,28 +191,42 @@ def summarize_gene_expression_top_region(
     cell_filter_val="Radial glia",
     sym_col="Gene",
     expr_threshold=0,
+    leading_gene_flags=None,
 ):
     """
     Returns:
       1) long_summary: one row per gene x meta-region
       2) final_summary: one row per gene with top region and region-specific stats
+      3) wilcoxon_result: paired one-sided Wilcoxon top-vs-second score test across genes
     """
 
+    if region_col not in adata.obs.columns:
+        raise KeyError(f"Column '{region_col}' not found in adata.obs")
+    if cell_filter_col not in adata.obs.columns:
+        raise KeyError(f"Column '{cell_filter_col}' not found in adata.obs")
+    if sym_col not in adata.var.columns:
+        raise KeyError(f"Column '{sym_col}' not found in adata.var")
+
     print("Filtering cells...")
-    adata_f = adata[adata.obs[cell_filter_col] == cell_filter_val].copy()
+    adata_f = adata[adata.obs[cell_filter_col].astype(str) == str(cell_filter_val)].copy()
+    if adata_f.n_obs == 0:
+        raise ValueError(
+            f"No cells found for condition '{cell_filter_val}' in adata.obs['{cell_filter_col}']."
+        )
 
     print("Normalizing...")
+    import scanpy as sc
+    import scipy.sparse as sp
+
     sc.pp.normalize_total(adata_f)
     sc.pp.log1p(adata_f)
 
-    # Map regions to meta-regions
     print("Collapsing regions...")
     adata_f.obs["meta_region"] = adata_f.obs[region_col].map(collapse_region)
-
-    # Keep only the 3 meta-regions
     adata_f = adata_f[adata_f.obs["meta_region"].notna()].copy()
+    if adata_f.n_obs == 0:
+        raise ValueError("No cells remained after collapsing to Forebrain/Midbrain/Hindbrain.")
 
-    # gene symbol -> var name
     sym2var = (
         pd.Series(adata_f.var_names.values, index=adata_f.var[sym_col].astype(str))
         .dropna()
@@ -60,16 +234,16 @@ def summarize_gene_expression_top_region(
     )
 
     found_genes = [g for g in genes if g in sym2var]
-    missing = [g for g in genes if g not in sym2var]
+    missing_genes = [g for g in genes if g not in sym2var]
 
     print(f"Found {len(found_genes)} genes")
-    print(f"Missing {len(missing)} genes")
-    if missing:
-        print("Missing symbols:", missing)
+    print(f"Missing {len(missing_genes)} genes")
+    if missing_genes:
+        print("Missing symbols:", missing_genes)
+    if not found_genes:
+        raise ValueError("None of the requested genes were found in adata.var[sym_col].")
 
     varnames = [sym2var[g] for g in found_genes]
-
-    # Extract expression matrix only for selected genes
     X = adata_f[:, varnames].X
     if sp.issparse(X):
         X = X.toarray()
@@ -78,22 +252,17 @@ def summarize_gene_expression_top_region(
     long_results = []
 
     print("Calculating summaries...")
-
     for i, gene in enumerate(found_genes):
         vals = X[:, i]
 
-        tmp = pd.DataFrame({
-            "meta_region": meta_regions,
-            "expr": vals
-        })
-
-        # all cells per region
+        tmp = pd.DataFrame({"meta_region": meta_regions, "expr": vals})
         grouped_all = tmp.groupby("meta_region")["expr"]
 
         n_total = grouped_all.size().reset_index(name="n_total_cells")
-        frac_expr = grouped_all.apply(lambda x: (x > expr_threshold).mean()).reset_index(name="fraction_expressing")
+        frac_expr = grouped_all.apply(
+            lambda x: (x > expr_threshold).mean()
+        ).reset_index(name="fraction_expressing")
 
-        # expressing cells only
         tmp_expr = tmp[tmp["expr"] > expr_threshold].copy()
         grouped_expr = tmp_expr.groupby("meta_region")["expr"]
 
@@ -103,30 +272,22 @@ def summarize_gene_expression_top_region(
             std_expr="std",
             min_expr="min",
             max_expr="max",
-            n_expressing_cells="count"
+            n_expressing_cells="count",
         ).reset_index()
 
-        # merge
         summary = n_total.merge(frac_expr, on="meta_region", how="left")
         summary = summary.merge(summary_expr, on="meta_region", how="left")
-
-        # region score: intensity * prevalence
         summary["region_score"] = summary["mean_expr"] * summary["fraction_expressing"]
-
         summary["gene"] = gene
         long_results.append(summary)
 
     long_summary = pd.concat(long_results, ignore_index=True)
 
-    # ---------- Build one-row-per-gene final summary ----------
-    final_rows = []
-
     wanted_regions = ["Forebrain", "Midbrain", "Hindbrain"]
+    final_rows = []
 
     for gene, sub in long_summary.groupby("gene"):
         sub = sub.set_index("meta_region").reindex(wanted_regions)
-
-        # scores for ranking
         scores = sub["region_score"].fillna(0)
 
         top_region = scores.idxmax()
@@ -162,67 +323,193 @@ def summarize_gene_expression_top_region(
 
         final_rows.append(row)
 
-    final_summary = pd.DataFrame(final_rows)
-
-    # Sort by how strongly region-specific the gene is
-    final_summary = final_summary.sort_values(
+    final_summary = pd.DataFrame(final_rows).sort_values(
         ["top_region", "enrichment_score_top_vs_second"],
-        ascending=[True, False]
+        ascending=[True, False],
     )
 
-    return long_summary, final_summary
+    if leading_gene_flags is not None:
+        long_summary = long_summary.merge(leading_gene_flags, on="gene", how="left")
+        final_summary = final_summary.merge(leading_gene_flags, on="gene", how="left")
+
+    wilcoxon_result = compute_top_vs_second_wilcoxon(final_summary)
+    for column, value in wilcoxon_result.items():
+        final_summary[column] = value
+
+    return long_summary, final_summary, wilcoxon_result
+
+
+def create_gene_expression_summary(
+    h5ad_path,
+    gsea_summary_file,
+    condition,
+    output_dir=DEFAULT_OUTPUT_DIR,
+    subfolder_name=None,
+    leading_gene_summary_file=None,
+    leading_gene_conditions=None,
+    region_col="Region",
+    cell_filter_col="CellClass",
+    cell_filter_val="Radial glia",
+    sym_col="Gene",
+    expr_threshold=0,
+):
+    """Create long and final gene-expression summaries for a GSEA leading-gene set."""
+    summary_info = load_summary_row(gsea_summary_file, condition)
+
+    output_dir = Path(output_dir)
+    if subfolder_name:
+        output_dir = output_dir / sanitize_name(subfolder_name)
+    else:
+        output_dir = output_dir / sanitize_name(condition)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    leading_gene_flags = None
+    if leading_gene_summary_file is not None:
+        condition_gene_sets = load_condition_leading_gene_sets(
+            leading_gene_summary_file,
+            conditions=leading_gene_conditions,
+        )
+        leading_gene_flags = build_leading_gene_flag_columns(
+            summary_info["leading_genes"],
+            condition_gene_sets,
+        )
+
+    print("Loading AnnData...")
+    import scanpy as sc
+
+    adata = sc.read_h5ad(h5ad_path)
+
+    long_summary, final_summary, wilcoxon_result = summarize_gene_expression_top_region(
+        adata,
+        summary_info["leading_genes"],
+        region_col=region_col,
+        cell_filter_col=cell_filter_col,
+        cell_filter_val=cell_filter_val,
+        sym_col=sym_col,
+        expr_threshold=expr_threshold,
+        leading_gene_flags=leading_gene_flags,
+    )
+
+    long_csv_path = output_dir / "gene_expression_region_long_summary.csv"
+    final_csv_path = output_dir / "gene_expression_top_region_summary.csv"
+    long_summary.to_csv(long_csv_path, index=False)
+    final_summary.to_csv(final_csv_path, index=False)
+
+    return {
+        "output_dir": str(output_dir),
+        "long_summary_csv_path": str(long_csv_path),
+        "final_summary_csv_path": str(final_csv_path),
+        "gsea_summary_file": str(Path(gsea_summary_file)),
+        "condition": summary_info["condition"],
+        "condition_column": summary_info["column"],
+        "n_input_leading_genes": len(summary_info["leading_genes"]),
+        "n_found_genes": int(final_summary.shape[0]),
+        "wilcoxon_top_vs_second_statistic": wilcoxon_result[
+            "wilcoxon_top_vs_second_statistic"
+        ],
+        "wilcoxon_top_vs_second_pvalue": wilcoxon_result[
+            "wilcoxon_top_vs_second_pvalue"
+        ],
+        "wilcoxon_top_vs_second_n_pairs": wilcoxon_result[
+            "wilcoxon_top_vs_second_n_pairs"
+        ],
+    }
+
+
+def build_arg_parser():
+    parser = argparse.ArgumentParser(
+        description=(
+            "Summarize top regional expression for leading genes taken from a GSEA summary condition."
+        )
+    )
+    parser.add_argument(
+        "--h5ad-path",
+        required=True,
+        help="Path to the input AnnData .h5ad file.",
+    )
+    parser.add_argument(
+        "--gsea-summary-file",
+        required=True,
+        help="GSEA summary CSV/TSV/TXT containing 'column', 'condition', and 'Lead_genes'.",
+    )
+    parser.add_argument(
+        "--condition",
+        required=True,
+        help="Condition value to match in the GSEA summary and use for leading genes.",
+    )
+    parser.add_argument(
+        "--leading-gene-summary-file",
+        default=None,
+        help=(
+            "Optional separate summary CSV/TSV/TXT used to add per-condition leading-gene "
+            "membership flags."
+        ),
+    )
+    parser.add_argument(
+        "--leading-gene-conditions",
+        nargs="+",
+        default=None,
+        help=(
+            "Optional list of condition names to annotate from --leading-gene-summary-file. "
+            "If omitted, all conditions in that file are used."
+        ),
+    )
+    parser.add_argument(
+        "--output-dir",
+        default=str(DEFAULT_OUTPUT_DIR),
+        help="Base output folder for the generated CSV files.",
+    )
+    parser.add_argument(
+        "--subfolder-name",
+        default=None,
+        help="Optional subfolder name under the output directory.",
+    )
+    parser.add_argument(
+        "--region-col",
+        default="Region",
+        help="Column in adata.obs describing anatomical regions.",
+    )
+    parser.add_argument(
+        "--cell-filter-col",
+        default="CellClass",
+        help="Column in adata.obs used to filter cells before summarizing.",
+    )
+    parser.add_argument(
+        "--cell-filter-val",
+        default="Radial glia",
+        help="Value in --cell-filter-col to keep before summarizing.",
+    )
+    parser.add_argument(
+        "--sym-col",
+        default="Gene",
+        help="Column in adata.var containing gene symbols.",
+    )
+    parser.add_argument(
+        "--expr-threshold",
+        type=float,
+        default=0,
+        help="Expression threshold used for fraction-expressing and expressing-cell summaries.",
+    )
+    return parser
 
 
 if __name__ == "__main__":
-    genes = [
-        'AARS1','ACBD6','ADARB1','AFG2B','AGMO','AKT3','ANKLE2','AP4B1','AP4E1','AP4M1','AP4S1','ARCN1',
-        'ARF3','ARPC4','ASPM','ATP11A','ATP1A2','ATP6V0A1','ATP6V0C','ATP9A','ATR','ATRIP','ATRX','BLM',
-        'BPTF','BRCA2','BRD4','BRIP1','BUB1','BUB1B','CAMK2B','CAMSAP1','CASK','CCDC88A','CCND2','CDC6',
-        'CDK5RAP2','CDK6','CDT1','CENPE','CENPF','CEP135','CEP152','CEP55','CEP57','CEP63','CHAMP1','CHKA',
-        'CIT','CKAP2L','COASY','COG3','COPB1','COPB2','CPAP','CPSF3','CREBBP','CRIPT','CSNK2A1','CTCF',
-        'CTNNB1','CTSF','CTU2','DDX11','DHCR7','DIAPH1','DNA2','DNMT3A','DOHH','DONSON','DPM1','DPP6',
-        'DROSHA','DYNC1I2','DYRK1A','EFTUD2','EIF2S3','EIF5A','EOMES','ERCC4','ERCC5','ERCC6','ERCC8',
-        'EXOC7','FANCA','FANCB','FANCC','FANCD2','FANCE','FANCF','FANCG','FANCI','FANCL','FANCM','FBRSL1',
-        'FILIP1','FOXG1','FRA10AC1','GINS2','GINS3','GMNN','GPT2','GRM7','GTF2E2','HDAC8','HHAT',
-        'HIKESHI','HIST1H4C','HMGB1','HPDL','IARS1','IER3IP1','IGF1','IGF1R','INTS11','KIF11','KIF14',
-        'KIF1BP','KMT2B','KNL1','LAGE3','LARP7','LHX2','LIG4','LMNB1','LMNB2','MCM7','MCPH1','MECP2',
-        'MED11','MED17','METTL5','MFSD2A','MINPP1','MORC2','MPLKIP','MRE11','MSMO1','MYCN','NAA20','NAPB',
-        'NARS1','NBN','NCAPD2','NCAPD3','NCAPH','NDE1','NHEJ1','NIN','NIPBL','NSD2','NSMCE2','NSRP1','NUF2',
-        'NUP107','NUP188','NUP214','ORC1','ORC4','ORC6','OSGEP','PALB2','PCDH12','PCDHGC4','PCLO','PCNT',
-        'PDCD6IP','PDHA1','PHC1','PLAA','PLK4','PNKP','POC1A','POGZ','PPFIBP1','PPIL1','PPP1R15B','PPP1R35',
-        'PQBP1','PRIM1','PRUNE1','PSMC3','PTPN23','PUF60','PUS7','QARS','RAD21','RAD50','RAD51','RAD51C',
-        'RBBP8','RING1','RMI1','RNU4-2','RNU4ATAC','RPL10','RRP7A','RTTN','RUSC2','SARS1','SASS6','SLC1A4',
-        'SLC25A19','SLC38A3','SLC9A6','SLF2','SLX4','SMARCA5','SMC1A','SMC3','SMC5','SMG8','SMO','STAMBP',
-        'STIL','SVBP','TAF13','TCF4','TMX2','TNPO2','TOP3A','TP53RK','TPR','TPRKB','TRA2B','TRAIP',
-        'TRAPPC10','TRAPPC12','TRAPPC6B','TRAPPC9','TRIO','TRIP13','TRMT1','TRMT10A','TRRAPC14','TSEN15',
-        'TSEN54','TTC5','TTI1','TUBG1','TUBGCP2','TUBGCP3','TUBGCP4','TUBGCP6','UBA5','UBE3A','UFC1','UFM1',
-        'UGP2','UNC80','VPS50','VRK1','WDFY3','WDR11','WDR37','WDR4','WDR62','WDR73','WLS','XRCC4','YIF1B',
-        'YIPF5','ZEB2','ZNF335','ZNF526','ZNF668','ZNHIT3','ZPR1'
-    ]
-
-    print("Uploading data...")
-    adata = sc.read_h5ad("/miridan-data/annaludmir/ndd_gene_modules/data/human_dev.h5ad")
-
-    long_summary, final_summary = summarize_gene_expression_top_region(
-        adata,
-        genes,
-        region_col="Region",
-        cell_filter_col="CellClass",
-        cell_filter_val="Radial glia",
-        sym_col="Gene",
-        expr_threshold=0
+    args = build_arg_parser().parse_args()
+    result = create_gene_expression_summary(
+        h5ad_path=args.h5ad_path,
+        gsea_summary_file=args.gsea_summary_file,
+        condition=args.condition,
+        output_dir=args.output_dir,
+        subfolder_name=args.subfolder_name,
+        leading_gene_summary_file=args.leading_gene_summary_file,
+        leading_gene_conditions=args.leading_gene_conditions,
+        region_col=args.region_col,
+        cell_filter_col=args.cell_filter_col,
+        cell_filter_val=args.cell_filter_val,
+        sym_col=args.sym_col,
+        expr_threshold=args.expr_threshold,
     )
 
-    # optional: save the detailed per-region table too
-    long_summary.to_csv(
-        "/miridan-data/annaludmir/ndd_gene_modules/results/additional_analyses/"
-        "microcephaly_genes_region_long_summary_radial_glia_above_0.csv",
-        index=False
-    )
-
-    # save the final one-row-per-gene table
-    final_summary.to_csv(
-        "/miridan-data/annaludmir/ndd_gene_modules/results/additional_analyses/"
-        "microcephaly_genes_top_region_summary_radial_glia.csv",
-        index=False
-    )
+    print("Saved gene expression summary results:")
+    for key, value in result.items():
+        print(f"  {key}: {value}")
