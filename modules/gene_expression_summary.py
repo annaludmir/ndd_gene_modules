@@ -183,6 +183,25 @@ def compute_top_vs_second_wilcoxon(final_summary):
     return result
 
 
+def list_leading_gene_flag_columns(df):
+    """Return boolean flag columns created from optional leading-gene condition sets."""
+    return [column for column in df.columns if column.endswith("_leading_gene")]
+
+
+def build_subgroup_final_summaries(final_summary):
+    """Create per-flag subgroup summaries with subgroup-specific Wilcoxon results."""
+    subgroup_summaries = {}
+
+    for flag_column in list_leading_gene_flag_columns(final_summary):
+        subgroup_df = final_summary.loc[final_summary[flag_column] == True].copy()
+        subgroup_result = compute_top_vs_second_wilcoxon(subgroup_df)
+        for column, value in subgroup_result.items():
+            subgroup_df[column] = value
+        subgroup_summaries[flag_column] = subgroup_df
+
+    return subgroup_summaries
+
+
 def summarize_gene_expression_top_region(
     adata,
     genes,
@@ -395,10 +414,18 @@ def create_gene_expression_summary(
     long_summary.to_csv(long_csv_path, index=False)
     final_summary.to_csv(final_csv_path, index=False)
 
+    subgroup_csv_paths = {}
+    subgroup_summaries = build_subgroup_final_summaries(final_summary)
+    for flag_column, subgroup_df in subgroup_summaries.items():
+        subgroup_csv_path = output_dir / f"gene_expression_top_region_summary_{flag_column}.csv"
+        subgroup_df.to_csv(subgroup_csv_path, index=False)
+        subgroup_csv_paths[flag_column] = str(subgroup_csv_path)
+
     return {
         "output_dir": str(output_dir),
         "long_summary_csv_path": str(long_csv_path),
         "final_summary_csv_path": str(final_csv_path),
+        "subgroup_final_summary_csv_paths": subgroup_csv_paths,
         "gsea_summary_file": str(Path(gsea_summary_file)),
         "condition": summary_info["condition"],
         "condition_column": summary_info["column"],

@@ -193,7 +193,7 @@ The module `modules/gene_expression_summary.py` reads the leading genes for one 
 - a long per-gene-per-region CSV
 - a final one-row-per-gene CSV
 
-The final summary also includes a one-sided paired Wilcoxon signed-rank test comparing `top_region_score` versus `second_region_score` across genes. If you provide an extra summary file and condition list, the output adds boolean columns such as `S_leading_gene` and `G2M_leading_gene`.
+The final summary also includes a one-sided paired Wilcoxon signed-rank test comparing `top_region_score` versus `second_region_score` across genes. If you provide an extra summary file and condition list, the output adds boolean columns such as `S_leading_gene` and `G2M_leading_gene`, and also writes separate subgroup CSVs for each `*_leading_gene` set with subgroup-specific Wilcoxon results.
 
 Example call:
 
