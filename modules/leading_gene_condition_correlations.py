@@ -1,5 +1,6 @@
 import argparse
 import itertools
+import math
 import re
 from pathlib import Path
 
@@ -12,6 +13,7 @@ import seaborn as sns
 DEFAULT_OUTPUT_DIR = Path("results/correlations")
 DEFAULT_TOP_N = 25
 DEFAULT_MIN_CORRELATION = 0.5
+DEFAULT_HEATMAP_PVALUE_THRESHOLD = 0.3
 
 
 def parse_gene_list(genes_value):
@@ -166,14 +168,51 @@ def compute_jaccard_score(genes_a, genes_b):
     return len(genes_a & genes_b) / len(union)
 
 
+def log_comb(n, k):
+    """Compute log(n choose k) safely."""
+    if k < 0 or k > n:
+        return float("-inf")
+    return math.lgamma(n + 1) - math.lgamma(k + 1) - math.lgamma(n - k + 1)
+
+
+def compute_overlap_pvalue(universe_size, left_size, right_size, overlap_size):
+    """Hypergeometric one-sided p-value for observing at least this overlap."""
+    if universe_size <= 0:
+        return np.nan
+
+    min_overlap = max(0, left_size + right_size - universe_size)
+    max_overlap = min(left_size, right_size)
+    if overlap_size < min_overlap or overlap_size > max_overlap:
+        return np.nan
+
+    log_denom = log_comb(universe_size, right_size)
+    tail_probability = 0.0
+    for k in range(overlap_size, max_overlap + 1):
+        log_num = log_comb(left_size, k) + log_comb(universe_size - left_size, right_size - k)
+        tail_probability += math.exp(log_num - log_denom)
+
+    return min(1.0, tail_probability)
+
+
 def build_pairwise_correlation_table(entries):
     """Compute all unique condition-pair correlations."""
     rows = []
+    universe_genes = set()
+    for entry in entries:
+        universe_genes.update(entry["leading_gene_set"])
+    universe_size = len(universe_genes)
 
     for left_entry, right_entry in itertools.combinations_with_replacement(entries, 2):
         overlap_genes = sorted(left_entry["leading_gene_set"] & right_entry["leading_gene_set"])
+        overlap_size = len(overlap_genes)
         score = compute_jaccard_score(
             left_entry["leading_gene_set"], right_entry["leading_gene_set"]
+        )
+        overlap_pvalue = compute_overlap_pvalue(
+            universe_size=universe_size,
+            left_size=len(left_entry["leading_gene_set"]),
+            right_size=len(right_entry["leading_gene_set"]),
+            overlap_size=overlap_size,
         )
 
         rows.append(
@@ -193,7 +232,8 @@ def build_pairwise_correlation_table(entries):
                 "right_metadata_config_path": right_entry["metadata_config_path"],
                 "right_n_leading_genes": len(right_entry["leading_genes"]),
                 "correlation_score": score,
-                "n_overlap_genes": len(overlap_genes),
+                "overlap_pvalue": overlap_pvalue,
+                "n_overlap_genes": overlap_size,
                 "overlap_genes": ";".join(overlap_genes),
             }
         )
@@ -210,15 +250,25 @@ def build_filtered_correlation_export(pairwise_df, min_correlation=DEFAULT_MIN_C
     filtered_df = pairwise_df.loc[
         (pairwise_df["correlation_score"] > min_correlation)
         & (pairwise_df["left_condition_label"] != pairwise_df["right_condition_label"]),
-        ["left_condition_label", "right_condition_label", "correlation_score"],
+        [
+            "left_condition_label",
+            "right_condition_label",
+            "correlation_score",
+            "overlap_pvalue",
+        ],
     ].copy()
 
-    filtered_df.columns = ["Condition 1", "Condition 2", "Correlation Value"]
+    filtered_df.columns = [
+        "Condition 1",
+        "Condition 2",
+        "Correlation Value",
+        "P-value",
+    ]
     return filtered_df.reset_index(drop=True)
 
 
-def build_full_correlation_matrix(entries):
-    """Build a symmetric condition-by-condition matrix."""
+def build_full_correlation_matrices(entries):
+    """Build symmetric condition-by-condition matrices for Jaccard and p-values."""
     labels = []
     label_counts = {}
     for entry in entries:
@@ -229,18 +279,41 @@ def build_full_correlation_matrix(entries):
         entry["matrix_label"] = label
         labels.append(label)
 
-    matrix = pd.DataFrame(np.eye(len(entries)), index=labels, columns=labels, dtype=float)
+    universe_genes = set()
+    for entry in entries:
+        universe_genes.update(entry["leading_gene_set"])
+    universe_size = len(universe_genes)
+
+    correlation_matrix = pd.DataFrame(np.eye(len(entries)), index=labels, columns=labels, dtype=float)
+    pvalue_matrix = pd.DataFrame(np.nan, index=labels, columns=labels, dtype=float)
 
     for i, left_entry in enumerate(entries):
+        left_size = len(left_entry["leading_gene_set"])
+        pvalue_matrix.iloc[i, i] = compute_overlap_pvalue(
+            universe_size=universe_size,
+            left_size=left_size,
+            right_size=left_size,
+            overlap_size=left_size,
+        )
+
         for j in range(i + 1, len(entries)):
             right_entry = entries[j]
+            overlap_size = len(left_entry["leading_gene_set"] & right_entry["leading_gene_set"])
             score = compute_jaccard_score(
                 left_entry["leading_gene_set"], right_entry["leading_gene_set"]
             )
-            matrix.iloc[i, j] = score
-            matrix.iloc[j, i] = score
+            pvalue = compute_overlap_pvalue(
+                universe_size=universe_size,
+                left_size=left_size,
+                right_size=len(right_entry["leading_gene_set"]),
+                overlap_size=overlap_size,
+            )
+            correlation_matrix.iloc[i, j] = score
+            correlation_matrix.iloc[j, i] = score
+            pvalue_matrix.iloc[i, j] = pvalue
+            pvalue_matrix.iloc[j, i] = pvalue
 
-    return matrix
+    return correlation_matrix, pvalue_matrix
 
 
 def select_top_conditions(matrix, top_n):
@@ -260,7 +333,21 @@ def select_top_conditions(matrix, top_n):
     return matrix.loc[top_labels, top_labels]
 
 
-def plot_top_correlation_heatmap(matrix, output_path):
+def format_pvalue_text(pvalue):
+    """Format a p-value compactly for heatmap annotations."""
+    if pd.isna(pvalue):
+        return ""
+    if pvalue < 1e-3:
+        return f"p={pvalue:.1e}"
+    return f"p={pvalue:.3f}"
+
+
+def plot_top_correlation_heatmap(
+    matrix,
+    pvalue_matrix,
+    output_path,
+    pvalue_annotation_threshold=DEFAULT_HEATMAP_PVALUE_THRESHOLD,
+):
     """Save a heatmap of the strongest condition correlations."""
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -287,6 +374,25 @@ def plot_top_correlation_heatmap(matrix, output_path):
     ax.set_xticklabels(ax.get_xticklabels(), rotation=90, fontsize=8)
     ax.set_yticklabels(ax.get_yticklabels(), rotation=0, fontsize=8)
 
+    for i in range(matrix.shape[0]):
+        for j in range(matrix.shape[1]):
+            score = matrix.iloc[i, j]
+            if score <= pvalue_annotation_threshold:
+                continue
+            pvalue = pvalue_matrix.iloc[i, j]
+            pvalue_text = format_pvalue_text(pvalue)
+            if not pvalue_text:
+                continue
+            ax.text(
+                j + 0.5,
+                i + 0.5,
+                pvalue_text,
+                ha="center",
+                va="center",
+                fontsize=6.5,
+                color="white" if score >= 0.55 else "black",
+            )
+
     fig.subplots_adjust(left=0.33, bottom=0.28, right=0.93, top=0.92)
     fig.savefig(output_path, dpi=300, bbox_inches="tight")
     plt.close(fig)
@@ -307,14 +413,15 @@ def create_leading_gene_condition_correlations(
 
     pairwise_df = build_pairwise_correlation_table(entries)
     filtered_export_df = build_filtered_correlation_export(pairwise_df)
-    full_matrix = build_full_correlation_matrix(entries)
+    full_matrix, full_pvalue_matrix = build_full_correlation_matrices(entries)
     top_matrix = select_top_conditions(full_matrix, top_n=top_n)
+    top_pvalue_matrix = full_pvalue_matrix.loc[top_matrix.index, top_matrix.columns]
 
     csv_path = output_dir / "leading_gene_condition_correlations.csv"
     heatmap_path = output_dir / "leading_gene_condition_correlation_heatmap.png"
 
     filtered_export_df.to_csv(csv_path, index=False)
-    plot_top_correlation_heatmap(top_matrix, heatmap_path)
+    plot_top_correlation_heatmap(top_matrix, top_pvalue_matrix, heatmap_path)
 
     return {
         "output_dir": str(output_dir),

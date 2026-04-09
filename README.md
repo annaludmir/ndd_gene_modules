@@ -277,7 +277,7 @@ results/time_analysis/pseudotime/<your_subfolder_name>/
 
 ## Leading-gene correlation example
 
-The module `modules/leading_gene_condition_correlations.py` scans a folder tree for GSEA summary files, compares all leading-gene condition pairs, and writes a 3-column CSV of non-self condition pairs with correlation values above `0.5`, plus a heatmap of the strongest overlaps.
+The module `modules/leading_gene_condition_correlations.py` scans a folder tree for GSEA summary files, compares all leading-gene condition pairs, and writes a CSV of non-self condition pairs with correlation values above `0.5` and their overlap p-values, plus a heatmap of the strongest overlaps. Heatmap cells with Jaccard scores above `0.3` are annotated with overlap p-values.
 
 Example call:
 
