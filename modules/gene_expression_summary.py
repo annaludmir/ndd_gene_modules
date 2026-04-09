@@ -188,18 +188,105 @@ def list_leading_gene_flag_columns(df):
     return [column for column in df.columns if column.endswith("_leading_gene")]
 
 
-def build_subgroup_final_summaries(final_summary):
-    """Create per-flag subgroup summaries with subgroup-specific Wilcoxon results."""
-    subgroup_summaries = {}
+def list_region_score_columns(df):
+    """Return region-score columns and their corresponding region names."""
+    score_columns = [column for column in df.columns if column.endswith("_region_score")]
+    return [(column[: -len("_region_score")], column) for column in score_columns]
 
+
+def compute_gene_set_top_region(gene_set_summary):
+    """Pick the top region for a gene set using mean region scores across genes."""
+    region_columns = list_region_score_columns(gene_set_summary)
+    if not region_columns or gene_set_summary.empty:
+        return np.nan
+
+    mean_scores = {
+        region_name: pd.to_numeric(gene_set_summary[column], errors="coerce").mean()
+        for region_name, column in region_columns
+    }
+    mean_scores = pd.Series(mean_scores).dropna()
+    if mean_scores.empty:
+        return np.nan
+    return str(mean_scores.idxmax())
+
+
+def run_selected_region_wilcoxon(gene_set_summary, selected_region, other_region):
+    """Run a one-sided paired Wilcoxon test for one selected-vs-other region comparison."""
+    from scipy.stats import wilcoxon
+
+    selected_col = f"{selected_region}_region_score"
+    other_col = f"{other_region}_region_score"
+    valid = gene_set_summary.loc[
+        gene_set_summary[selected_col].notna() & gene_set_summary[other_col].notna()
+    ].copy()
+
+    result = {
+        "selected_region": selected_region,
+        "comparison_region": other_region,
+        "wilcoxon_statistic": np.nan,
+        "wilcoxon_pvalue": np.nan,
+        "wilcoxon_n_pairs": int(len(valid)),
+        "wilcoxon_alternative": "greater",
+        "wilcoxon_note": "",
+    }
+
+    if valid.empty:
+        result["wilcoxon_note"] = (
+            f"No genes had both {selected_region} and {other_region} region scores."
+        )
+        return result
+
+    differences = valid[selected_col] - valid[other_col]
+    nonzero_mask = differences != 0
+    if not nonzero_mask.any():
+        result["wilcoxon_note"] = (
+            f"All {selected_region}-vs-{other_region} region score differences were zero."
+        )
+        return result
+
+    valid_nonzero = valid.loc[nonzero_mask]
+    result["wilcoxon_n_pairs"] = int(len(valid_nonzero))
+
+    test = wilcoxon(
+        valid_nonzero[selected_col],
+        valid_nonzero[other_col],
+        alternative="greater",
+        zero_method="wilcox",
+    )
+    result["wilcoxon_statistic"] = float(test.statistic)
+    result["wilcoxon_pvalue"] = float(test.pvalue)
+    return result
+
+
+def build_leading_gene_group_wilcoxon_summary(final_summary, selected_region):
+    """Create one summary table for all genes and each optional leading-gene subgroup."""
+    available_regions = [region_name for region_name, _ in list_region_score_columns(final_summary)]
+    if selected_region not in available_regions:
+        raise ValueError(
+            f"Selected Wilcoxon region '{selected_region}' is not available. "
+            f"Choose from: {available_regions}"
+        )
+
+    group_frames = [("all", final_summary)]
     for flag_column in list_leading_gene_flag_columns(final_summary):
-        subgroup_df = final_summary.loc[final_summary[flag_column] == True].copy()
-        subgroup_result = compute_top_vs_second_wilcoxon(subgroup_df)
-        for column, value in subgroup_result.items():
-            subgroup_df[column] = value
-        subgroup_summaries[flag_column] = subgroup_df
+        group_name = flag_column[: -len("_leading_gene")]
+        group_df = final_summary.loc[final_summary[flag_column] == True].copy()
+        group_frames.append((group_name, group_df))
 
-    return subgroup_summaries
+    rows = []
+    other_regions = [region for region in available_regions if region != selected_region]
+
+    for group_name, group_df in group_frames:
+        top_region = compute_gene_set_top_region(group_df)
+        for other_region in other_regions:
+            row = {
+                "leading_gene_group": group_name,
+                "top_region_for_gene_set": top_region,
+            }
+            row.update(run_selected_region_wilcoxon(group_df, selected_region, other_region))
+            rows.append(row)
+
+    return pd.DataFrame(rows)
 
 
 def summarize_gene_expression_top_region(
@@ -371,6 +458,7 @@ def create_gene_expression_summary(
     cell_filter_val="Radial glia",
     sym_col="Gene",
     expr_threshold=0,
+    wilcoxon_region="Forebrain",
 ):
     """Create long and final gene-expression summaries for a GSEA leading-gene set."""
     summary_info = load_summary_row(gsea_summary_file, condition)
@@ -411,26 +499,26 @@ def create_gene_expression_summary(
 
     long_csv_path = output_dir / "gene_expression_region_long_summary.csv"
     final_csv_path = output_dir / "gene_expression_top_region_summary.csv"
+    group_wilcoxon_csv_path = output_dir / "gene_expression_group_wilcoxon_summary.csv"
     long_summary.to_csv(long_csv_path, index=False)
     final_summary.to_csv(final_csv_path, index=False)
-
-    subgroup_csv_paths = {}
-    subgroup_summaries = build_subgroup_final_summaries(final_summary)
-    for flag_column, subgroup_df in subgroup_summaries.items():
-        subgroup_csv_path = output_dir / f"gene_expression_top_region_summary_{flag_column}.csv"
-        subgroup_df.to_csv(subgroup_csv_path, index=False)
-        subgroup_csv_paths[flag_column] = str(subgroup_csv_path)
+    group_wilcoxon_summary = build_leading_gene_group_wilcoxon_summary(
+        final_summary,
+        selected_region=wilcoxon_region,
+    )
+    group_wilcoxon_summary.to_csv(group_wilcoxon_csv_path, index=False)
 
     return {
         "output_dir": str(output_dir),
         "long_summary_csv_path": str(long_csv_path),
         "final_summary_csv_path": str(final_csv_path),
-        "subgroup_final_summary_csv_paths": subgroup_csv_paths,
+        "group_wilcoxon_summary_csv_path": str(group_wilcoxon_csv_path),
         "gsea_summary_file": str(Path(gsea_summary_file)),
         "condition": summary_info["condition"],
         "condition_column": summary_info["column"],
         "n_input_leading_genes": len(summary_info["leading_genes"]),
         "n_found_genes": int(final_summary.shape[0]),
+        "wilcoxon_region": wilcoxon_region,
         "wilcoxon_top_vs_second_statistic": wilcoxon_result[
             "wilcoxon_top_vs_second_statistic"
         ],
@@ -517,6 +605,13 @@ def build_arg_parser():
         default=0,
         help="Expression threshold used for fraction-expressing and expressing-cell summaries.",
     )
+    parser.add_argument(
+        "--wilcoxon-region",
+        default="Forebrain",
+        help=(
+            "Region to compare against each other available region in the group Wilcoxon summary CSV."
+        ),
+    )
     return parser
 
 
@@ -535,6 +630,7 @@ if __name__ == "__main__":
         cell_filter_val=args.cell_filter_val,
         sym_col=args.sym_col,
         expr_threshold=args.expr_threshold,
+        wilcoxon_region=args.wilcoxon_region,
     )
 
     print("Saved gene expression summary results:")
