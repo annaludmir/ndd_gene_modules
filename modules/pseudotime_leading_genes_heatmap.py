@@ -14,6 +14,8 @@ from scipy.spatial.distance import pdist
 
 
 DEFAULT_OUTPUT_DIR = Path("results/time_analysis/pseudotime")
+DEFAULT_CHEMISTRY = "v3"
+DEFAULT_CHEMISTRY_COL = "Chemistry"
 
 
 def parse_gene_list(genes_value):
@@ -33,6 +35,23 @@ def parse_gene_list(genes_value):
             seen.add(gene)
             genes.append(gene)
     return genes
+
+
+def filter_adata_by_chemistry(adata, chemistry=DEFAULT_CHEMISTRY, chemistry_col=DEFAULT_CHEMISTRY_COL):
+    """Optionally filter AnnData to one chemistry value."""
+    if chemistry is None:
+        return adata
+    if chemistry_col not in adata.obs.columns:
+        raise KeyError(f"Chemistry column '{chemistry_col}' not found in adata.obs")
+
+    before = adata.n_obs
+    adata = adata[adata.obs[chemistry_col].astype(str) == str(chemistry)].copy()
+    print(f"Filtered {chemistry_col} == '{chemistry}': {before} -> {adata.n_obs} cells")
+    if adata.n_obs == 0:
+        raise ValueError(
+            f"No cells remained after filtering {chemistry_col} == '{chemistry}'."
+        )
+    return adata
 
 
 def parse_go_genes(genes_text):
@@ -405,6 +424,8 @@ def create_pseudotime_leading_gene_plot(
     age_col="Age",
     sym_col="Gene",
     go_term_file=None,
+    chemistry=DEFAULT_CHEMISTRY,
+    chemistry_col=DEFAULT_CHEMISTRY_COL,
 ):
     """
     Create pseudotime-style heatmaps for leading genes from a GSEA condition.
@@ -424,6 +445,11 @@ def create_pseudotime_leading_gene_plot(
     )
 
     adata = sc.read_h5ad(h5ad_path)
+    adata = filter_adata_by_chemistry(
+        adata,
+        chemistry=chemistry,
+        chemistry_col=chemistry_col,
+    )
     mean_expr, zscore_expr, found_genes, missing_genes, n_cells = build_condition_time_matrices(
         adata=adata,
         filter_column=summary_info["column"],
@@ -477,6 +503,8 @@ def create_pseudotime_leading_gene_plot(
         "output_dir": str(output_dir),
         "column": summary_info["column"],
         "condition": summary_info["condition"],
+        "chemistry": chemistry,
+        "chemistry_column": chemistry_col,
         "n_cells_used": int(n_cells),
         "n_found_genes": len(found_genes),
         "n_missing_genes": len(missing_genes),
@@ -519,6 +547,16 @@ def build_arg_parser():
     )
     parser.add_argument("--age-col", default="Age", help="Age column in adata.obs.")
     parser.add_argument("--sym-col", default="Gene", help="Gene symbol column in adata.var.")
+    parser.add_argument(
+        "--chemistry",
+        default=DEFAULT_CHEMISTRY,
+        help="Chemistry value to keep from adata.obs before analysis. Use 'None' to disable.",
+    )
+    parser.add_argument(
+        "--chemistry-col",
+        default=DEFAULT_CHEMISTRY_COL,
+        help="Column in adata.obs containing chemistry labels.",
+    )
     return parser
 
 
@@ -533,6 +571,8 @@ if __name__ == "__main__":
         age_col=args.age_col,
         sym_col=args.sym_col,
         go_term_file=args.go_term_file,
+        chemistry=None if args.chemistry == "None" else args.chemistry,
+        chemistry_col=args.chemistry_col,
     )
     print("Saved pseudotime leading-gene heatmap results:")
     for key, value in result.items():

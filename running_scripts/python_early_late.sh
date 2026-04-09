@@ -26,11 +26,14 @@ module load mamba/mamba-1.5.8
 mamba activate /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new
 cd /miridan-data/annaludmir/ndd_gene_modules
 
+GSEA_SUMMARY_FILE="results/enrichment_results/Microcephaly All Data (Without Week 5)_threshold_1_20260323/data/enrichment_results/GSEA/GSEA_final_summary.csv"
+
 mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new python modules/early_late_go_heatmap.py \
-  --gsea-summary-file results/enrichment_results/Microcephaly\ All\ Data\ \(Without\ Week\ 5\)_threshold_1_20260323/data/enrichment_results/GSEA/GSEA_final_summary.csv \
-  --condition Forebrain\
+  --gsea-summary-file "$GSEA_SUMMARY_FILE" \
+  --condition Forebrain \
   --go-term-file GO_terms/microcephaly_GO_enrichment/Region_-_Forebrain/enrichr_results.csv \
   --h5ad-path data/human_dev_without_week_5.h5ad \
+  --chemistry v3 \
   --subfolder-name microcephaly_forebrain_leading_genes
 
 rc=$?

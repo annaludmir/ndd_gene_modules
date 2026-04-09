@@ -16,6 +16,8 @@ from scipy.spatial.distance import pdist
 DEFAULT_OUTPUT_DIR = Path("results/time_analysis/early_late")
 DEFAULT_DATA_PATH = Path("data/human_dev.h5ad")
 STAGE_ORDER = ["Early", "Mid", "Late"]
+DEFAULT_CHEMISTRY = "v3"
+DEFAULT_CHEMISTRY_COL = "Chemistry"
 
 
 def parse_gene_list(genes_value):
@@ -35,6 +37,23 @@ def parse_gene_list(genes_value):
             seen.add(gene)
             cleaned.append(gene)
     return cleaned
+
+
+def filter_adata_by_chemistry(adata, chemistry=DEFAULT_CHEMISTRY, chemistry_col=DEFAULT_CHEMISTRY_COL):
+    """Optionally filter AnnData to one chemistry value."""
+    if chemistry is None:
+        return adata
+    if chemistry_col not in adata.obs.columns:
+        raise KeyError(f"Chemistry column '{chemistry_col}' not found in adata.obs")
+
+    before = adata.n_obs
+    adata = adata[adata.obs[chemistry_col].astype(str) == str(chemistry)].copy()
+    print(f"Filtered {chemistry_col} == '{chemistry}': {before} -> {adata.n_obs} cells")
+    if adata.n_obs == 0:
+        raise ValueError(
+            f"No cells remained after filtering {chemistry_col} == '{chemistry}'."
+        )
+    return adata
 
 
 def parse_go_genes(genes_text):
@@ -370,6 +389,8 @@ def create_early_late_go_heatmap(
     subfolder_name=None,
     age_col="Age",
     sym_col="Gene",
+    chemistry=DEFAULT_CHEMISTRY,
+    chemistry_col=DEFAULT_CHEMISTRY_COL,
 ):
     """
     Build Early/Mid/Late heatmaps for a list of leading genes.
@@ -387,6 +408,11 @@ def create_early_late_go_heatmap(
     grouped_terms, ordered_genes = build_go_grouped_gene_order(leading_genes, go_df)
 
     adata = sc.read_h5ad(h5ad_path)
+    adata = filter_adata_by_chemistry(
+        adata,
+        chemistry=chemistry,
+        chemistry_col=chemistry_col,
+    )
     mean_expr, zscore_expr, found_genes, missing_genes = compute_stage_expression(
         adata=adata,
         genes=ordered_genes,
@@ -433,6 +459,8 @@ def create_early_late_go_heatmap(
         "expression_pattern_heatmap_path": str(pattern_heatmap_path),
         "output_dir": str(output_dir),
         "condition": str(condition),
+        "chemistry": chemistry,
+        "chemistry_column": chemistry_col,
         "n_found_genes": len(found_genes),
         "n_missing_genes": len(missing_genes),
     }
@@ -474,6 +502,16 @@ def build_arg_parser():
     )
     parser.add_argument("--age-col", default="Age", help="Age column in adata.obs.")
     parser.add_argument("--sym-col", default="Gene", help="Gene symbol column in adata.var.")
+    parser.add_argument(
+        "--chemistry",
+        default=DEFAULT_CHEMISTRY,
+        help="Chemistry value to keep from adata.obs before analysis. Use 'None' to disable.",
+    )
+    parser.add_argument(
+        "--chemistry-col",
+        default=DEFAULT_CHEMISTRY_COL,
+        help="Column in adata.obs containing chemistry labels.",
+    )
     return parser
 
 
@@ -488,6 +526,8 @@ if __name__ == "__main__":
         subfolder_name=args.subfolder_name,
         age_col=args.age_col,
         sym_col=args.sym_col,
+        chemistry=None if args.chemistry == "None" else args.chemistry,
+        chemistry_col=args.chemistry_col,
     )
     print("Saved Early/Mid/Late GO heatmap results:")
     for key, value in result.items():

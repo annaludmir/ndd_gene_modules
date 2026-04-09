@@ -36,6 +36,7 @@ mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new python modul
   --leading-gene-summary-file "$LEADING_GENE_SUMMARY_FILE" \
   --leading-gene-conditions S G2M G1 PostM Non-cycling \
   --wilcoxon-region Forebrain \
+  --chemistry v3 \
   --subfolder-name forebrain_gene_expression_summary
 
 rc=$?

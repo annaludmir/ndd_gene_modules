@@ -8,6 +8,8 @@ import pandas as pd
 
 DEFAULT_OUTPUT_DIR = Path("results/additional_analyses/gene_expression_summary")
 META_REGIONS = ["Forebrain", "Midbrain", "Hindbrain"]
+DEFAULT_CHEMISTRY = "v3"
+DEFAULT_CHEMISTRY_COL = "Chemistry"
 
 
 def parse_gene_list(genes_value):
@@ -45,6 +47,39 @@ def read_table(path):
     if path.suffix.lower() in {".tsv", ".txt"}:
         return pd.read_csv(path, sep="\t")
     return pd.read_csv(path)
+
+
+def filter_adata_by_chemistry(adata, chemistry=DEFAULT_CHEMISTRY, chemistry_col=DEFAULT_CHEMISTRY_COL):
+    """Optionally filter AnnData to one chemistry value."""
+    if chemistry is None:
+        return adata
+    if chemistry_col not in adata.obs.columns:
+        raise KeyError(f"Chemistry column '{chemistry_col}' not found in adata.obs")
+
+    before = adata.n_obs
+    adata = adata[adata.obs[chemistry_col].astype(str) == str(chemistry)].copy()
+    print(f"Filtered {chemistry_col} == '{chemistry}': {before} -> {adata.n_obs} cells")
+    if adata.n_obs == 0:
+        raise ValueError(
+            f"No cells remained after filtering {chemistry_col} == '{chemistry}'."
+        )
+    return adata
+
+
+def add_fdr_column(df, pvalue_col, fdr_col):
+    """Add BH/FDR-corrected p-values to a DataFrame."""
+    import statsmodels.stats.multitest as smm
+
+    df = df.copy()
+    df[fdr_col] = np.nan
+
+    numeric_pvalues = pd.to_numeric(df[pvalue_col], errors="coerce")
+    valid_mask = numeric_pvalues.notna()
+    if valid_mask.any():
+        df.loc[valid_mask, fdr_col] = smm.multipletests(
+            numeric_pvalues.loc[valid_mask], method="fdr_bh"
+        )[1]
+    return df
 
 
 def load_summary_row(summary_file, condition):
@@ -145,6 +180,7 @@ def collapse_region(region):
 def compute_top_vs_second_wilcoxon(final_summary):
     """Run a one-sided paired Wilcoxon signed-rank test across genes."""
     from scipy.stats import wilcoxon
+    import statsmodels.stats.multitest as smm
 
     valid = final_summary.loc[
         final_summary["top_region_score"].notna() & final_summary["second_region_score"].notna()
@@ -153,6 +189,7 @@ def compute_top_vs_second_wilcoxon(final_summary):
     result = {
         "wilcoxon_top_vs_second_statistic": np.nan,
         "wilcoxon_top_vs_second_pvalue": np.nan,
+        "wilcoxon_top_vs_second_fdr_bh_pvalue": np.nan,
         "wilcoxon_top_vs_second_n_pairs": int(len(valid)),
         "wilcoxon_top_vs_second_alternative": "greater",
         "wilcoxon_top_vs_second_note": "",
@@ -181,6 +218,9 @@ def compute_top_vs_second_wilcoxon(final_summary):
     )
     result["wilcoxon_top_vs_second_statistic"] = float(test.statistic)
     result["wilcoxon_top_vs_second_pvalue"] = float(test.pvalue)
+    result["wilcoxon_top_vs_second_fdr_bh_pvalue"] = float(
+        smm.multipletests([float(test.pvalue)], method="fdr_bh")[1][0]
+    )
     return result
 
 
@@ -290,7 +330,7 @@ def build_leading_gene_group_wilcoxon_summary(final_summary, selected_region):
             row.update(run_selected_region_wilcoxon(group_df, selected_region, other_region))
             rows.append(row)
 
-    return pd.DataFrame(rows)
+    return add_fdr_column(pd.DataFrame(rows), "wilcoxon_pvalue", "wilcoxon_fdr_bh_pvalue")
 
 
 def summarize_gene_expression_top_region(
@@ -462,6 +502,8 @@ def create_gene_expression_summary(
     sym_col="Gene",
     expr_threshold=0,
     wilcoxon_region="Forebrain",
+    chemistry=DEFAULT_CHEMISTRY,
+    chemistry_col=DEFAULT_CHEMISTRY_COL,
 ):
     """Create long and final gene-expression summaries for a GSEA leading-gene set."""
     summary_info = load_summary_row(gsea_summary_file, condition)
@@ -488,6 +530,11 @@ def create_gene_expression_summary(
     import scanpy as sc
 
     adata = sc.read_h5ad(h5ad_path)
+    adata = filter_adata_by_chemistry(
+        adata,
+        chemistry=chemistry,
+        chemistry_col=chemistry_col,
+    )
 
     long_summary, final_summary, wilcoxon_result = summarize_gene_expression_top_region(
         adata,
@@ -519,6 +566,8 @@ def create_gene_expression_summary(
         "gsea_summary_file": str(Path(gsea_summary_file)),
         "condition": summary_info["condition"],
         "condition_column": summary_info["column"],
+        "chemistry": chemistry,
+        "chemistry_column": chemistry_col,
         "n_input_leading_genes": len(summary_info["leading_genes"]),
         "n_found_genes": int(final_summary.shape[0]),
         "wilcoxon_region": wilcoxon_region,
@@ -527,6 +576,9 @@ def create_gene_expression_summary(
         ],
         "wilcoxon_top_vs_second_pvalue": wilcoxon_result[
             "wilcoxon_top_vs_second_pvalue"
+        ],
+        "wilcoxon_top_vs_second_fdr_bh_pvalue": wilcoxon_result[
+            "wilcoxon_top_vs_second_fdr_bh_pvalue"
         ],
         "wilcoxon_top_vs_second_n_pairs": wilcoxon_result[
             "wilcoxon_top_vs_second_n_pairs"
@@ -615,6 +667,16 @@ def build_arg_parser():
             "Region to compare against each other available region in the group Wilcoxon summary CSV."
         ),
     )
+    parser.add_argument(
+        "--chemistry",
+        default=DEFAULT_CHEMISTRY,
+        help="Chemistry value to keep from adata.obs before analysis. Use 'None' to disable.",
+    )
+    parser.add_argument(
+        "--chemistry-col",
+        default=DEFAULT_CHEMISTRY_COL,
+        help="Column in adata.obs containing chemistry labels.",
+    )
     return parser
 
 
@@ -634,6 +696,8 @@ if __name__ == "__main__":
         sym_col=args.sym_col,
         expr_threshold=args.expr_threshold,
         wilcoxon_region=args.wilcoxon_region,
+        chemistry=None if args.chemistry == "None" else args.chemistry,
+        chemistry_col=args.chemistry_col,
     )
 
     print("Saved gene expression summary results:")

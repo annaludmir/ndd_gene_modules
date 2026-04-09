@@ -193,7 +193,7 @@ The module `modules/gene_expression_summary.py` reads the leading genes for one 
 - a long per-gene-per-region CSV
 - a final one-row-per-gene CSV
 
-The final summary also includes a one-sided paired Wilcoxon signed-rank test comparing `top_region_score` versus `second_region_score` across genes. If you provide an extra summary file and condition list, the output adds boolean columns such as `S_leading_gene` and `G2M_leading_gene`, and also writes one group-level Wilcoxon summary CSV with rows for `all` and each optional leading-gene group. That summary reports the top region for each gene set and Wilcoxon results for the user-selected region versus each other available region.
+The final summary also includes a one-sided paired Wilcoxon signed-rank test comparing `top_region_score` versus `second_region_score` across genes, along with an FDR/BH-corrected p-value. If you provide an extra summary file and condition list, the output adds boolean columns such as `S_leading_gene` and `G2M_leading_gene`, and also writes one group-level Wilcoxon summary CSV with rows for `all` and each optional leading-gene group. That summary reports the top region for each gene set and Wilcoxon results for the user-selected region versus each other available region, plus FDR/BH-corrected p-values across those group comparisons. By default the module filters the AnnData input to `Chemistry == v3`; use `--chemistry` to change that or `--chemistry None` to disable chemistry filtering.
 
 Example call:
 
@@ -205,6 +205,7 @@ python modules/gene_expression_summary.py \
   --leading-gene-summary-file path/to/GSEA_final_summary.csv \
   --leading-gene-conditions S G2M G1 \
   --wilcoxon-region Forebrain \
+  --chemistry v3 \
   --subfolder-name forebrain_gene_expression_summary
 ```
 
@@ -233,7 +234,7 @@ python modules/early_late_go_heatmap.py \
   --subfolder-name radial_glia_cell_cycle
 ```
 
-The script reads the `Lead_genes` value from the row where the summary file `condition` column matches the provided `--condition`.
+The script reads the `Lead_genes` value from the row where the summary file `condition` column matches the provided `--condition`. By default it filters the AnnData input to `Chemistry == v3`; use `--chemistry` to choose a different chemistry or `--chemistry None` to disable that filter.
 
 By default, outputs are written to:
 
@@ -249,7 +250,7 @@ results/time_analysis/early_late/<your_subfolder_name>/
 
 ## Pseudotime leading-gene heatmap example
 
-The module `modules/pseudotime_leading_genes_heatmap.py` creates pseudotime-style heatmaps for the leading genes of a selected GSEA condition. It reads the matching row from the GSEA summary file, uses the row `column` and `condition` values to filter cells, and plots gene-expression changes across ordered ages. If you provide `--go-term-file`, it writes both a GO-grouped heatmap and an expression-pattern-ordered heatmap.
+The module `modules/pseudotime_leading_genes_heatmap.py` creates pseudotime-style heatmaps for the leading genes of a selected GSEA condition. It reads the matching row from the GSEA summary file, uses the row `column` and `condition` values to filter cells, and plots gene-expression changes across ordered ages. If you provide `--go-term-file`, it writes both a GO-grouped heatmap and an expression-pattern-ordered heatmap. By default it filters the AnnData input to `Chemistry == v3`; use `--chemistry` to choose a different chemistry or `--chemistry None` to disable that filter.
 
 Example call:
 
