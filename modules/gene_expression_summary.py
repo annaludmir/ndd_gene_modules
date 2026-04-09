@@ -7,6 +7,7 @@ import pandas as pd
 
 
 DEFAULT_OUTPUT_DIR = Path("results/additional_analyses/gene_expression_summary")
+META_REGIONS = ["Forebrain", "Midbrain", "Hindbrain"]
 
 
 def parse_gene_list(genes_value):
@@ -190,8 +191,11 @@ def list_leading_gene_flag_columns(df):
 
 def list_region_score_columns(df):
     """Return region-score columns and their corresponding region names."""
-    score_columns = [column for column in df.columns if column.endswith("_region_score")]
-    return [(column[: -len("_region_score")], column) for column in score_columns]
+    return [
+        (region_name, f"{region_name}_region_score")
+        for region_name in META_REGIONS
+        if f"{region_name}_region_score" in df.columns
+    ]
 
 
 def compute_gene_set_top_region(gene_set_summary):
@@ -389,11 +393,10 @@ def summarize_gene_expression_top_region(
 
     long_summary = pd.concat(long_results, ignore_index=True)
 
-    wanted_regions = ["Forebrain", "Midbrain", "Hindbrain"]
     final_rows = []
 
     for gene, sub in long_summary.groupby("gene"):
-        sub = sub.set_index("meta_region").reindex(wanted_regions)
+        sub = sub.set_index("meta_region").reindex(META_REGIONS)
         scores = sub["region_score"].fillna(0)
 
         top_region = scores.idxmax()
@@ -418,7 +421,7 @@ def summarize_gene_expression_top_region(
             "enrichment_score_top_vs_second": enrichment_score,
         }
 
-        for region in wanted_regions:
+        for region in META_REGIONS:
             row[f"{region}_mean_expr"] = sub.loc[region, "mean_expr"]
             row[f"{region}_median_expr"] = sub.loc[region, "median_expr"]
             row[f"{region}_std_expr"] = sub.loc[region, "std_expr"]
