@@ -22,7 +22,7 @@ Core analysis scripts.
 - `create_figs_ges.py` and `create_figs_ges_for_presentation.py`: bar plots for GSEA summary results.
 - `create_figs_deseq.py`: bar plots for DESeq enrichment results.
 - `gene_expression_summary.py`: helper analysis for summarizing where selected genes are most enriched across broad brain regions.
-- `dataset_analysis_helper.py`: helper analysis utilities for basic dataset summaries such as sample counts by age.
+- `dataset_analysis_helper.py`: helper analysis utilities for basic dataset summaries such as CellID counts by age, with optional chemistry and region filtering.
 - `plot_umaps.py`, `dot_plots.py`, `tsne_plots.py`: visualization helpers for genes and leading-edge sets.
 - `enrichment_cal_lists_loop.py`: helper utilities for running enrichment across multiple gene lists.
 
