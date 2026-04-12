@@ -31,8 +31,6 @@ def create_sample_count_by_age_plot(
 
     if age_col not in adata.obs.columns:
         raise KeyError(f"Column '{age_col}' not found in adata.obs")
-    if cell_id_col not in adata.obs.columns:
-        raise KeyError(f"Column '{cell_id_col}' not found in adata.obs")
     if chemistry is not None:
         if chemistry_col not in adata.obs.columns:
             raise KeyError(f"Column '{chemistry_col}' not found in adata.obs")
@@ -45,13 +43,28 @@ def create_sample_count_by_age_plot(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    summary_df = (
-        adata.obs[[age_col, cell_id_col]]
-        .dropna()
-        .assign(
-            age_numeric=lambda df: pd.to_numeric(df[age_col], errors="coerce"),
-            cell_id_value=lambda df: df[cell_id_col].astype(str),
+    if cell_id_col in adata.obs.columns:
+        cell_id_series = adata.obs[cell_id_col].astype(str)
+        resolved_cell_id_source = f"obs['{cell_id_col}']"
+    elif adata.obs.index.name == cell_id_col:
+        cell_id_series = pd.Series(adata.obs.index.astype(str), index=adata.obs.index)
+        resolved_cell_id_source = "obs.index"
+    else:
+        raise KeyError(
+            f"Cell identifier '{cell_id_col}' was not found in adata.obs columns "
+            f"or as the named obs index."
         )
+
+    summary_df = (
+        pd.DataFrame(
+            {
+                age_col: adata.obs[age_col],
+                "cell_id_value": cell_id_series,
+            },
+            index=adata.obs.index,
+        )
+        .dropna()
+        .assign(age_numeric=lambda df: pd.to_numeric(df[age_col], errors="coerce"))
         .dropna(subset=["age_numeric"])
         .groupby("age_numeric")["cell_id_value"]
         .nunique()
@@ -88,6 +101,7 @@ def create_sample_count_by_age_plot(
         "h5ad_path": str(h5ad_path),
         "age_column": age_col,
         "cell_id_column": cell_id_col,
+        "cell_id_source": resolved_cell_id_source,
         "chemistry": chemistry,
         "chemistry_column": chemistry_col,
         "region": region,
