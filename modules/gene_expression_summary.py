@@ -177,6 +177,40 @@ def collapse_region(region):
     return np.nan
 
 
+def prepare_expression_adata(
+    adata,
+    region_col="Region",
+    cell_filter_col="CellClass",
+    cell_filter_val="Radial glia",
+):
+    """Filter cells, normalize/log-transform, and collapse to meta-regions."""
+    if region_col not in adata.obs.columns:
+        raise KeyError(f"Column '{region_col}' not found in adata.obs")
+    if cell_filter_col not in adata.obs.columns:
+        raise KeyError(f"Column '{cell_filter_col}' not found in adata.obs")
+
+    print("Filtering cells...")
+    adata_f = adata[adata.obs[cell_filter_col].astype(str) == str(cell_filter_val)].copy()
+    if adata_f.n_obs == 0:
+        raise ValueError(
+            f"No cells found for condition '{cell_filter_val}' in adata.obs['{cell_filter_col}']."
+        )
+
+    print("Normalizing...")
+    import scanpy as sc
+
+    sc.pp.normalize_total(adata_f)
+    sc.pp.log1p(adata_f)
+
+    print("Collapsing regions...")
+    adata_f.obs["meta_region"] = adata_f.obs[region_col].map(collapse_region)
+    adata_f = adata_f[adata_f.obs["meta_region"].notna()].copy()
+    if adata_f.n_obs == 0:
+        raise ValueError("No cells remained after collapsing to Forebrain/Midbrain/Hindbrain.")
+
+    return adata_f
+
+
 def compute_top_vs_second_wilcoxon(final_summary):
     """Run a one-sided paired Wilcoxon signed-rank test across genes."""
     from scipy.stats import wilcoxon
@@ -222,6 +256,11 @@ def compute_top_vs_second_wilcoxon(final_summary):
         smm.multipletests([float(test.pvalue)], method="fdr_bh")[1][0]
     )
     return result
+
+
+def get_gene_flag_column(condition_name):
+    """Return the flag-column name used for a leading-gene condition."""
+    return f"{sanitize_name(condition_name)}_leading_gene"
 
 
 def list_leading_gene_flag_columns(df):
@@ -302,6 +341,39 @@ def run_selected_region_wilcoxon(gene_set_summary, selected_region, other_region
     return result
 
 
+def build_gene_group_frames(final_summary):
+    """Build the requested group summaries for the top-region group CSV."""
+    group_frames = [("all", final_summary)]
+
+    g1_col = get_gene_flag_column("G1")
+    s_col = get_gene_flag_column("S")
+    g2m_col = get_gene_flag_column("G2M")
+
+    if g1_col in final_summary.columns and s_col in final_summary.columns:
+        group_frames.append(
+            ("G1 & S", final_summary.loc[final_summary[g1_col] & final_summary[s_col]].copy())
+        )
+    if s_col in final_summary.columns and g2m_col in final_summary.columns:
+        group_frames.append(
+            ("S & G2M", final_summary.loc[final_summary[s_col] & final_summary[g2m_col]].copy())
+        )
+
+    return group_frames
+
+
+def get_combined_gene_group_label(row):
+    """Label a gene as belonging to G1 & S, S & G2M, or none."""
+    g1_flag = bool(row.get(get_gene_flag_column("G1"), False))
+    s_flag = bool(row.get(get_gene_flag_column("S"), False))
+    g2m_flag = bool(row.get(get_gene_flag_column("G2M"), False))
+
+    if g1_flag and s_flag:
+        return "G1 & S"
+    if s_flag and g2m_flag:
+        return "S & G2M"
+    return "none"
+
+
 def build_leading_gene_group_wilcoxon_summary(final_summary, selected_region):
     """Create one summary table for all genes and each optional leading-gene subgroup."""
     available_regions = [region_name for region_name, _ in list_region_score_columns(final_summary)]
@@ -311,11 +383,7 @@ def build_leading_gene_group_wilcoxon_summary(final_summary, selected_region):
             f"Choose from: {available_regions}"
         )
 
-    group_frames = [("all", final_summary)]
-    for flag_column in list_leading_gene_flag_columns(final_summary):
-        group_name = flag_column[: -len("_leading_gene")]
-        group_df = final_summary.loc[final_summary[flag_column] == True].copy()
-        group_frames.append((group_name, group_df))
+    group_frames = build_gene_group_frames(final_summary)
 
     rows = []
     other_regions = [region for region in available_regions if region != selected_region]
@@ -328,6 +396,102 @@ def build_leading_gene_group_wilcoxon_summary(final_summary, selected_region):
                 "top_region_for_gene_set": top_region,
             }
             row.update(run_selected_region_wilcoxon(group_df, selected_region, other_region))
+            rows.append(row)
+
+    return add_fdr_column(pd.DataFrame(rows), "wilcoxon_pvalue", "wilcoxon_fdr_bh_pvalue")
+
+
+def build_per_gene_region_wilcoxon_summary(
+    adata,
+    genes,
+    selected_region,
+    sym_col="Gene",
+    leading_gene_flags=None,
+):
+    """Create per-gene region-vs-region Wilcoxon rank-sum summaries using expressing cells only."""
+    from scipy.stats import mannwhitneyu
+    import scipy.sparse as sp
+
+    if sym_col not in adata.var.columns:
+        raise KeyError(f"Column '{sym_col}' not found in adata.var")
+    if "meta_region" not in adata.obs.columns:
+        raise KeyError("Column 'meta_region' not found in adata.obs")
+    if selected_region not in META_REGIONS:
+        raise ValueError(f"Selected region '{selected_region}' must be one of {META_REGIONS}")
+
+    sym2var = (
+        pd.Series(adata.var_names.values, index=adata.var[sym_col].astype(str))
+        .dropna()
+        .to_dict()
+    )
+
+    found_genes = [gene for gene in genes if gene in sym2var]
+    if not found_genes:
+        raise ValueError("None of the requested genes were found in adata.var[sym_col].")
+
+    varnames = [sym2var[gene] for gene in found_genes]
+    X = adata[:, varnames].X
+    if sp.issparse(X):
+        X = X.toarray()
+
+    expr_df = pd.DataFrame(X, columns=found_genes)
+    expr_df["meta_region"] = adata.obs["meta_region"].to_numpy()
+
+    rows = []
+    comparison_regions = [region for region in META_REGIONS if region != selected_region]
+    gene_group_labels = {}
+    if leading_gene_flags is not None and not leading_gene_flags.empty:
+        gene_group_labels = (
+            leading_gene_flags.assign(
+                combined_leading_gene_group=leading_gene_flags.apply(
+                    get_combined_gene_group_label,
+                    axis=1,
+                )
+            )
+            .set_index("gene")["combined_leading_gene_group"]
+            .to_dict()
+        )
+
+    for gene in found_genes:
+        selected_values = expr_df.loc[
+            (expr_df["meta_region"] == selected_region) & (expr_df[gene] > 0),
+            gene,
+        ].astype(float)
+
+        for comparison_region in comparison_regions:
+            comparison_values = expr_df.loc[
+                (expr_df["meta_region"] == comparison_region) & (expr_df[gene] > 0),
+                gene,
+            ].astype(float)
+
+            row = {
+                "gene": gene,
+                "combined_leading_gene_group": gene_group_labels.get(gene, "none"),
+                "selected_region": selected_region,
+                "comparison_region": comparison_region,
+                "n_selected_region_expressing_cells": int(len(selected_values)),
+                "n_comparison_region_expressing_cells": int(len(comparison_values)),
+                "selected_region_mean_expr": float(selected_values.mean()) if len(selected_values) else np.nan,
+                "comparison_region_mean_expr": float(comparison_values.mean()) if len(comparison_values) else np.nan,
+                "wilcoxon_statistic": np.nan,
+                "wilcoxon_pvalue": np.nan,
+                "wilcoxon_alternative": "greater",
+                "wilcoxon_note": "",
+            }
+
+            if len(selected_values) == 0 or len(comparison_values) == 0:
+                row["wilcoxon_note"] = (
+                    "No expressing cells were available for one or both regions."
+                )
+            else:
+                test = mannwhitneyu(
+                    selected_values,
+                    comparison_values,
+                    alternative="greater",
+                )
+                row["wilcoxon_statistic"] = float(test.statistic)
+                row["wilcoxon_pvalue"] = float(test.pvalue)
+
             rows.append(row)
 
     return add_fdr_column(pd.DataFrame(rows), "wilcoxon_pvalue", "wilcoxon_fdr_bh_pvalue")
@@ -350,32 +514,16 @@ def summarize_gene_expression_top_region(
       3) wilcoxon_result: paired one-sided Wilcoxon top-vs-second score test across genes
     """
 
-    if region_col not in adata.obs.columns:
-        raise KeyError(f"Column '{region_col}' not found in adata.obs")
-    if cell_filter_col not in adata.obs.columns:
-        raise KeyError(f"Column '{cell_filter_col}' not found in adata.obs")
     if sym_col not in adata.var.columns:
         raise KeyError(f"Column '{sym_col}' not found in adata.var")
-
-    print("Filtering cells...")
-    adata_f = adata[adata.obs[cell_filter_col].astype(str) == str(cell_filter_val)].copy()
-    if adata_f.n_obs == 0:
-        raise ValueError(
-            f"No cells found for condition '{cell_filter_val}' in adata.obs['{cell_filter_col}']."
-        )
-
-    print("Normalizing...")
-    import scanpy as sc
     import scipy.sparse as sp
 
-    sc.pp.normalize_total(adata_f)
-    sc.pp.log1p(adata_f)
-
-    print("Collapsing regions...")
-    adata_f.obs["meta_region"] = adata_f.obs[region_col].map(collapse_region)
-    adata_f = adata_f[adata_f.obs["meta_region"].notna()].copy()
-    if adata_f.n_obs == 0:
-        raise ValueError("No cells remained after collapsing to Forebrain/Midbrain/Hindbrain.")
+    adata_f = prepare_expression_adata(
+        adata,
+        region_col=region_col,
+        cell_filter_col=cell_filter_col,
+        cell_filter_val=cell_filter_val,
+    )
 
     sym2var = (
         pd.Series(adata_f.var_names.values, index=adata_f.var[sym_col].astype(str))
@@ -546,10 +694,24 @@ def create_gene_expression_summary(
         expr_threshold=expr_threshold,
         leading_gene_flags=leading_gene_flags,
     )
+    prepared_adata = prepare_expression_adata(
+        adata,
+        region_col=region_col,
+        cell_filter_col=cell_filter_col,
+        cell_filter_val=cell_filter_val,
+    )
+    per_gene_wilcoxon_summary = build_per_gene_region_wilcoxon_summary(
+        prepared_adata,
+        summary_info["leading_genes"],
+        selected_region=wilcoxon_region,
+        sym_col=sym_col,
+        leading_gene_flags=leading_gene_flags,
+    )
 
     long_csv_path = output_dir / "gene_expression_region_long_summary.csv"
     final_csv_path = output_dir / "gene_expression_top_region_summary.csv"
     group_wilcoxon_csv_path = output_dir / "gene_expression_group_wilcoxon_summary.csv"
+    per_gene_wilcoxon_csv_path = output_dir / "gene_expression_per_gene_wilcoxon_summary.csv"
     long_summary.to_csv(long_csv_path, index=False)
     final_summary.to_csv(final_csv_path, index=False)
     group_wilcoxon_summary = build_leading_gene_group_wilcoxon_summary(
@@ -557,12 +719,14 @@ def create_gene_expression_summary(
         selected_region=wilcoxon_region,
     )
     group_wilcoxon_summary.to_csv(group_wilcoxon_csv_path, index=False)
+    per_gene_wilcoxon_summary.to_csv(per_gene_wilcoxon_csv_path, index=False)
 
     return {
         "output_dir": str(output_dir),
         "long_summary_csv_path": str(long_csv_path),
         "final_summary_csv_path": str(final_csv_path),
         "group_wilcoxon_summary_csv_path": str(group_wilcoxon_csv_path),
+        "per_gene_wilcoxon_summary_csv_path": str(per_gene_wilcoxon_csv_path),
         "gsea_summary_file": str(Path(gsea_summary_file)),
         "condition": summary_info["condition"],
         "condition_column": summary_info["column"],
@@ -583,6 +747,7 @@ def create_gene_expression_summary(
         "wilcoxon_top_vs_second_n_pairs": wilcoxon_result[
             "wilcoxon_top_vs_second_n_pairs"
         ],
+        "n_per_gene_wilcoxon_rows": int(per_gene_wilcoxon_summary.shape[0]),
     }
 
 

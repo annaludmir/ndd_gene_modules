@@ -192,8 +192,9 @@ The module `modules/gene_expression_summary.py` reads the leading genes for one 
 
 - a long per-gene-per-region CSV
 - a final one-row-per-gene CSV
+- a per-gene Wilcoxon comparison CSV for the user-selected region versus the other regions
 
-The final summary also includes a one-sided paired Wilcoxon signed-rank test comparing `top_region_score` versus `second_region_score` across genes, along with an FDR/BH-corrected p-value. If you provide an extra summary file and condition list, the output adds boolean columns such as `S_leading_gene` and `G2M_leading_gene`, and also writes one group-level Wilcoxon summary CSV with rows for `all` and each optional leading-gene group. That summary reports the top region for each gene set and Wilcoxon results for the user-selected region versus each other available region, plus FDR/BH-corrected p-values across those group comparisons. By default the module filters the AnnData input to `Chemistry == v3`; use `--chemistry` to change that or `--chemistry None` to disable chemistry filtering.
+The final summary also includes a one-sided paired Wilcoxon signed-rank test comparing `top_region_score` versus `second_region_score` across genes, along with an FDR/BH-corrected p-value. The per-gene Wilcoxon CSV compares the user-selected region against each other region using log-normalized expression and only cells with expression greater than `0` for that gene. If you provide an extra summary file and condition list, the output adds boolean columns such as `S_leading_gene` and `G2M_leading_gene`, and also writes one group-level Wilcoxon summary CSV with rows for `all`, `G1 & S`, and `S & G2M` when those flags are available. That summary reports the top region for each gene set and Wilcoxon results for the user-selected region versus each other available region, plus FDR/BH-corrected p-values across those group comparisons. By default the module filters the AnnData input to `Chemistry == v3`; use `--chemistry` to change that or `--chemistry None` to disable chemistry filtering.
 
 Example call:
 
