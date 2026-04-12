@@ -27,7 +27,6 @@ cd /miridan-data/annaludmir/ndd_gene_modules
 mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new python modules/dataset_analysis_helper.py \
   --h5ad-path data/human_dev_without_week_5.h5ad \
   --age-col Age \
-  --cell-id-col CellID \
   --chemistry v3 \
   --region Forebrain
 
