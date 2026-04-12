@@ -250,7 +250,11 @@ def build_condition_time_matrices(
     expr_df = pd.DataFrame(X, columns=found_genes)
     expr_df["_age_numeric"] = adata_f.obs["_age_numeric"].to_numpy()
 
-    mean_expr = expr_df.groupby("_age_numeric")[found_genes].mean().sort_index()
+    mean_expr = pd.DataFrame(index=sorted(expr_df["_age_numeric"].unique()))
+    for gene in found_genes:
+        gene_expr = expr_df.loc[expr_df[gene] > 0, ["_age_numeric", gene]].copy()
+        gene_means = gene_expr.groupby("_age_numeric")[gene].mean()
+        mean_expr[gene] = gene_means.reindex(mean_expr.index)
     mean_expr.index.name = "Age"
 
     zscore_expr = mean_expr.copy()

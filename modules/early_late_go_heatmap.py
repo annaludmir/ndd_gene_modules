@@ -252,7 +252,11 @@ def compute_stage_expression(
     expr_df = pd.DataFrame(X, columns=found_genes)
     expr_df["time_stage"] = adata_f.obs["time_stage"].to_numpy()
 
-    mean_expr = expr_df.groupby("time_stage")[found_genes].mean().reindex(STAGE_ORDER)
+    mean_expr = pd.DataFrame(index=STAGE_ORDER)
+    for gene in found_genes:
+        gene_expr = expr_df.loc[expr_df[gene] > 0, ["time_stage", gene]].copy()
+        gene_means = gene_expr.groupby("time_stage")[gene].mean()
+        mean_expr[gene] = gene_means.reindex(STAGE_ORDER)
 
     zscore_expr = mean_expr.copy()
     for gene in found_genes:
