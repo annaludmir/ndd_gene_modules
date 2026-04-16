@@ -2,6 +2,7 @@ import argparse
 import re
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -511,6 +512,151 @@ def build_per_gene_region_wilcoxon_summary(
     return add_fdr_column(pd.DataFrame(rows), "wilcoxon_pvalue", "wilcoxon_fdr_bh_pvalue")
 
 
+def get_combined_leading_gene_group_order(per_gene_wilcoxon_summary):
+    """Return a stable display order for combined leading-gene groups."""
+    preferred_order = ["G1 & S", "S & G2M", "none"]
+    observed_groups = (
+        per_gene_wilcoxon_summary["combined_leading_gene_group"]
+        .fillna("none")
+        .astype(str)
+        .drop_duplicates()
+        .tolist()
+    )
+    ordered_groups = [group for group in preferred_order if group in observed_groups]
+    ordered_groups.extend(sorted(group for group in observed_groups if group not in preferred_order))
+    return ordered_groups
+
+
+def create_region_pair_significant_gene_count_plot(per_gene_wilcoxon_summary, output_path):
+    """Plot significant per-gene Wilcoxon counts for each unordered region pair."""
+    required_cols = {
+        "combined_leading_gene_group",
+        "region_of_interest",
+        "region_of_comparison",
+        "wilcoxon_fdr_bh_pvalue",
+    }
+    missing_cols = required_cols - set(per_gene_wilcoxon_summary.columns)
+    if missing_cols:
+        raise ValueError(
+            "Per-gene Wilcoxon summary is missing required columns for plotting: "
+            f"{sorted(missing_cols)}"
+        )
+
+    group_order = get_combined_leading_gene_group_order(per_gene_wilcoxon_summary)
+    region_pairs = [
+        ("Forebrain", "Midbrain"),
+        ("Forebrain", "Hindbrain"),
+        ("Midbrain", "Hindbrain"),
+    ]
+    colors = {
+        "left": "#ff5a52",
+        "right": "#16b3b1",
+    }
+
+    fig, axes = plt.subplots(
+        1,
+        len(region_pairs),
+        figsize=(5 * len(region_pairs), max(3.5, 1.1 * len(group_order) + 1.5)),
+        sharey=True,
+    )
+    if len(region_pairs) == 1:
+        axes = [axes]
+
+    max_abs_count = 0
+    pair_counts = {}
+    significant_mask = pd.to_numeric(
+        per_gene_wilcoxon_summary["wilcoxon_fdr_bh_pvalue"], errors="coerce"
+    ) < 0.05
+    significant_summary = per_gene_wilcoxon_summary.loc[significant_mask].copy()
+
+    for left_region, right_region in region_pairs:
+        left_counts = (
+            significant_summary.loc[
+                (significant_summary["region_of_interest"] == left_region)
+                & (significant_summary["region_of_comparison"] == right_region)
+            ]
+            .groupby("combined_leading_gene_group")["gene"]
+            .nunique()
+            .reindex(group_order, fill_value=0)
+        )
+        right_counts = (
+            significant_summary.loc[
+                (significant_summary["region_of_interest"] == right_region)
+                & (significant_summary["region_of_comparison"] == left_region)
+            ]
+            .groupby("combined_leading_gene_group")["gene"]
+            .nunique()
+            .reindex(group_order, fill_value=0)
+        )
+        pair_counts[(left_region, right_region)] = (left_counts, right_counts)
+        max_abs_count = max(
+            max_abs_count,
+            int(left_counts.max()) if len(left_counts) else 0,
+            int(right_counts.max()) if len(right_counts) else 0,
+        )
+
+    x_limit = max(1, max_abs_count)
+    y_positions = np.arange(len(group_order))
+
+    for ax, (left_region, right_region) in zip(axes, region_pairs):
+        left_counts, right_counts = pair_counts[(left_region, right_region)]
+        ax.barh(
+            y_positions,
+            -left_counts.to_numpy(),
+            color=colors["left"],
+            edgecolor="white",
+            height=0.7,
+        )
+        ax.barh(
+            y_positions,
+            right_counts.to_numpy(),
+            color=colors["right"],
+            edgecolor="white",
+            height=0.7,
+        )
+        ax.axvline(0, color="#666666", linewidth=1)
+        ax.set_xlim(-x_limit - 0.5, x_limit + 0.5)
+        ax.set_title(f"{left_region} vs {right_region}", fontsize=11, pad=18)
+        ax.set_yticks(y_positions)
+        ax.set_yticklabels(group_order, fontsize=10)
+        ax.grid(axis="x", alpha=0.3)
+        ax.set_axisbelow(True)
+        ax.invert_yaxis()
+        ax.text(
+            0.02,
+            1.04,
+            left_region,
+            transform=ax.transAxes,
+            ha="left",
+            va="bottom",
+            fontsize=10,
+            color=colors["left"],
+        )
+        ax.text(
+            0.98,
+            1.04,
+            right_region,
+            transform=ax.transAxes,
+            ha="right",
+            va="bottom",
+            fontsize=10,
+            color=colors["right"],
+        )
+
+    axes[0].set_ylabel("combined_leading_gene_group", fontsize=10)
+    for ax in axes:
+        ax.set_xlabel("significant gene count", fontsize=10)
+
+    fig.suptitle(
+        "Genes with region-enriched expression by Wilcoxon FDR < 0.05",
+        fontsize=13,
+        y=1.02,
+    )
+    fig.tight_layout()
+    fig.savefig(output_path, dpi=300, bbox_inches="tight")
+    plt.close(fig)
+
+
 def summarize_gene_expression_top_region(
     adata,
     genes,
@@ -715,6 +861,14 @@ def create_gene_expression_summary(
         cell_filter_col=cell_filter_col,
         cell_filter_val=cell_filter_val,
     )
+    all_pairs_per_gene_wilcoxon_summary = build_per_gene_region_wilcoxon_summary(
+        prepared_adata,
+        summary_info["leading_genes"],
+        selected_region=wilcoxon_region,
+        sym_col=sym_col,
+        leading_gene_flags=leading_gene_flags,
+        compare_all_region_pairs=True,
+    )
     per_gene_wilcoxon_summary = build_per_gene_region_wilcoxon_summary(
         prepared_adata,
         summary_info["leading_genes"],
@@ -728,6 +882,7 @@ def create_gene_expression_summary(
     final_csv_path = output_dir / "gene_expression_top_region_summary.csv"
     group_wilcoxon_csv_path = output_dir / "gene_expression_group_wilcoxon_summary.csv"
     per_gene_wilcoxon_csv_path = output_dir / "gene_expression_per_gene_wilcoxon_summary.csv"
+    region_pair_counts_plot_path = output_dir / "gene_expression_region_pair_significant_gene_counts.png"
     long_summary.to_csv(long_csv_path, index=False)
     final_summary.to_csv(final_csv_path, index=False)
     group_wilcoxon_summary = build_leading_gene_group_wilcoxon_summary(
@@ -736,6 +891,10 @@ def create_gene_expression_summary(
     )
     group_wilcoxon_summary.to_csv(group_wilcoxon_csv_path, index=False)
     per_gene_wilcoxon_summary.to_csv(per_gene_wilcoxon_csv_path, index=False)
+    create_region_pair_significant_gene_count_plot(
+        all_pairs_per_gene_wilcoxon_summary,
+        region_pair_counts_plot_path,
+    )
 
     return {
         "output_dir": str(output_dir),
@@ -743,6 +902,7 @@ def create_gene_expression_summary(
         "final_summary_csv_path": str(final_csv_path),
         "group_wilcoxon_summary_csv_path": str(group_wilcoxon_csv_path),
         "per_gene_wilcoxon_summary_csv_path": str(per_gene_wilcoxon_csv_path),
+        "region_pair_significant_gene_count_plot_path": str(region_pair_counts_plot_path),
         "gsea_summary_file": str(Path(gsea_summary_file)),
         "condition": summary_info["condition"],
         "condition_column": summary_info["column"],
