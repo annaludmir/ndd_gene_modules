@@ -212,6 +212,35 @@ def prepare_expression_adata(
     return adata_f
 
 
+def build_expression_dataframe(adata, genes, sym_col="Gene"):
+    """Return a dense expression table for the requested genes plus meta-region labels."""
+    import scipy.sparse as sp
+
+    if sym_col not in adata.var.columns:
+        raise KeyError(f"Column '{sym_col}' not found in adata.var")
+    if "meta_region" not in adata.obs.columns:
+        raise KeyError("Column 'meta_region' not found in adata.obs")
+
+    sym2var = (
+        pd.Series(adata.var_names.values, index=adata.var[sym_col].astype(str))
+        .dropna()
+        .to_dict()
+    )
+
+    found_genes = [gene for gene in genes if gene in sym2var]
+    if not found_genes:
+        raise ValueError("None of the requested genes were found in adata.var[sym_col].")
+
+    varnames = [sym2var[gene] for gene in found_genes]
+    X = adata[:, varnames].X
+    if sp.issparse(X):
+        X = X.toarray()
+
+    expr_df = pd.DataFrame(X, columns=found_genes)
+    expr_df["meta_region"] = adata.obs["meta_region"].to_numpy()
+    return expr_df, found_genes
+
+
 def compute_top_vs_second_wilcoxon(final_summary):
     """Run a one-sided paired Wilcoxon signed-rank test across genes."""
     from scipy.stats import wilcoxon
@@ -412,32 +441,10 @@ def build_per_gene_region_wilcoxon_summary(
 ):
     """Create per-gene region-vs-region Wilcoxon rank-sum summaries using expressing cells only."""
     from scipy.stats import mannwhitneyu
-    import scipy.sparse as sp
-
-    if sym_col not in adata.var.columns:
-        raise KeyError(f"Column '{sym_col}' not found in adata.var")
-    if "meta_region" not in adata.obs.columns:
-        raise KeyError("Column 'meta_region' not found in adata.obs")
     if not compare_all_region_pairs and selected_region not in META_REGIONS:
         raise ValueError(f"Selected region '{selected_region}' must be one of {META_REGIONS}")
 
-    sym2var = (
-        pd.Series(adata.var_names.values, index=adata.var[sym_col].astype(str))
-        .dropna()
-        .to_dict()
-    )
-
-    found_genes = [gene for gene in genes if gene in sym2var]
-    if not found_genes:
-        raise ValueError("None of the requested genes were found in adata.var[sym_col].")
-
-    varnames = [sym2var[gene] for gene in found_genes]
-    X = adata[:, varnames].X
-    if sp.issparse(X):
-        X = X.toarray()
-
-    expr_df = pd.DataFrame(X, columns=found_genes)
-    expr_df["meta_region"] = adata.obs["meta_region"].to_numpy()
+    expr_df, found_genes = build_expression_dataframe(adata, genes, sym_col=sym_col)
 
     rows = []
     if compare_all_region_pairs:
@@ -657,6 +664,164 @@ def create_region_pair_significant_gene_count_plot(per_gene_wilcoxon_summary, ou
     plt.close(fig)
 
 
+def get_requested_region_pairs(selected_region, compare_all_region_pairs):
+    """Return ordered region pairs requested for per-gene comparisons."""
+    if compare_all_region_pairs:
+        return [
+            (region_of_interest, region_of_comparison)
+            for region_of_interest in META_REGIONS
+            for region_of_comparison in META_REGIONS
+            if region_of_interest != region_of_comparison
+        ]
+    return [
+        (selected_region, region_of_comparison)
+        for region_of_comparison in META_REGIONS
+        if region_of_comparison != selected_region
+    ]
+
+
+def create_significant_gene_boxplots(
+    adata,
+    genes,
+    per_gene_wilcoxon_summary,
+    output_dir,
+    selected_region,
+    compare_all_region_pairs=False,
+    sym_col="Gene",
+):
+    """Save per-gene boxplots across all meta-regions for strong requested enrichments."""
+    expr_df, found_genes = build_expression_dataframe(adata, genes, sym_col=sym_col)
+    requested_region_pairs = get_requested_region_pairs(
+        selected_region=selected_region,
+        compare_all_region_pairs=compare_all_region_pairs,
+    )
+    significant_summary = per_gene_wilcoxon_summary.loc[
+        pd.to_numeric(per_gene_wilcoxon_summary["wilcoxon_fdr_bh_pvalue"], errors="coerce") < 0.05
+    ].copy()
+    significant_summary = significant_summary.loc[
+        significant_summary.apply(
+            lambda row: (row["region_of_interest"], row["region_of_comparison"])
+            in requested_region_pairs,
+            axis=1,
+        )
+    ]
+    requested_regions_of_interest = sorted(
+        {region_of_interest for region_of_interest, _ in requested_region_pairs},
+        key=META_REGIONS.index,
+    )
+
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    colors = {
+        "Forebrain": "#ff5a52",
+        "Midbrain": "#16b3b1",
+        "Hindbrain": "#4c78a8",
+    }
+    n_saved_plots = 0
+
+    for region_of_interest in requested_regions_of_interest:
+        region_rows = significant_summary.loc[
+            significant_summary["region_of_interest"] == region_of_interest
+        ].copy()
+        if region_rows.empty:
+            continue
+
+        successful_other_regions = (
+            region_rows.groupby("gene")["region_of_comparison"].agg(lambda values: sorted(set(values)))
+        )
+        required_other_regions = sorted(
+            [region for region in META_REGIONS if region != region_of_interest]
+        )
+        qualifying_genes = [
+            gene for gene, comparison_regions in successful_other_regions.items()
+            if comparison_regions == required_other_regions
+        ]
+
+        region_dir = output_dir / sanitize_name(region_of_interest)
+        region_dir.mkdir(parents=True, exist_ok=True)
+
+        for gene in sorted(qualifying_genes):
+            if gene not in found_genes:
+                continue
+
+            row_match = region_rows.loc[region_rows["gene"] == gene].iloc[0]
+            region_values = []
+            region_labels = []
+            region_sample_sizes = []
+            for region_name in META_REGIONS:
+                values = expr_df.loc[
+                    (expr_df["meta_region"] == region_name) & (expr_df[gene] > 0),
+                    gene,
+                ].astype(float)
+                if len(values) == 0:
+                    region_values = []
+                    break
+                region_values.append(values.to_numpy())
+                region_labels.append(region_name)
+                region_sample_sizes.append(f"{region_name} n={len(values)}")
+
+            if not region_values:
+                continue
+
+            plot_path = region_dir / f"{sanitize_name(gene)}.png"
+
+            fig, ax = plt.subplots(figsize=(5.2, 4.5))
+            box = ax.boxplot(
+                region_values,
+                patch_artist=True,
+                labels=region_labels,
+                widths=0.6,
+            )
+            for patch, region_name in zip(box["boxes"], region_labels):
+                patch.set_facecolor(colors.get(region_name, "#999999"))
+                patch.set_alpha(0.75)
+            for median in box["medians"]:
+                median.set_color("#222222")
+                median.set_linewidth(1.5)
+
+            ax.set_title(gene, fontsize=12, pad=12)
+            ax.set_ylabel("log-normalized expression", fontsize=10)
+            ax.set_xlabel("meta_region", fontsize=10)
+            ax.grid(axis="y", alpha=0.3)
+            ax.set_axisbelow(True)
+            ax.text(
+                0.5,
+                1.02,
+                (
+                    f"{region_of_interest} enriched vs both other regions "
+                    f"(FDR < 0.05)"
+                ),
+                transform=ax.transAxes,
+                ha="center",
+                va="bottom",
+                fontsize=9,
+            )
+            ax.text(
+                0.5,
+                0.98,
+                (
+                    "expressing cells only | "
+                    + " | ".join(region_sample_sizes)
+                    + f" | group={row_match.combined_leading_gene_group}"
+                ),
+                transform=ax.transAxes,
+                ha="center",
+                va="top",
+                fontsize=8,
+            )
+
+            fig.tight_layout()
+            fig.savefig(plot_path, dpi=300, bbox_inches="tight")
+            plt.close(fig)
+            n_saved_plots += 1
+
+    return {
+        "significant_gene_boxplots_dir": str(output_dir),
+        "n_significant_gene_boxplots": int(n_saved_plots),
+    }
+
+
 def summarize_gene_expression_top_region(
     adata,
     genes,
@@ -811,6 +976,7 @@ def create_gene_expression_summary(
     expr_threshold=0,
     wilcoxon_region="Forebrain",
     wilcoxon_compare_all_region_pairs=False,
+    export_significant_gene_boxplots=False,
     chemistry=DEFAULT_CHEMISTRY,
     chemistry_col=DEFAULT_CHEMISTRY_COL,
 ):
@@ -895,6 +1061,21 @@ def create_gene_expression_summary(
         all_pairs_per_gene_wilcoxon_summary,
         region_pair_counts_plot_path,
     )
+    boxplot_export_result = {
+        "significant_gene_boxplots_dir": None,
+        "n_significant_gene_boxplots": 0,
+    }
+    if export_significant_gene_boxplots:
+        significant_gene_boxplots_dir = output_dir / "significant_gene_boxplots"
+        boxplot_export_result = create_significant_gene_boxplots(
+            prepared_adata,
+            summary_info["leading_genes"],
+            per_gene_wilcoxon_summary=all_pairs_per_gene_wilcoxon_summary,
+            output_dir=significant_gene_boxplots_dir,
+            selected_region=wilcoxon_region,
+            compare_all_region_pairs=wilcoxon_compare_all_region_pairs,
+            sym_col=sym_col,
+        )
 
     return {
         "output_dir": str(output_dir),
@@ -912,6 +1093,7 @@ def create_gene_expression_summary(
         "n_found_genes": int(final_summary.shape[0]),
         "wilcoxon_region": wilcoxon_region,
         "wilcoxon_compare_all_region_pairs": bool(wilcoxon_compare_all_region_pairs),
+        "export_significant_gene_boxplots": bool(export_significant_gene_boxplots),
         "wilcoxon_top_vs_second_statistic": wilcoxon_result[
             "wilcoxon_top_vs_second_statistic"
         ],
@@ -925,6 +1107,7 @@ def create_gene_expression_summary(
             "wilcoxon_top_vs_second_n_pairs"
         ],
         "n_per_gene_wilcoxon_rows": int(per_gene_wilcoxon_summary.shape[0]),
+        **boxplot_export_result,
     }
 
 
@@ -1019,6 +1202,14 @@ def build_arg_parser():
         ),
     )
     parser.add_argument(
+        "--export-significant-gene-boxplots",
+        action="store_true",
+        help=(
+            "Create a folder of per-gene boxplots for significant region comparisons, "
+            "using only cells with expression > 0 for each gene."
+        ),
+    )
+    parser.add_argument(
         "--chemistry",
         default=DEFAULT_CHEMISTRY,
         help="Chemistry value to keep from adata.obs before analysis. Use 'None' to disable.",
@@ -1048,6 +1239,7 @@ if __name__ == "__main__":
         expr_threshold=args.expr_threshold,
         wilcoxon_region=args.wilcoxon_region,
         wilcoxon_compare_all_region_pairs=args.wilcoxon_compare_all_region_pairs,
+        export_significant_gene_boxplots=args.export_significant_gene_boxplots,
         chemistry=None if args.chemistry == "None" else args.chemistry,
         chemistry_col=args.chemistry_col,
     )

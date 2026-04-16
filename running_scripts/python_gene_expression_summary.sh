@@ -37,6 +37,7 @@ mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new python modul
   --leading-gene-conditions S G2M G1 PostM Non-cycling \
   --wilcoxon-region Forebrain \
   --wilcoxon-compare-all-region-pairs \
+  --export-significant-gene-boxplots \
   --chemistry v3 \
   --subfolder-name forebrain_gene_expression_summary
 
