@@ -407,6 +407,7 @@ def build_per_gene_region_wilcoxon_summary(
     selected_region,
     sym_col="Gene",
     leading_gene_flags=None,
+    compare_all_region_pairs=False,
 ):
     """Create per-gene region-vs-region Wilcoxon rank-sum summaries using expressing cells only."""
     from scipy.stats import mannwhitneyu
@@ -416,7 +417,7 @@ def build_per_gene_region_wilcoxon_summary(
         raise KeyError(f"Column '{sym_col}' not found in adata.var")
     if "meta_region" not in adata.obs.columns:
         raise KeyError("Column 'meta_region' not found in adata.obs")
-    if selected_region not in META_REGIONS:
+    if not compare_all_region_pairs and selected_region not in META_REGIONS:
         raise ValueError(f"Selected region '{selected_region}' must be one of {META_REGIONS}")
 
     sym2var = (
@@ -438,7 +439,19 @@ def build_per_gene_region_wilcoxon_summary(
     expr_df["meta_region"] = adata.obs["meta_region"].to_numpy()
 
     rows = []
-    comparison_regions = [region for region in META_REGIONS if region != selected_region]
+    if compare_all_region_pairs:
+        region_pairs = [
+            (region_of_interest, region_of_comparison)
+            for region_of_interest in META_REGIONS
+            for region_of_comparison in META_REGIONS
+            if region_of_interest != region_of_comparison
+        ]
+    else:
+        region_pairs = [
+            (selected_region, region_of_comparison)
+            for region_of_comparison in META_REGIONS
+            if region_of_comparison != selected_region
+        ]
     gene_group_labels = {}
     if leading_gene_flags is not None and not leading_gene_flags.empty:
         gene_group_labels = (
@@ -453,12 +466,11 @@ def build_per_gene_region_wilcoxon_summary(
         )
 
     for gene in found_genes:
-        selected_values = expr_df.loc[
-            (expr_df["meta_region"] == selected_region) & (expr_df[gene] > 0),
-            gene,
-        ].astype(float)
-
-        for comparison_region in comparison_regions:
+        for region_of_interest, comparison_region in region_pairs:
+            selected_values = expr_df.loc[
+                (expr_df["meta_region"] == region_of_interest) & (expr_df[gene] > 0),
+                gene,
+            ].astype(float)
             comparison_values = expr_df.loc[
                 (expr_df["meta_region"] == comparison_region) & (expr_df[gene] > 0),
                 gene,
@@ -467,7 +479,9 @@ def build_per_gene_region_wilcoxon_summary(
             row = {
                 "gene": gene,
                 "combined_leading_gene_group": gene_group_labels.get(gene, "none"),
-                "selected_region": selected_region,
+                "region_of_interest": region_of_interest,
+                "region_of_comparison": comparison_region,
+                "selected_region": region_of_interest,
                 "comparison_region": comparison_region,
                 "n_selected_region_expressing_cells": int(len(selected_values)),
                 "n_comparison_region_expressing_cells": int(len(comparison_values)),
@@ -650,6 +664,7 @@ def create_gene_expression_summary(
     sym_col="Gene",
     expr_threshold=0,
     wilcoxon_region="Forebrain",
+    wilcoxon_compare_all_region_pairs=False,
     chemistry=DEFAULT_CHEMISTRY,
     chemistry_col=DEFAULT_CHEMISTRY_COL,
 ):
@@ -706,6 +721,7 @@ def create_gene_expression_summary(
         selected_region=wilcoxon_region,
         sym_col=sym_col,
         leading_gene_flags=leading_gene_flags,
+        compare_all_region_pairs=wilcoxon_compare_all_region_pairs,
     )
 
     long_csv_path = output_dir / "gene_expression_region_long_summary.csv"
@@ -735,6 +751,7 @@ def create_gene_expression_summary(
         "n_input_leading_genes": len(summary_info["leading_genes"]),
         "n_found_genes": int(final_summary.shape[0]),
         "wilcoxon_region": wilcoxon_region,
+        "wilcoxon_compare_all_region_pairs": bool(wilcoxon_compare_all_region_pairs),
         "wilcoxon_top_vs_second_statistic": wilcoxon_result[
             "wilcoxon_top_vs_second_statistic"
         ],
@@ -833,6 +850,15 @@ def build_arg_parser():
         ),
     )
     parser.add_argument(
+        "--wilcoxon-compare-all-region-pairs",
+        action="store_true",
+        help=(
+            "For the per-gene Wilcoxon summary CSV, run all ordered meta-region comparisons "
+            "(for example, 6 rows per gene for 3 regions) instead of only the selected region "
+            "versus the others."
+        ),
+    )
+    parser.add_argument(
         "--chemistry",
         default=DEFAULT_CHEMISTRY,
         help="Chemistry value to keep from adata.obs before analysis. Use 'None' to disable.",
@@ -861,6 +887,7 @@ if __name__ == "__main__":
         sym_col=args.sym_col,
         expr_threshold=args.expr_threshold,
         wilcoxon_region=args.wilcoxon_region,
+        wilcoxon_compare_all_region_pairs=args.wilcoxon_compare_all_region_pairs,
         chemistry=None if args.chemistry == "None" else args.chemistry,
         chemistry_col=args.chemistry_col,
     )
