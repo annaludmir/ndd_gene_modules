@@ -138,8 +138,8 @@ def classify_stage(age_value):
     Map age into the requested developmental bins.
 
     Assumption to avoid overlap at week 9:
-    - Early: 5.5 <= age <= 7.0
-    - Mid:   7.0 < age < 9.0
+    - Early: 5.5 <= age <= 6.5
+    - Mid:   6.5 < age < 9.0
     - Late:  9.0 <= age <= 14.0
     """
     if pd.isna(age_value):
@@ -147,9 +147,9 @@ def classify_stage(age_value):
 
     age = float(age_value)
 
-    if 5.5 <= age <= 7.0:
+    if 5.5 <= age <= 6.5:
         return "Early"
-    if 7.0 < age < 9.0:
+    if 6.5 < age < 9.0:
         return "Mid"
     if 9.0 <= age <= 14.0:
         return "Late"
