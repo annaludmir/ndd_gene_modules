@@ -19,7 +19,7 @@ def create_sample_count_by_age_plot(
     region=None,
     region_col=DEFAULT_REGION_COL,
 ):
-    """Export counts of obs rows at each age after optional filtering."""
+    """Export per-age cell counts after optional filtering."""
     h5ad_path = Path(h5ad_path)
     if not h5ad_path.exists():
         raise FileNotFoundError(f"AnnData file not found: {h5ad_path}")
@@ -46,7 +46,6 @@ def create_sample_count_by_age_plot(
         .dropna()
         .astype(str)
         .value_counts()
-        .sort_index()
         .rename_axis(age_col)
         .reset_index(name="n_cells")
     )
@@ -67,6 +66,7 @@ def create_sample_count_by_age_plot(
         "region": region,
         "region_column": region_col,
         "n_ages": int(summary_df.shape[0]),
+        "age_cell_counts": summary_df.to_dict(orient="records"),
     }
 
 
