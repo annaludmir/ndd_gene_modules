@@ -37,6 +37,14 @@ YAML configs for both steps of the pipeline:
 
 Interactive analysis and figure-generation notebooks/scripts.
 
+### `running_scripts/`
+
+Cluster-oriented SLURM launchers for common runs.
+
+- `python_gsea_enrichment.sh`: submit one enrichment run from one fixed config.
+- `python_gsea_enrichment_all_configs.sh`: run one gene list across the main enrichment configs.
+- `python_gsea_enrichment_folder_all_configs.sh`: run every `*.csv` gene list in a chosen folder across the main enrichment configs.
+
 ### `results/`
 
 Local output folder for generated tables and plots.
@@ -148,6 +156,36 @@ What this does:
 - runs GSEA on each requested column/condition
 - saves a combined summary CSV
 - creates per-column summary bar plots
+
+### 3b. Run all main enrichment configs for one gene list on the cluster
+
+If you want the same gene list to be evaluated with the standard `Cortex`, `Cell Phase`, and `All Layers` enrichment configs, use:
+
+```bash
+sbatch running_scripts/python_gsea_enrichment_all_configs.sh data/genes/my_gene_list.csv
+```
+
+The script derives the base run name from the CSV filename by default. You can also pass a custom base name as the second argument.
+
+### 3c. Run all main enrichment configs for a whole folder of gene lists on the cluster
+
+If you want to process a folder of gene lists in one batch, use:
+
+```bash
+sbatch running_scripts/python_gsea_enrichment_folder_all_configs.sh data/genes/my_gene_lists_folder
+```
+
+This script:
+
+- finds every `*.csv` file in the folder
+- runs `enrichment_cortex_config.yaml`, `enrichment_cortex_cell_phase_config.yaml`, and `enrichment_all_layers_config.yaml` for each file
+- uses each CSV stem as the default run-name base
+
+You can optionally add a shared prefix for all generated run names:
+
+```bash
+sbatch running_scripts/python_gsea_enrichment_folder_all_configs.sh data/genes/my_gene_lists_folder "AH MPRA"
+```
 
 ### 4. Inspect the outputs
 
