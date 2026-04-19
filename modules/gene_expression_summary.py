@@ -9,6 +9,11 @@ import pandas as pd
 
 DEFAULT_OUTPUT_DIR = Path("results/additional_analyses/gene_expression_summary")
 META_REGIONS = ["Forebrain", "Midbrain", "Hindbrain"]
+REGION_COLLAPSE_MAP = {
+    "Forebrain": {"Forebrain", "Telencephalon", "Diencephalon"},
+    "Midbrain": {"Midbrain"},
+    "Hindbrain": {"Hindbrain", "Cerebellum", "Pons", "Medulla"},
+}
 DEFAULT_CHEMISTRY = "v3"
 DEFAULT_CHEMISTRY_COL = "Chemistry"
 
@@ -165,16 +170,9 @@ def collapse_region(region):
     if pd.isna(region):
         return np.nan
 
-    forebrain = {"Forebrain", "Telencephalon", "Diencephalon"}
-    hindbrain = {"Hindbrain", "Cerebellum", "Pons", "Medulla"}
-    midbrain = {"Midbrain"}
-
-    if region in forebrain:
-        return "Forebrain"
-    if region in hindbrain:
-        return "Hindbrain"
-    if region in midbrain:
-        return "Midbrain"
+    for meta_region in META_REGIONS:
+        if region in REGION_COLLAPSE_MAP[meta_region]:
+            return meta_region
     return np.nan
 
 
@@ -184,7 +182,7 @@ def prepare_expression_adata(
     cell_filter_col="CellClass",
     cell_filter_val="Radial glia",
 ):
-    """Filter cells, normalize/log-transform, and collapse to meta-regions."""
+    """Filter cells, normalize/log-transform, and collapse to shared meta-regions."""
     if region_col not in adata.obs.columns:
         raise KeyError(f"Column '{region_col}' not found in adata.obs")
     if cell_filter_col not in adata.obs.columns:
@@ -238,7 +236,22 @@ def build_expression_dataframe(adata, genes, sym_col="Gene"):
 
     expr_df = pd.DataFrame(X, columns=found_genes)
     expr_df["meta_region"] = adata.obs["meta_region"].to_numpy()
+    invalid_regions = set(expr_df["meta_region"].dropna().astype(str)) - set(META_REGIONS)
+    if invalid_regions:
+        raise ValueError(
+            "Found unexpected meta-region values after region collapsing: "
+            f"{sorted(invalid_regions)}"
+        )
     return expr_df, found_genes
+
+
+def get_unordered_meta_region_pairs():
+    """Return all unordered pairs of collapsed meta-regions."""
+    return [
+        (META_REGIONS[i], META_REGIONS[j])
+        for i in range(len(META_REGIONS))
+        for j in range(i + 1, len(META_REGIONS))
+    ]
 
 
 def compute_top_vs_second_wilcoxon(final_summary):
@@ -550,11 +563,7 @@ def create_region_pair_significant_gene_count_plot(per_gene_wilcoxon_summary, ou
         )
 
     group_order = get_combined_leading_gene_group_order(per_gene_wilcoxon_summary)
-    region_pairs = [
-        ("Forebrain", "Midbrain"),
-        ("Forebrain", "Hindbrain"),
-        ("Midbrain", "Hindbrain"),
-    ]
+    region_pairs = get_unordered_meta_region_pairs()
     colors = {
         "left": "#ff5a52",
         "right": "#16b3b1",
