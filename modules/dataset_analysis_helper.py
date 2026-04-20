@@ -2,6 +2,7 @@ import argparse
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import scanpy as sc
 import seaborn as sns
@@ -154,7 +155,14 @@ def create_gene_expression_boxplot_by_region(
     expr_data = {}
     for gene in found_genes:
         gene_matrix = adata[:, gene_to_var[gene]].X
-        expr_data[gene] = gene_matrix.A1 if hasattr(gene_matrix, "A1") else gene_matrix.flatten()
+        # AnnData can return dense arrays, scipy sparse matrices, or sparse view wrappers.
+        if hasattr(gene_matrix, "toarray"):
+            gene_values = gene_matrix.toarray()
+        elif hasattr(gene_matrix, "A"):
+            gene_values = gene_matrix.A
+        else:
+            gene_values = np.asarray(gene_matrix)
+        expr_data[gene] = np.asarray(gene_values).reshape(-1)
 
     expr_df = pd.DataFrame(expr_data)
     expr_df[region_group_col] = adata.obs[region_group_col].to_numpy()
