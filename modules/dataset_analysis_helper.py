@@ -19,6 +19,17 @@ REGION_MAP = {
 }
 
 
+def sanitize_filename_component(value):
+    """Convert a value to a filesystem-friendly filename component."""
+    return (
+        str(value)
+        .strip()
+        .replace("/", "_")
+        .replace("\\", "_")
+        .replace(" ", "_")
+    )
+
+
 def map_region_to_group(region_value):
     """Collapse detailed regions into Forebrain, Midbrain, or Hindbrain."""
     if pd.isna(region_value):
@@ -182,9 +193,27 @@ def create_gene_expression_boxplot_by_region(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     genes_stem = "_".join(found_genes)
-    csv_path = output_dir / f"{genes_stem}_expression_by_region.csv"
-    png_path = output_dir / f"{genes_stem}_expression_by_region.png"
-    expr_long.to_csv(csv_path, index=False)
+    chemistry_label = sanitize_filename_component(chemistry if chemistry is not None else "all_chemistries")
+    h5ad_stem = sanitize_filename_component(h5ad_path.stem)
+    file_suffix = f"{chemistry_label}_{h5ad_stem}"
+
+    summary_df = (
+        expr_long.groupby([region_group_col, "Gene"], observed=False)["Expression"]
+        .agg(
+            n_cells="size",
+            mean_expression="mean",
+            std_expression="std",
+            median_expression="median",
+            min_expression="min",
+            max_expression="max",
+        )
+        .reset_index()
+        .sort_values(["Gene", region_group_col])
+    )
+
+    csv_path = output_dir / f"{genes_stem}_expression_by_region_summary_{file_suffix}.csv"
+    png_path = output_dir / f"{genes_stem}_expression_by_region_{file_suffix}.png"
+    summary_df.to_csv(csv_path, index=False)
 
     plt.figure(figsize=(8, 5))
     sns.boxplot(
@@ -203,7 +232,7 @@ def create_gene_expression_boxplot_by_region(
     return {
         "output_dir": str(output_dir),
         "plot_png_path": str(png_path),
-        "expression_long_csv_path": str(csv_path),
+        "summary_csv_path": str(csv_path),
         "h5ad_path": str(h5ad_path),
         "chemistry": chemistry,
         "chemistry_column": chemistry_col,
