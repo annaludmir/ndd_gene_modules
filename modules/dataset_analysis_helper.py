@@ -163,7 +163,8 @@ def create_gene_expression_boxplot_by_region(
     if not found_genes:
         raise ValueError("None of the requested genes were found in adata.var['Gene'].")
 
-    expr_data = {}
+    regions_all = adata.obs[region_group_col].to_numpy()
+    gene_records = []
     for gene in found_genes:
         gene_matrix = adata[:, gene_to_var[gene]].X
         # AnnData can return dense arrays, scipy sparse matrices, or sparse view wrappers.
@@ -173,16 +174,20 @@ def create_gene_expression_boxplot_by_region(
             gene_values = gene_matrix.A
         else:
             gene_values = np.asarray(gene_matrix)
-        expr_data[gene] = np.asarray(gene_values).reshape(-1)
+        gene_values = np.asarray(gene_values).reshape(-1)
 
-    expr_df = pd.DataFrame(expr_data)
-    expr_df[region_group_col] = adata.obs[region_group_col].to_numpy()
+        expressed_mask = gene_values > 0
+        gene_records.append(
+            pd.DataFrame(
+                {
+                    region_group_col: regions_all[expressed_mask],
+                    "Gene": gene,
+                    "Expression": gene_values[expressed_mask],
+                }
+            )
+        )
 
-    expr_long = expr_df.melt(
-        id_vars=region_group_col,
-        var_name="Gene",
-        value_name="Expression",
-    )
+    expr_long = pd.concat(gene_records, ignore_index=True)
     expr_long[region_group_col] = pd.Categorical(
         expr_long[region_group_col],
         categories=["Forebrain", "Midbrain", "Hindbrain"],
