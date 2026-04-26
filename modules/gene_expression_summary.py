@@ -181,8 +181,9 @@ def prepare_expression_adata(
     region_col="Region",
     cell_filter_col="CellClass",
     cell_filter_val="Radial glia",
+    normalize=True,
 ):
-    """Filter cells, normalize/log-transform, and collapse to shared meta-regions."""
+    """Filter cells, optionally normalize/log-transform, and collapse to shared meta-regions."""
     if region_col not in adata.obs.columns:
         raise KeyError(f"Column '{region_col}' not found in adata.obs")
     if cell_filter_col not in adata.obs.columns:
@@ -195,11 +196,12 @@ def prepare_expression_adata(
             f"No cells found for condition '{cell_filter_val}' in adata.obs['{cell_filter_col}']."
         )
 
-    print("Normalizing...")
-    import scanpy as sc
+    if normalize:
+        print("Normalizing...")
+        import scanpy as sc
 
-    sc.pp.normalize_total(adata_f)
-    sc.pp.log1p(adata_f)
+        sc.pp.normalize_total(adata_f)
+        sc.pp.log1p(adata_f)
 
     print("Collapsing regions...")
     adata_f.obs["meta_region"] = adata_f.obs[region_col].map(collapse_region)
@@ -790,7 +792,7 @@ def create_significant_gene_boxplots(
                 median.set_linewidth(1.5)
 
             ax.set_title(gene, fontsize=12, pad=12)
-            ax.set_ylabel("log-normalized expression", fontsize=10)
+            ax.set_ylabel("raw counts (expressing cells only)", fontsize=10)
             ax.set_xlabel("meta_region", fontsize=10)
             ax.grid(axis="y", alpha=0.3)
             ax.set_axisbelow(True)
@@ -1036,6 +1038,13 @@ def create_gene_expression_summary(
         cell_filter_col=cell_filter_col,
         cell_filter_val=cell_filter_val,
     )
+    raw_adata = prepare_expression_adata(
+        adata,
+        region_col=region_col,
+        cell_filter_col=cell_filter_col,
+        cell_filter_val=cell_filter_val,
+        normalize=False,
+    )
     all_pairs_per_gene_wilcoxon_summary = build_per_gene_region_wilcoxon_summary(
         prepared_adata,
         summary_info["leading_genes"],
@@ -1077,7 +1086,7 @@ def create_gene_expression_summary(
     if export_significant_gene_boxplots:
         significant_gene_boxplots_dir = output_dir / "significant_gene_boxplots"
         boxplot_export_result = create_significant_gene_boxplots(
-            prepared_adata,
+            raw_adata,
             summary_info["leading_genes"],
             per_gene_wilcoxon_summary=all_pairs_per_gene_wilcoxon_summary,
             output_dir=significant_gene_boxplots_dir,
