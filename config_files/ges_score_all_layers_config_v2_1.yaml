@@ -5,14 +5,14 @@ output_folder: "results/ges_score_results/"
 
 column_conditions:
   Region:
-    - "Cerebellum"
-    - "Diencephalon"
-    - "Midbrain"
-    - "Forebrain"
-    #- "Hindbrain"
-    #- "Pons"
-    #- "Medulla"
-    #- "Telencephalon"
+    #- "Cerebellum"
+    #- "Diencephalon"
+    #- "Midbrain"
+    #- "Forebrain"
+    - "Hindbrain"
+    - "Pons"
+    - "Medulla"
+    - "Telencephalon"
 
   #CellClass:
     #- "Radial glia"

@@ -4,21 +4,21 @@ data_path: "data/human_dev_without_week_5.h5ad"
 output_folder: "results/ges_score_results/"
 
 column_conditions:
-  Region:
-    - "Cerebellum"
-    - "Diencephalon"
-    - "Midbrain"
-    - "Forebrain"
+  #Region:
+    #- "Cerebellum"
+    #- "Diencephalon"
+    #- "Midbrain"
+    #- "Forebrain"
     #- "Hindbrain"
     #- "Pons"
     #- "Medulla"
     #- "Telencephalon"
 
-  #CellClass:
-    #- "Radial glia"
-    #- "Neuronal IPC"
-    #- "Neuron"
-    #- "Glioblast"
+  CellClass:
+    - "Radial glia"
+    - "Neuronal IPC"
+    - "Neuron"
+    - "Glioblast"
     #- "Neuroblast"
     #- "Oligo"
     #- "Fibroblast"
