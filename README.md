@@ -4,9 +4,16 @@ Analysis code for gene expression specificity (GES) scoring and downstream enric
 
 The main workflow in this repo is:
 
-1. compute GES tables for one or more cell groups from an `.h5ad` dataset
-2. run GSEA enrichment on those ranked GES tables using a gene list from a config file
-3. save summary tables and figures in date-stamped result folders
+1. Compute GES tables for one or more cell groups from an `.h5ad` dataset
+2. Run GSEA enrichment on those ranked GES tables using a gene list from a config file
+3. Save summary tables and figures in date-stamped result folders
+
+An alternative Tau-filtered GSEA workflow is also supported:
+
+1. Compute global Tau specificity scores for all genes (from the same `.h5ad`)
+2. Run GSEA enrichment, restricting the gene universe to the top 10% most cell-type-specific genes by Tau before preranking by GES
+
+Downstream modules can also extract GO term or OMIM disease associations from the leading genes produced by either GSEA workflow.
 
 ## Repository layout
 
@@ -14,23 +21,45 @@ The main workflow in this repo is:
 
 Core analysis scripts.
 
-- `specificity_score_calculations.py`: main GES pipeline. Reads a YAML config, loads the AnnData object, optionally filters by chemistry, creates derived group columns, computes GES scores, and writes one CSV per target condition.
+**GES pipeline**
+
+- `specificity_score_calculations.py`: main GES pipeline. Reads a YAML config, loads the AnnData object, optionally filters by chemistry, creates derived group columns, computes GES scores, and writes one CSV per target condition. Also contains `calculate_tau()` for computing per-target Tau specificity.
 - `enrichment_pipeline_for_gene_list.py`: main enrichment pipeline. Reads a YAML config, creates a GMT file from a gene list if needed, runs GSEA on the GES outputs, and creates summary plots.
 - `search_enrichment_gsea.py`: lower-level GSEA execution with `gseapy.prerank`, plus per-term enrichment plots.
+- `search_enrichment_deseq.py`: lower-level DESeq enrichment execution.
 - `get_gmt.py`: converts a gene list CSV into GMT format.
 - `deseq_calculations.py`: DESeq2 / Fisher-based enrichment path for pseudobulk data.
+
+**Tau-filtered GSEA pipeline**
+
+- `tau_pipeline.py`: computes global Tau specificity scores for every gene across all groups in each condition column. Accepts the same YAML config as the GES pipeline. Saves one `tau_scores_{column}.csv` per column. Run this before `search_enrichment_gsea_tau_filtered.py`.
+- `search_enrichment_gsea_tau_filtered.py`: drop-in replacement for `run_gsea()` that first filters genes to those in the top 10% of Tau (configurable), then applies the GES threshold, and runs prerank GSEA. Results are written to `GSEA_tau_filtered/` so they coexist with standard GSEA outputs.
+
+**Downstream term extraction**
+
+- `go_terms_pipeline.py`: runs Enrichr ORA (via `gseapy`) on leading genes extracted from a `GSEA_final_summary.csv`. Queries GO Biological Process, GO Molecular Function, GO Cellular Component, KEGG, and WikiPathways by default. Saves significant-hit tables per condition.
+- `omim_pipeline.py`: same structure as `go_terms_pipeline.py` but queries OMIM Disease and OMIM Expanded gene sets instead of GO/pathway libraries. Outputs go to `results/OMIM/`.
+
+**Visualization**
+
 - `create_figs_ges.py` and `create_figs_ges_for_presentation.py`: bar plots for GSEA summary results.
 - `create_figs_deseq.py`: bar plots for DESeq enrichment results.
-- `gene_expression_summary.py`: helper analysis for summarizing where selected genes are most enriched across broad brain regions.
-- `dataset_analysis_helper.py`: helper analysis utilities for basic dataset summaries such as CellID counts by age, with optional chemistry and region filtering.
 - `plot_umaps.py`, `dot_plots.py`, `tsne_plots.py`: visualization helpers for genes and leading-edge sets.
+
+**Analysis helpers**
+
+- `gene_expression_summary.py`: summarizes where selected genes are most enriched across broad brain regions, with optional Wilcoxon comparisons and per-gene boxplots.
+- `dataset_analysis_helper.py`: basic dataset summaries such as CellID counts by age, with optional chemistry and region filtering.
 - `enrichment_cal_lists_loop.py`: helper utilities for running enrichment across multiple gene lists.
+- `early_late_go_heatmap.py`: Early/Mid/Late developmental heatmaps for leading genes from a selected GSEA condition.
+- `pseudotime_leading_genes_heatmap.py`: pseudotime-style heatmaps for leading genes across ordered ages.
+- `leading_gene_condition_correlations.py`: scans enrichment result trees, computes pairwise Jaccard overlaps for all leading-gene condition pairs, and writes a correlation heatmap.
 
 ### `config_files/`
 
 YAML configs for both steps of the pipeline:
 
-- `ges_score_*.yaml`: configs for the GES scoring step
+- `ges_score_*.yaml`: configs for the GES scoring step (and Tau pipeline, which accepts the same format)
 - `enrichment_*.yaml`: configs for the enrichment step
 
 ### `notebooks/`
@@ -44,6 +73,10 @@ Cluster-oriented SLURM launchers for common runs.
 - `python_gsea_enrichment.sh`: submit one enrichment run from one fixed config.
 - `python_gsea_enrichment_all_configs.sh`: run one gene list across the main enrichment configs.
 - `python_gsea_enrichment_folder_all_configs.sh`: run every `*.csv` gene list in a chosen folder across the main enrichment configs.
+- `python_go_terms.sh`: run GO/pathway Enrichr ORA on leading genes from a GSEA summary CSV.
+- `python_omim.sh`: run OMIM disease Enrichr ORA on leading genes from a GSEA summary CSV.
+- `python_gene_expression_summary.sh`, `python_dataset_analysis_helper.sh`, `python_early_late.sh`, `python_pseudotime.sh`, `python_correlation_matrix.sh`: cluster launchers for the matching analysis helper modules.
+- `python_ges_score_all_layers_v2*.sh`: cluster launchers for the GES scoring step across dataset subsets.
 
 ### `results/`
 
@@ -73,7 +106,7 @@ Typical inputs are:
 
 ### GES config
 
-The GES pipeline uses configs like `config_files/ges_score_cortex_config.yaml`.
+The GES pipeline (and the Tau pipeline) use configs like `config_files/ges_score_cortex_config.yaml`.
 
 Important fields:
 
@@ -84,6 +117,7 @@ Important fields:
 - `expression_threshold`: minimum fraction of target cells expressing a gene
 - `chemistry`: optional chemistry filter, for example `v3`
 - `normalize_data`: whether to run normalization and log transform
+- `tau_agg`: aggregation method used by the Tau pipeline (`mean` or `median`, default `mean`)
 
 `column_conditions` can be either:
 
@@ -105,7 +139,7 @@ Important fields:
 - `gsea.min_ges_score_threshold`: filter applied before GSEA
 - `column_conditions_for_gsea`: which GES result files to use
 
-## Full GES -> GSEA workflow
+## Full GES → GSEA workflow
 
 ### 1. Run the GES scoring step
 
@@ -137,7 +171,7 @@ gmt_folder: "data/genes/"
 analysis_mode: "gsea"
 ```
 
-Make sure `column_conditions_for_gsea` matches the columns and targets you scored in step 1. The enrichment step looks for files in:
+Make sure `column_conditions_for_gsea` matches the columns and targets scored in step 1. The enrichment step looks for files in:
 
 ```text
 <ges_results_folder>/data/ges_spec_<column>_<condition>.csv
@@ -207,9 +241,107 @@ The main combined output is usually:
 data/enrichment_results/GSEA/GSEA_final_summary.csv
 ```
 
-## Minimal example
+## Tau-filtered GSEA workflow
 
-If you want to run the cortex microcephaly workflow end to end:
+This alternative workflow restricts the GSEA gene universe to the top 10% most cell-type-specific genes by Tau score before preranking by GES. This combines two complementary specificity signals:
+
+- **Tau** filters out broadly expressed genes (keeps tissue-specific ones)
+- **GES** then ranks the surviving genes for enrichment
+
+### 1. Run the GES scoring step (same as standard workflow)
+
+```bash
+python modules/specificity_score_calculations.py config_files/ges_score_cortex_config.yaml
+```
+
+### 2. Compute global Tau scores
+
+Use the same GES config file:
+
+```bash
+python modules/tau_pipeline.py config_files/ges_score_cortex_config.yaml
+```
+
+This creates a dated folder like:
+
+```text
+results/ges_score_results/ges_score_for_cortex_YYYYMMDD_tau/
+```
+
+Inside `data/`:
+
+- `tau_scores_{column}.csv` — one file per condition column with columns: `gene`, `tau`, `max_group`, `mean_expr_{group}` for each group
+
+`tau` ranges from 0 (uniform across all groups) to 1 (expressed in exactly one group).
+
+### 3. Run the Tau-filtered GSEA enrichment
+
+Call `run_gsea_tau_filtered` from `search_enrichment_gsea_tau_filtered.py` in place of the standard `run_gsea`. It can be called directly from Python or integrated into a custom enrichment config runner:
+
+```python
+from search_enrichment_gsea_tau_filtered import run_gsea_tau_filtered
+
+run_gsea_tau_filtered(
+    ges_score_path="results/ges_score_results/ges_score_for_cortex_YYYYMMDD",
+    tau_scores_dir="results/ges_score_results/ges_score_for_cortex_YYYYMMDD_tau/data",
+    gmt_file="data/genes/microcephaly_genes.gmt",
+    column_conditions={"CellClass": ["Radial glia", "Neuron"], "Region": ["Forebrain"]},
+    ges_score_threshold=1,
+    out_folder=enr_results_dir,
+    figs_folder=fig_dir,
+    tau_percentile=90.0,   # keep genes with tau >= 90th percentile (top 10%)
+)
+```
+
+Results are written to `GSEA_tau_filtered/` under the enrichment output folder, so they coexist with standard `GSEA/` outputs. The summary CSV includes a `tau_percentile_cutoff` column for traceability.
+
+## GO term and OMIM extraction
+
+Both modules read a `GSEA_final_summary.csv` produced by either GSEA workflow, extract leading genes per condition, and run Enrichr ORA via `gseapy`.
+
+### GO term enrichment
+
+```bash
+python modules/go_terms_pipeline.py \
+  --summary-csv results/enrichment_results/my_run/data/enrichment_results/GSEA/GSEA_final_summary.csv
+```
+
+Default gene set libraries queried: `GO_Biological_Process_2021`, `GO_Molecular_Function_2021`, `GO_Cellular_Component_2021`, `KEGG_2021_Human`, `WikiPathway_2021_Human`.
+
+Output folder is derived automatically as `results/GO_terms/{run_name}_GO_enrichment/`. Override with `--outdir`.
+
+Optional arguments:
+
+```
+--column-conditions CellCyclePhase Region   # restrict to specific columns
+--cutoff 0.05                               # adjusted p-value cutoff
+--min-genes 5                               # skip conditions with fewer genes
+```
+
+### OMIM disease enrichment
+
+```bash
+python modules/omim_pipeline.py \
+  --summary-csv results/enrichment_results/my_run/data/enrichment_results/GSEA/GSEA_final_summary.csv
+```
+
+Default gene set libraries queried: `OMIM_Disease`, `OMIM_Expanded`.
+
+Output folder is derived automatically as `results/OMIM/{run_name}_OMIM_enrichment/`. Override with `--outdir`.
+
+Accepts the same optional arguments as `go_terms_pipeline.py`, plus:
+
+```
+--gene-sets OMIM_Disease OMIM_Expanded   # override the queried libraries
+```
+
+Both modules write per-condition subfolders containing:
+
+- `enrichr_results.csv`: full Enrichr results table
+- `leading_genes_used.csv`: the gene list submitted
+- `significant_hits_fdr_{cutoff}.csv`: terms passing the adjusted p-value cutoff
+
+## Minimal example (standard workflow)
 
 ```bash
 python modules/specificity_score_calculations.py config_files/ges_score_cortex_config.yaml
