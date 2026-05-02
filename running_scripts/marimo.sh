@@ -1,18 +1,18 @@
 #!/bin/bash
 #SBATCH --job-name=marimo
 # #SBATCH --mem=500G
-#SBATCH --mem=1G
+#SBATCH --mem=200G
 #SBATCH --account=miridan-users_v2  
 #SBATCH --output=/miridan-data/annaludmir/jobs_output/%j.out
 #SBATCH --error=/miridan-data/annaludmir/jobs_output/%j.err
 #SBATCH --time=1-00:00:00
 # # public
-# #SBATCH --partition=power-general-public-pool
-# #SBATCH --qos=public
+#SBATCH --partition=power-general-public-pool
+#SBATCH --qos=public
 # # miris partition
-#SBATCH --partition=gpu-miridan-pool 
-#SBATCH --qos=owner
-#SBATCH --gres=gpu:0
+# # SBATCH --partition=gpu-miridan-pool 
+# #SBATCH --qos=owner
+# #SBATCH --gres=gpu:0
 # # deprecated
 # # SBATCH --account=public-users_v2
 

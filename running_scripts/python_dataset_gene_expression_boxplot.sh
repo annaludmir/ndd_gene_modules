@@ -26,7 +26,7 @@ cd /miridan-data/annaludmir/ndd_gene_modules
 
 mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new python modules/dataset_analysis_helper.py \
   --task gene_region_boxplot \
-  --h5ad-path data/human_dev_without_week_5.h5ad \
+  --h5ad-path data/human_dev.h5ad \
   --chemistry v3 \
   --genes FOXG1 NDE1
 

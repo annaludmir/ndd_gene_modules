@@ -1,0 +1,27 @@
+run_name: "Microcephaly Cell Phase"
+ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules/"
+
+output_folder: "results/enrichment_results/"
+ges_results_folder: "results/ges_score_results/es_score_for_cortex_cell_cycle_v2_20251231"
+gene_list_path: "data/genes/microcephaly_genes.csv"
+gmt_folder: "data/genes/"
+
+analysis_mode: "gsea"     # or "deseq" or "both"
+
+gsea:
+  min_ges_score_threshold: 1
+
+deseq:
+  pseudobulk_folder: "data/.../psb/"
+  gene_names: "data/.../genes_100cells.txt"
+
+column_conditions_for_gsea:
+  CellCyclePhase:
+    - "G1"
+    - "S"
+    - "G2M"
+    - "PostM"
+    - "Non-cycling"
+
+keep_only_significant: true
+nes_keep_threshold: 1.5
