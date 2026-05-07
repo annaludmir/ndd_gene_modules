@@ -731,6 +731,8 @@ def create_significant_gene_boxplots(
     }
     n_saved_plots = 0
 
+    total_cells_by_region = expr_df["meta_region"].value_counts()
+
     for region_of_interest in requested_regions_of_interest:
         region_rows = significant_summary.loc[
             significant_summary["region_of_interest"] == region_of_interest
@@ -770,7 +772,8 @@ def create_significant_gene_boxplots(
                     break
                 region_values.append(values.to_numpy())
                 region_labels.append(region_name)
-                region_sample_sizes.append(f"{region_name} n={len(values)}")
+                n_total = int(total_cells_by_region.get(region_name, 0))
+                region_sample_sizes.append(f"{region_name} n={len(values)}/{n_total}")
 
             if not region_values:
                 continue
