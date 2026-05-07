@@ -189,12 +189,16 @@ def prepare_expression_adata(
     if cell_filter_col not in adata.obs.columns:
         raise KeyError(f"Column '{cell_filter_col}' not found in adata.obs")
 
-    print("Filtering cells...")
-    adata_f = adata[adata.obs[cell_filter_col].astype(str) == str(cell_filter_val)].copy()
-    if adata_f.n_obs == 0:
-        raise ValueError(
-            f"No cells found for condition '{cell_filter_val}' in adata.obs['{cell_filter_col}']."
-        )
+    if cell_filter_val is not None:
+        print(f"Filtering cells: {cell_filter_col} == '{cell_filter_val}'")
+        adata_f = adata[adata.obs[cell_filter_col].astype(str) == str(cell_filter_val)].copy()
+        if adata_f.n_obs == 0:
+            raise ValueError(
+                f"No cells found for condition '{cell_filter_val}' in adata.obs['{cell_filter_col}']."
+            )
+    else:
+        print("No cell-type filter applied — using all cells.")
+        adata_f = adata.copy()
 
     if normalize:
         print("Normalizing...")
@@ -985,7 +989,7 @@ def create_gene_expression_summary(
     leading_gene_conditions=None,
     region_col="Region",
     cell_filter_col="CellClass",
-    cell_filter_val="Radial glia",
+    cell_filter_val=None,
     sym_col="Gene",
     expr_threshold=0,
     wilcoxon_region="Forebrain",
@@ -1192,8 +1196,11 @@ def build_arg_parser():
     )
     parser.add_argument(
         "--cell-filter-val",
-        default="Radial glia",
-        help="Value in --cell-filter-col to keep before summarizing.",
+        default=None,
+        help=(
+            "Value in --cell-filter-col to keep before summarizing. "
+            "If omitted (default), all cell types are included."
+        ),
     )
     parser.add_argument(
         "--sym-col",
