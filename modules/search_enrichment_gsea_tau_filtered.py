@@ -281,7 +281,7 @@ def run_tau_filtered_pipeline(
     if gene_list_path is not None:
         config["gene_list_path"] = Path(gene_list_path).resolve()
 
-    run_name = Path(config["gene_list_path"]).stem + " tau filtered"
+    run_name = config.get("run_name", Path(config["gene_list_path"]).stem + " tau filtered")
     tau_percentile = float(config.get("tau_percentile", 90.0))
     ges_threshold = float(config["gsea"]["min_ges_score_threshold"])
     column_conditions = config.get("column_conditions_for_gsea", {})
@@ -320,7 +320,7 @@ def run_tau_filtered_pipeline(
     print(f"• Output:          {run_dir}")
     print(f"{'='*52}\n")
 
-    return run_gsea_tau_filtered(
+    summary_path = run_gsea_tau_filtered(
         ges_score_path=config["ges_results_folder"],
         tau_scores_dir=config["tau_scores_dir"],
         gmt_file=str(gmt_out),
@@ -330,6 +330,26 @@ def run_tau_filtered_pipeline(
         figs_folder=fig_dir,
         tau_percentile=tau_percentile,
     )
+
+    if summary_path is not None:
+        _make_tau_gsea_summary_plots(summary_path, fig_dir, run_name)
+
+    return summary_path
+
+
+def _make_tau_gsea_summary_plots(summary_path: Path, figs_folder: Path, run_name: str) -> None:
+    """Create per-column enrichment bar charts from the tau-filtered GSEA summary CSV."""
+    from create_figs_ges_for_presentation import plot_bar_chart as plot_ges
+
+    summary_df = pd.read_csv(summary_path)
+    out_dir = figs_folder / "GSEA_tau_filtered"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    print("\n📊 Generating tau-filtered GSEA summary plots")
+    for column_name, df in summary_df.groupby("column"):
+        output_path = str(out_dir / f"{column_name}_enrichment.png")
+        plot_ges(df, output_path, run_name, column_name)
+        print(f"  ✔ Saved enrichment summary plot → {output_path}")
 
 
 # ---------------------------------------------------------------------------
