@@ -766,6 +766,8 @@ def create_significant_gene_boxplots(
             region_values = []
             region_labels = []
             region_sample_sizes = []
+            n_expressing_per_region = []
+            n_total_per_region = []
             for region_name in META_REGIONS:
                 values = expr_df.loc[
                     (expr_df["meta_region"] == region_name) & (expr_df[gene] > 0),
@@ -774,14 +776,24 @@ def create_significant_gene_boxplots(
                 if len(values) == 0:
                     region_values = []
                     break
+                n_total = int(total_cells_by_region.get(region_name, 0))
                 region_values.append(values.to_numpy())
                 region_labels.append(region_name)
-                n_total = int(total_cells_by_region.get(region_name, 0))
+                n_expressing_per_region.append(len(values))
+                n_total_per_region.append(n_total)
                 region_sample_sizes.append(f"{region_name} n={len(values)}/{n_total}")
 
             if not region_values:
                 continue
 
+            subtitle = (
+                "log-normalized, expressing cells only | "
+                + " | ".join(region_sample_sizes)
+                + f" | group={row_match.combined_leading_gene_group}"
+            )
+            enrichment_label = f"{region_of_interest} enriched vs both other regions (FDR < 0.05)"
+
+            # --- Boxplot ---
             plot_path = region_dir / f"{sanitize_name(gene)}.png"
 
             fig, ax = plt.subplots(figsize=(5.2, 4.5))
@@ -803,34 +815,80 @@ def create_significant_gene_boxplots(
             ax.set_xlabel("meta_region", fontsize=10)
             ax.grid(axis="y", alpha=0.3)
             ax.set_axisbelow(True)
-            ax.text(
-                0.5,
-                1.02,
-                (
-                    f"{region_of_interest} enriched vs both other regions "
-                    f"(FDR < 0.05)"
-                ),
-                transform=ax.transAxes,
-                ha="center",
-                va="bottom",
-                fontsize=9,
-            )
-            ax.text(
-                0.5,
-                0.98,
-                (
-                    "log-normalized, expressing cells only | "
-                    + " | ".join(region_sample_sizes)
-                    + f" | group={row_match.combined_leading_gene_group}"
-                ),
-                transform=ax.transAxes,
-                ha="center",
-                va="top",
-                fontsize=8,
-            )
+            ax.text(0.5, 1.02, enrichment_label, transform=ax.transAxes,
+                    ha="center", va="bottom", fontsize=9)
+            ax.text(0.5, 0.98, subtitle, transform=ax.transAxes,
+                    ha="center", va="top", fontsize=8)
 
             fig.tight_layout()
             fig.savefig(plot_path, dpi=300, bbox_inches="tight")
+            plt.close(fig)
+
+            # --- Dot plot: size = fraction expressing, color = mean expression ---
+            fractions = [
+                n_e / n_t if n_t > 0 else 0.0
+                for n_e, n_t in zip(n_expressing_per_region, n_total_per_region)
+            ]
+            mean_exprs = [float(np.mean(v)) for v in region_values]
+            dot_path = region_dir / f"{sanitize_name(gene)}_dot_plot.png"
+
+            MAX_DOT_SIZE = 600
+            dot_sizes = [max(30.0, f * MAX_DOT_SIZE) for f in fractions]
+            expr_max = max(mean_exprs) if max(mean_exprs) > 0 else 1.0
+
+            fig, ax = plt.subplots(figsize=(5.5, 2.8))
+            sc = ax.scatter(
+                range(len(region_labels)),
+                [0] * len(region_labels),
+                s=dot_sizes,
+                c=mean_exprs,
+                cmap="Reds",
+                vmin=0,
+                vmax=expr_max,
+                edgecolors="#444444",
+                linewidths=0.5,
+                zorder=3,
+            )
+            for i, (frac, n_e, n_t) in enumerate(
+                zip(fractions, n_expressing_per_region, n_total_per_region)
+            ):
+                ax.text(
+                    i, -0.52, f"{frac:.1%}\n({n_e}/{n_t})",
+                    ha="center", va="top", fontsize=8,
+                )
+
+            ax.set_xticks(range(len(region_labels)))
+            ax.set_xticklabels(region_labels, fontsize=10)
+            ax.set_yticks([0])
+            ax.set_yticklabels([gene], fontsize=10)
+            ax.set_xlim(-0.7, len(region_labels) - 0.3)
+            ax.set_ylim(-1.1, 0.65)
+            ax.tick_params(left=False)
+            ax.spines[["top", "right", "left"]].set_visible(False)
+            ax.grid(axis="x", alpha=0.2)
+
+            plt.colorbar(
+                sc, ax=ax,
+                label="mean log-normalized expression\n(expressing cells only)",
+                shrink=0.7, pad=0.02,
+            )
+
+            legend_handles = [
+                plt.scatter([], [], s=f * MAX_DOT_SIZE, color="#cccccc",
+                            edgecolors="#444444", linewidths=0.5, label=f"{int(f * 100)}%")
+                for f in [0.25, 0.50, 0.75, 1.0]
+            ]
+            ax.legend(
+                handles=legend_handles, title="% expressing",
+                loc="upper left", frameon=True, fontsize=7, title_fontsize=7,
+            )
+
+            ax.set_title(gene, fontsize=12, pad=10)
+            ax.text(0.5, 1.08, enrichment_label, transform=ax.transAxes,
+                    ha="center", va="bottom", fontsize=8)
+
+            fig.tight_layout()
+            fig.savefig(dot_path, dpi=300, bbox_inches="tight")
             plt.close(fig)
             n_saved_plots += 1
 
