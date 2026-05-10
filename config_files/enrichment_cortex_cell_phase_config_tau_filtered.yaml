@@ -8,7 +8,7 @@ ges_results_folder: "results/ges_score_results/ges_score_for_cortex_cell_cycle_2
 
 # Tau scores folder — the data/ subfolder of a tau_pipeline.py run
 # (must contain tau_scores_CellCyclePhase.csv)
-tau_scores_dir: "results/ges_score_results//miridan-data/annaludmir/ndd_gene_modules/results/ges_score_results/tau_score_for_cortex_20260114/data"
+tau_scores_dir: "results/ges_score_results/tau_score_for_cortex_20260114/data"
 
 # Percentile cutoff: genes with tau >= this percentile are kept (top 10% = 90)
 tau_percentile: 90

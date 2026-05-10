@@ -281,7 +281,7 @@ def run_tau_filtered_pipeline(
     if gene_list_path is not None:
         config["gene_list_path"] = Path(gene_list_path).resolve()
 
-    run_name = config["run_name"]
+    run_name = Path(config["gene_list_path"]).stem + " tau filtered"
     tau_percentile = float(config.get("tau_percentile", 90.0))
     ges_threshold = float(config["gsea"]["min_ges_score_threshold"])
     column_conditions = config.get("column_conditions_for_gsea", {})
