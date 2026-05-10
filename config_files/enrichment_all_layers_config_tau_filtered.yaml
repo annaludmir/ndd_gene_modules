@@ -8,7 +8,7 @@ ges_results_folder: "results/ges_score_results/ges_score_for_all_layers_without_
 
 # Tau scores folder — the data/ subfolder of a tau_pipeline.py run
 # (must contain tau_scores_{column}.csv for each column below)
-tau_scores_dir: "results/ges_score_results/tau_score_for_cortex_20260114/data"
+tau_scores_dir: "results/ges_score_results/ges_score_for_all_layers_without_week_5_tau_scores_20260502/data"
 
 # Percentile cutoff: genes with tau >= this percentile are kept (top 10% = 90)
 tau_percentile: 90
