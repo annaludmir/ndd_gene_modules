@@ -257,15 +257,29 @@ def load_config(config_path: str) -> dict:
     return config
 
 
-def run_tau_filtered_pipeline(config_path: str) -> Path | None:
+def run_tau_filtered_pipeline(
+    config_path: str,
+    gene_list_path: str | None = None,
+) -> Path | None:
     """
     Full tau-filtered GSEA pipeline driven by a YAML config file.
     Creates a dated output folder, builds the GMT if needed, and
     calls run_gsea_tau_filtered().
+
+    Parameters
+    ----------
+    config_path : str
+        Path to the YAML config file.
+    gene_list_path : str, optional
+        Override for gene_list_path in the config. Useful when running
+        multiple configs with a single gene list passed on the command line.
     """
     from get_gmt import save_to_gmt
 
     config = load_config(config_path)
+
+    if gene_list_path is not None:
+        config["gene_list_path"] = Path(gene_list_path).resolve()
 
     run_name = config["run_name"]
     tau_percentile = float(config.get("tau_percentile", 90.0))
@@ -331,10 +345,19 @@ def build_arg_parser() -> argparse.ArgumentParser:
         )
     )
     parser.add_argument("config", help="Path to the YAML config file.")
+    parser.add_argument(
+        "--gene-list",
+        default=None,
+        metavar="PATH",
+        help=(
+            "Path to the gene list CSV. Overrides 'gene_list_path' in the config. "
+            "Useful when running multiple configs with a single gene list."
+        ),
+    )
     return parser
 
 
 if __name__ == "__main__":
     args = build_arg_parser().parse_args()
-    run_tau_filtered_pipeline(args.config)
+    run_tau_filtered_pipeline(args.config, gene_list_path=args.gene_list)
     sys.exit(0)
