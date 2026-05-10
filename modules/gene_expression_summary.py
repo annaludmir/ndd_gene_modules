@@ -799,7 +799,7 @@ def create_significant_gene_boxplots(
                 median.set_linewidth(1.5)
 
             ax.set_title(gene, fontsize=12, pad=12)
-            ax.set_ylabel("raw counts (expressing cells only)", fontsize=10)
+            ax.set_ylabel("log-normalized expression (expressing cells only)", fontsize=10)
             ax.set_xlabel("meta_region", fontsize=10)
             ax.grid(axis="y", alpha=0.3)
             ax.set_axisbelow(True)
@@ -819,7 +819,7 @@ def create_significant_gene_boxplots(
                 0.5,
                 0.98,
                 (
-                    "expressing cells only | "
+                    "log-normalized, expressing cells only | "
                     + " | ".join(region_sample_sizes)
                     + f" | group={row_match.combined_leading_gene_group}"
                 ),
@@ -1045,13 +1045,6 @@ def create_gene_expression_summary(
         cell_filter_col=cell_filter_col,
         cell_filter_val=cell_filter_val,
     )
-    raw_adata = prepare_expression_adata(
-        adata,
-        region_col=region_col,
-        cell_filter_col=cell_filter_col,
-        cell_filter_val=cell_filter_val,
-        normalize=False,
-    )
     all_pairs_per_gene_wilcoxon_summary = build_per_gene_region_wilcoxon_summary(
         prepared_adata,
         summary_info["leading_genes"],
@@ -1093,7 +1086,7 @@ def create_gene_expression_summary(
     if export_significant_gene_boxplots:
         significant_gene_boxplots_dir = output_dir / "significant_gene_boxplots"
         boxplot_export_result = create_significant_gene_boxplots(
-            raw_adata,
+            prepared_adata,
             summary_info["leading_genes"],
             per_gene_wilcoxon_summary=all_pairs_per_gene_wilcoxon_summary,
             output_dir=significant_gene_boxplots_dir,
