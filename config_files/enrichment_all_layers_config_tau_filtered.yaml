@@ -1,0 +1,45 @@
+run_name: "Microcephaly All Data (Without Week 5) tau filtered"
+ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules/"
+
+output_folder: "results/enrichment_results/"
+
+# GES results folder (step 1 output)
+ges_results_folder: "results/ges_score_results/ges_score_for_all_layers_without_week_5_20260322"
+
+# Tau scores folder — the data/ subfolder of a tau_pipeline.py run
+# (must contain tau_scores_{column}.csv for each column below)
+tau_scores_dir: "results/ges_score_results//miridan-data/annaludmir/ndd_gene_modules/results/ges_score_results/tau_score_for_cortex_20260114/data"
+
+# Percentile cutoff: genes with tau >= this percentile are kept (top 10% = 90)
+tau_percentile: 90
+
+gene_list_path: "data/genes/microcephaly_genes.csv"
+gmt_folder: "data/genes/"
+
+gsea:
+  min_ges_score_threshold: 1
+
+column_conditions_for_gsea:
+  Region:
+    - "Forebrain"
+    - "Telencephalon"
+    - "Diencephalon"
+    - "Midbrain"
+    - "Hindbrain"
+    - "Cerebellum"
+    - "Pons"
+    - "Medulla"
+
+  CellClass:
+    - "Radial glia"
+    - "Neuronal IPC"
+    - "Neuroblast"
+    - "Neuron"
+    - "Fibroblast"
+    - "Glioblast"
+    - "Oligo"
+    - "Neural crest"
+    - "Placode"
+    - "Immune"
+    - "Vascular"
+    - "Erythrocyte"

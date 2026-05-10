@@ -13,11 +13,16 @@ Results are written to GSEA_tau_filtered/ instead of GSEA/ so they coexist
 with unfiltered runs.
 """
 
+import argparse
+import datetime
+import shutil
+import sys
 from pathlib import Path
 
 import gseapy as gp
 import pandas as pd
 import statsmodels.stats.multitest as smm
+import yaml
 
 from search_enrichment_gsea import plot_enhanced_gsea
 
@@ -210,3 +215,126 @@ def run_gsea_tau_filtered(
     print(f"\n📄 Summary written: {summary_path}")
     print("🎉 Tau-filtered GSEA finished.")
     return summary_path
+
+
+# ---------------------------------------------------------------------------
+# Config loader + pipeline orchestrator
+# ---------------------------------------------------------------------------
+
+def load_config(config_path: str) -> dict:
+    """
+    Load and resolve paths from an enrichment-format YAML config.
+
+    Required keys (same as enrichment config):
+        run_name, ndd_gene_modules_folder_root, output_folder,
+        ges_results_folder, gene_list_path, gmt_folder,
+        gsea.min_ges_score_threshold, column_conditions_for_gsea
+
+    Extra keys for tau-filtered runs:
+        tau_scores_dir   — path to the data/ folder from a tau_pipeline.py run
+        tau_percentile   — Tau quantile cutoff (default 90 → top 10%)
+    """
+    config_path = Path(config_path).resolve()
+    with open(config_path) as f:
+        config = yaml.safe_load(f)
+
+    root = Path(config["ndd_gene_modules_folder_root"]).resolve()
+
+    def resolve(p):
+        p = Path(p)
+        return p if p.is_absolute() else (root / p).resolve()
+
+    for key in ("output_folder", "ges_results_folder", "gene_list_path", "gmt_folder"):
+        config[key] = resolve(config[key])
+
+    if "tau_scores_dir" not in config:
+        raise ValueError(
+            "Config is missing required key 'tau_scores_dir' "
+            "(path to the data/ folder of a tau_pipeline.py run)."
+        )
+    config["tau_scores_dir"] = resolve(config["tau_scores_dir"])
+    config["_config_path"] = config_path
+    return config
+
+
+def run_tau_filtered_pipeline(config_path: str) -> Path | None:
+    """
+    Full tau-filtered GSEA pipeline driven by a YAML config file.
+    Creates a dated output folder, builds the GMT if needed, and
+    calls run_gsea_tau_filtered().
+    """
+    from get_gmt import save_to_gmt
+
+    config = load_config(config_path)
+
+    run_name = config["run_name"]
+    tau_percentile = float(config.get("tau_percentile", 90.0))
+    ges_threshold = float(config["gsea"]["min_ges_score_threshold"])
+    column_conditions = config.get("column_conditions_for_gsea", {})
+
+    date_str = datetime.datetime.now().strftime("%Y%m%d")
+    run_dir = (
+        Path(config["output_folder"])
+        / f"{run_name}_tau{int(tau_percentile)}_threshold_{ges_threshold}_{date_str}"
+    )
+    enr_dir = run_dir / "data" / "enrichment_results"
+    fig_dir = run_dir / "data" / "enrichment_figures"
+    metadata_dir = run_dir / "metadata"
+    for d in (enr_dir, fig_dir, metadata_dir):
+        d.mkdir(parents=True, exist_ok=True)
+
+    shutil.copy2(config["_config_path"], metadata_dir / config["_config_path"].name)
+
+    gmt_folder = Path(config["gmt_folder"])
+    gmt_folder.mkdir(parents=True, exist_ok=True)
+    gmt_out = gmt_folder / (Path(config["gene_list_path"]).stem + ".gmt")
+    if not gmt_out.exists():
+        print(f"Creating GMT: {gmt_out}")
+        save_to_gmt(str(config["gene_list_path"]), gmt_out)
+    else:
+        print(f"GMT already exists: {gmt_out}")
+
+    print(f"\n{'='*52}")
+    print("  Tau-filtered GSEA Pipeline")
+    print(f"{'='*52}")
+    print(f"• Run name:        {run_name}")
+    print(f"• GES folder:      {config['ges_results_folder']}")
+    print(f"• Tau scores dir:  {config['tau_scores_dir']}")
+    print(f"• Tau percentile:  {tau_percentile}  (top {100 - tau_percentile:.0f}%)")
+    print(f"• GES threshold:   {ges_threshold}")
+    print(f"• GMT:             {gmt_out}")
+    print(f"• Output:          {run_dir}")
+    print(f"{'='*52}\n")
+
+    return run_gsea_tau_filtered(
+        ges_score_path=config["ges_results_folder"],
+        tau_scores_dir=config["tau_scores_dir"],
+        gmt_file=str(gmt_out),
+        column_conditions=column_conditions,
+        ges_score_threshold=ges_threshold,
+        out_folder=enr_dir,
+        figs_folder=fig_dir,
+        tau_percentile=tau_percentile,
+    )
+
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+
+def build_arg_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Run GSEA enrichment with Tau pre-filtering. "
+            "Accepts the same YAML config as the enrichment pipeline, "
+            "plus 'tau_scores_dir' and optionally 'tau_percentile'."
+        )
+    )
+    parser.add_argument("config", help="Path to the YAML config file.")
+    return parser
+
+
+if __name__ == "__main__":
+    args = build_arg_parser().parse_args()
+    run_tau_filtered_pipeline(args.config)
+    sys.exit(0)
