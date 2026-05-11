@@ -1,0 +1,50 @@
+name_of_run: "ges_score_for_all_layers_without_week_5"
+ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules"
+data_path: "data/human_dev_without_week_5.h5ad"
+output_folder: "results/ges_score_results/"
+
+column_conditions:
+  Region:
+    - "Cerebellum"
+    - "Diencephalon"
+    - "Midbrain"
+    - "Forebrain"
+    - "Hindbrain"
+    - "Pons"
+    - "Medulla"
+    - "Telencephalon"
+
+  CellClass:
+    - "Radial glia"
+    - "Neuronal IPC"
+    - "Neuron"
+    - "Glioblast"
+    - "Neuroblast"
+    - "Oligo"
+    - "Fibroblast"
+    - "Neural crest"
+    - "Placode"
+    - "Immune"
+    - "Vascular"
+    - "Erythrocyte"
+    
+  RegionsGeneral:
+    derived:
+      rules:
+        Forebrain_General: "Region in ['Diencephalon', 'Forebrain', 'Telencephalon']"
+        Hindbrain_General: "Region in ['Hindbrain', 'Cerebellum', 'Pons', 'Medulla']"
+        Midbrain_General: "Region in ['Midbrain']"
+    conditions: ["Forebrain_General", "Hindbrain_General", "Midbrain_General"]
+
+  #SuperRegion:
+    #derived:
+      #rules:
+        #Brain: "Region in ['Diencephalon', 'Forebrain', 'Telencephalon', 'Cerebellum', 'Midbrain', 'Hindbrain', 'Pons', 'Medulla', 'Brain']"
+        #Head: "Region not in ['Diencephalon','Forebrain','Telencephalon','Cerebellum','Midbrain','Hindbrain','Pons','Medulla','Brain']"
+    #conditions: ["Brain", "Head"]
+
+expression_threshold: 0.05
+chemistry: "v2"
+permutations: false
+normalize_data: true
+# n_permutations: 500  # optional

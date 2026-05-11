@@ -7,7 +7,7 @@ output_folder: "results/enrichment_results/"
 ges_results_folder: "results/ges_score_results/ges_score_for_cortex_cell_cycle_v2_20251231"
 
 # Tau scores folder — update this path when v2-specific tau scores are computed
-tau_scores_dir: "results/ges_score_results/ges_score_for_cortex_cell_cycle_tau_scores_20260510/data"
+tau_scores_dir: "results/ges_score_results/ges_score_for_cortex_cell_cycle_v2_tau_scores_20260511/data"
 
 # Percentile cutoff: genes with tau >= this percentile are kept (top 10% = 90)
 tau_percentile: 90
