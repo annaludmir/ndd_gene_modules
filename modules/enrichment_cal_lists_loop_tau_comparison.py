@@ -15,13 +15,18 @@ is produced per gene list, named:
   {gene_list_stem}_batch_summary_tau_vs_v2_v3_{YYYYMMDD}.csv
 
 Usage:
-  python modules/enrichment_cal_lists_loop_tau_comparison.py <gene_list.csv|folder> [ndd_root]
+  python modules/enrichment_cal_lists_loop_tau_comparison.py <gene_list.csv|folder>
+         [--ndd-root PATH] [--tau-percentile N]
 
-  ndd_root defaults to /miridan-data/annaludmir/ndd_gene_modules
+  --ndd-root        defaults to /miridan-data/annaludmir/ndd_gene_modules
+  --tau-percentile  overrides the tau_percentile field in all tau-filtered configs
+                    (default: read from each config file, typically 90)
 """
 
+import argparse
 import datetime
 import sys
+import traceback
 from pathlib import Path
 
 import numpy as np
@@ -187,7 +192,7 @@ def _collect_summary_rows(
 # Per-gene-list runner
 # ---------------------------------------------------------------------------
 
-def _run_one(gene_list_path: Path, ndd_root: Path, today: str) -> None:
+def _run_one(gene_list_path: Path, ndd_root: Path, today: str, tau_percentile: int | None = None) -> None:
     gene_list_stem = gene_list_path.stem
     gene_list_n    = _read_gene_list_size(gene_list_path)
 
@@ -205,8 +210,8 @@ def _run_one(gene_list_path: Path, ndd_root: Path, today: str) -> None:
             continue
 
         base_cfg = _load_yaml(cfg_path)
-        min_thr  = float(base_cfg.get("gsea", {}).get("min_ges_score_threshold", 1))
-        tau_pct  = int(base_cfg.get("tau_percentile", 90))
+        min_thr  = base_cfg.get("gsea", {}).get("min_ges_score_threshold", 1)
+        tau_pct  = tau_percentile if tau_percentile is not None else int(base_cfg.get("tau_percentile", 90))
         out_root = (ndd_root / base_cfg["output_folder"]).resolve()
 
         # run_name encodes gene list + scope + chemistry;
@@ -225,17 +230,32 @@ def _run_one(gene_list_path: Path, ndd_root: Path, today: str) -> None:
         cfg = dict(base_cfg)
         cfg["run_name"]       = run_name
         cfg["gene_list_path"] = str(gene_list_path)
+        if tau_filtered and tau_percentile is not None:
+            cfg["tau_percentile"] = tau_percentile
         _dump_yaml(cfg, tmp_cfg_path)
 
         print(f"\n  ▶ scope={scope}  chemistry={chemistry}  tau={tau_filtered}")
         print(f"    run_dir: {run_dir}")
 
-        if tau_filtered:
-            from search_enrichment_gsea_tau_filtered import run_tau_filtered_pipeline
-            run_tau_filtered_pipeline(config_path=str(tmp_cfg_path))
-        else:
-            from enrichment_pipeline_for_gene_list import run_gene_list_pipeline
-            run_gene_list_pipeline(config_path=str(tmp_cfg_path))
+        pipeline_ok = True
+        try:
+            if tau_filtered:
+                from search_enrichment_gsea_tau_filtered import run_tau_filtered_pipeline
+                run_tau_filtered_pipeline(config_path=str(tmp_cfg_path))
+            else:
+                from enrichment_pipeline_for_gene_list import run_gene_list_pipeline
+                run_gene_list_pipeline(config_path=str(tmp_cfg_path))
+        except Exception:
+            print(f"  ✗ Pipeline raised an exception — skipping summary collection.")
+            traceback.print_exc()
+            pipeline_ok = False
+
+        expected_summary = run_dir / _SUMMARY_REL[tau_filtered]
+        print(f"    Expected summary: {expected_summary}")
+        print(f"    Summary exists:   {expected_summary.exists()}")
+
+        if not pipeline_ok:
+            continue
 
         ges_results_dir = (ndd_root / base_cfg.get("ges_results_folder", "")).resolve()
         ges_cfg_path    = _locate_ges_config(ges_results_dir)
@@ -267,7 +287,7 @@ def _run_one(gene_list_path: Path, ndd_root: Path, today: str) -> None:
 # Main — accepts a single CSV or a folder of CSVs
 # ---------------------------------------------------------------------------
 
-def main(input_path: str, ndd_root: str) -> None:
+def main(input_path: str, ndd_root: str, tau_percentile: int | None = None) -> None:
     p        = Path(input_path).resolve()
     ndd_root = Path(ndd_root).resolve()
     today    = datetime.datetime.now().strftime("%Y%m%d")
@@ -275,25 +295,39 @@ def main(input_path: str, ndd_root: str) -> None:
     if not p.exists():
         raise FileNotFoundError(f"Input not found: {p}")
 
+    if tau_percentile is not None:
+        print(f"Tau percentile override: {tau_percentile}")
+
     if p.is_dir():
         csv_files = sorted(p.glob("*.csv"))
         if not csv_files:
             raise ValueError(f"No .csv files found in: {p}")
         print(f"Found {len(csv_files)} gene list(s) in {p}.")
         for gene_list_path in csv_files:
-            _run_one(gene_list_path, ndd_root, today)
+            _run_one(gene_list_path, ndd_root, today, tau_percentile)
     else:
-        _run_one(p, ndd_root, today)
+        _run_one(p, ndd_root, today, tau_percentile)
 
     print("\nDONE.")
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        raise SystemExit(
-            "Usage: python modules/enrichment_cal_lists_loop_tau_comparison.py"
-            " <gene_list.csv|folder> [ndd_root]"
-        )
-    _input_path = sys.argv[1]
-    _ndd_root   = sys.argv[2] if len(sys.argv) > 2 else "/miridan-data/annaludmir/ndd_gene_modules"
-    main(_input_path, _ndd_root)
+    parser = argparse.ArgumentParser(
+        description="Run 12-variant GSEA enrichment (v2/v3 × tau/no-tau × all scopes)."
+    )
+    parser.add_argument("input", help="Gene-list CSV or folder of CSVs.")
+    parser.add_argument(
+        "--ndd-root",
+        default="/miridan-data/annaludmir/ndd_gene_modules",
+        help="Project root directory (default: /miridan-data/annaludmir/ndd_gene_modules).",
+    )
+    parser.add_argument(
+        "--tau-percentile",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Override tau_percentile for all tau-filtered runs (e.g. 90). "
+             "If omitted, each config file's own value is used.",
+    )
+    args = parser.parse_args()
+    main(args.input, args.ndd_root, args.tau_percentile)

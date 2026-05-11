@@ -283,7 +283,7 @@ def run_tau_filtered_pipeline(
 
     run_name = config.get("run_name", Path(config["gene_list_path"]).stem + " tau filtered")
     tau_percentile = float(config.get("tau_percentile", 90.0))
-    ges_threshold = float(config["gsea"]["min_ges_score_threshold"])
+    ges_threshold = config["gsea"]["min_ges_score_threshold"]
     column_conditions = config.get("column_conditions_for_gsea", {})
 
     date_str = datetime.datetime.now().strftime("%Y%m%d")
