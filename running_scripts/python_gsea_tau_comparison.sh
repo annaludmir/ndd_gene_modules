@@ -13,33 +13,33 @@
 
 set -euo pipefail
 
-# Usage: sbatch python_gsea_tau_comparison.sh <gene_lists_folder>
+# Usage: sbatch python_gsea_tau_comparison.sh <gene_list.csv|folder>
 #
 # Runs GSEA enrichment in 4 variants (v2/v3 × with/without tau filtering)
-# on all three scopes (cortex, cell_phase, all_layers) for every gene list
-# CSV in <gene_lists_folder>.
+# on all three scopes (cortex, cell_phase, all_layers).
+# Accepts either a single gene-list CSV or a folder of CSVs.
 #
 # Produces one batch summary CSV per gene list:
-#   results/enrichment_results/{gene_list}_batch_summary_tau_vs_v2_v3_{date}.csv
+#   results/enrichment_results/{gene_list_stem}_batch_summary_tau_vs_v2_v3_{date}.csv
 
 if [[ $# -lt 1 ]]; then
-  echo "Usage: $0 <gene_lists_folder>" >&2
+  echo "Usage: $0 <gene_list.csv|folder>" >&2
   exit 1
 fi
 
-GENE_LISTS_FOLDER="$1"
+INPUT="$1"
 NDD_ROOT="/miridan-data/annaludmir/ndd_gene_modules"
 
 module load mamba/mamba-1.5.8
 mamba activate /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new
 cd "$NDD_ROOT"
 
-echo "Gene lists folder: $GENE_LISTS_FOLDER"
-echo "NDD root:          $NDD_ROOT"
+echo "Input:    $INPUT"
+echo "NDD root: $NDD_ROOT"
 
 mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new \
   python -u modules/enrichment_cal_lists_loop_tau_comparison.py \
-  "$GENE_LISTS_FOLDER" \
+  "$INPUT" \
   "$NDD_ROOT"
 
 rc=$?

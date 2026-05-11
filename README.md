@@ -51,7 +51,7 @@ Core analysis scripts.
 - `gene_expression_summary.py`: summarizes where selected genes are most enriched across broad brain regions, with optional Wilcoxon comparisons and per-gene boxplots.
 - `dataset_analysis_helper.py`: basic dataset summaries such as CellID counts by age, with optional chemistry and region filtering.
 - `enrichment_cal_lists_loop.py`: batch runner that iterates every `*.csv` in a gene-lists folder, runs the standard GSEA enrichment pipeline for each file using a shared base config, optionally prunes non-significant run folders, and writes a single `batch_summary_{date}.csv` collecting NES and FDR results for all gene lists and condition columns.
-- `enrichment_cal_lists_loop_tau_comparison.py`: extended batch runner that, for each gene-list CSV in a folder, runs all 12 combinations of scope (cortex / cell_phase / all_layers) × chemistry (v2 / v3) × tau filtering (with / without). Produces one `{gene_list_stem}_batch_summary_tau_vs_v2_v3_{date}.csv` per gene list with columns `scope`, `chemistry`, and `tau_filtered` for direct cross-variant comparison.
+- `enrichment_cal_lists_loop_tau_comparison.py`: runs all 12 combinations of scope (cortex / cell_phase / all_layers) × chemistry (v2 / v3) × tau filtering (with / without). Accepts either a single gene-list CSV or a folder of CSVs. Produces one `{gene_list_stem}_batch_summary_tau_vs_v2_v3_{date}.csv` per gene list with columns `scope`, `chemistry`, and `tau_filtered` for direct cross-variant comparison.
 - `early_late_go_heatmap.py`: Early/Mid/Late developmental heatmaps for leading genes from a selected GSEA condition.
 - `pseudotime_leading_genes_heatmap.py`: pseudotime-style heatmaps for leading genes across ordered ages.
 - `leading_gene_condition_correlations.py`: scans enrichment result trees, computes pairwise Jaccard overlaps for all leading-gene condition pairs, and writes a correlation heatmap.
@@ -368,6 +368,10 @@ The CSV has the same columns as the standard `batch_summary_{date}.csv` produced
 ### Running on the cluster
 
 ```bash
+# single gene list
+sbatch running_scripts/python_gsea_tau_comparison.sh data/genes/my_gene_list.csv
+
+# whole folder of gene lists
 sbatch running_scripts/python_gsea_tau_comparison.sh data/genes/my_gene_lists_folder
 ```
 

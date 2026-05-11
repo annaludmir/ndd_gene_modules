@@ -1,9 +1,8 @@
 """
 enrichment_cal_lists_loop_tau_comparison.py
 
-For every gene-list CSV in <gene_lists_folder>, run GSEA enrichment in 4 variants
-(v2/v3 chemistry × with/without tau filtering) across all three scopes:
-cortex, cell_phase, all_layers.
+Run GSEA enrichment in 4 variants (v2/v3 chemistry × with/without tau filtering)
+across all three scopes (cortex, cell_phase, all_layers).
 
 This allows direct comparison of:
   1. v3 chemistry, no tau filtering
@@ -11,11 +10,12 @@ This allows direct comparison of:
   3. v3 chemistry, tau filtered
   4. v2 chemistry, tau filtered
 
-Produces one batch-summary CSV per gene list, named:
+Accepts either a single gene-list CSV or a folder of CSVs. One batch-summary CSV
+is produced per gene list, named:
   {gene_list_stem}_batch_summary_tau_vs_v2_v3_{YYYYMMDD}.csv
 
 Usage:
-  python modules/enrichment_cal_lists_loop_tau_comparison.py <gene_lists_folder> [ndd_root]
+  python modules/enrichment_cal_lists_loop_tau_comparison.py <gene_list.csv|folder> [ndd_root]
 
   ndd_root defaults to /miridan-data/annaludmir/ndd_gene_modules
 """
@@ -184,95 +184,106 @@ def _collect_summary_rows(
 
 
 # ---------------------------------------------------------------------------
-# Main
+# Per-gene-list runner
 # ---------------------------------------------------------------------------
 
-def main(gene_lists_folder: str, ndd_root: str) -> None:
-    gene_lists_folder = Path(gene_lists_folder).resolve()
-    ndd_root          = Path(ndd_root).resolve()
-    today             = datetime.datetime.now().strftime("%Y%m%d")
+def _run_one(gene_list_path: Path, ndd_root: Path, today: str) -> None:
+    gene_list_stem = gene_list_path.stem
+    gene_list_n    = _read_gene_list_size(gene_list_path)
 
-    csv_files = sorted(gene_lists_folder.glob("*.csv"))
-    if not csv_files:
-        raise ValueError(f"No .csv files found in: {gene_lists_folder}")
+    print(f"\n{'='*64}")
+    print(f"Gene list: {gene_list_path.name}  ({gene_list_n} genes)")
+    print(f"Running 12 enrichment variants.")
+    print(f"{'='*64}")
 
-    print(f"Found {len(csv_files)} gene list(s). Running 12 enrichment variants each.")
+    all_rows: list[dict] = []
 
-    for gene_list_path in csv_files:
-        gene_list_stem = gene_list_path.stem
-        gene_list_n    = _read_gene_list_size(gene_list_path)
+    for (scope, chemistry, tau_filtered), cfg_rel in _ENRICHMENT_CONFIGS.items():
+        cfg_path = ndd_root / cfg_rel
+        if not cfg_path.exists():
+            print(f"  ⚠️ Config not found: {cfg_path} — skipping.")
+            continue
 
-        print(f"\n{'='*64}")
-        print(f"Gene list: {gene_list_path.name}  ({gene_list_n} genes)")
-        print(f"{'='*64}")
+        base_cfg = _load_yaml(cfg_path)
+        min_thr  = float(base_cfg.get("gsea", {}).get("min_ges_score_threshold", 1))
+        tau_pct  = int(base_cfg.get("tau_percentile", 90))
+        out_root = (ndd_root / base_cfg["output_folder"]).resolve()
 
-        all_rows: list[dict] = []
+        # run_name encodes gene list + scope + chemistry;
+        # the tau pipeline appends _tau{pct}_ in the folder name automatically.
+        run_name = f"{gene_list_stem}_{scope}_{chemistry}"
 
-        for (scope, chemistry, tau_filtered), cfg_rel in _ENRICHMENT_CONFIGS.items():
-            cfg_path = ndd_root / cfg_rel
-            if not cfg_path.exists():
-                print(f"  ⚠️ Config not found: {cfg_path} — skipping.")
-                continue
-
-            base_cfg  = _load_yaml(cfg_path)
-            min_thr   = float(base_cfg.get("gsea", {}).get("min_ges_score_threshold", 1))
-            tau_pct   = int(base_cfg.get("tau_percentile", 90))
-            out_root  = (ndd_root / base_cfg["output_folder"]).resolve()
-
-            # run_name encodes gene list + scope + chemistry;
-            # the tau pipeline appends _tau{pct}_ in the folder name automatically.
-            run_name = f"{gene_list_stem}_{scope}_{chemistry}"
-
-            if tau_filtered:
-                run_dir_name = f"{run_name}_tau{tau_pct}_threshold_{min_thr}_{today}"
-            else:
-                run_dir_name = f"{run_name}_threshold_{min_thr}_{today}"
-
-            run_dir      = out_root / run_dir_name
-            tmp_cfg_path = run_dir / "metadata" / "config_used.yaml"
-            tmp_cfg_path.parent.mkdir(parents=True, exist_ok=True)
-
-            # Patch config: set run_name and gene_list_path for this gene list
-            cfg = dict(base_cfg)
-            cfg["run_name"]      = run_name
-            cfg["gene_list_path"] = str(gene_list_path)
-            _dump_yaml(cfg, tmp_cfg_path)
-
-            print(f"\n  ▶ scope={scope}  chemistry={chemistry}  tau={tau_filtered}")
-            print(f"    run_dir: {run_dir}")
-
-            if tau_filtered:
-                from search_enrichment_gsea_tau_filtered import run_tau_filtered_pipeline
-                run_tau_filtered_pipeline(config_path=str(tmp_cfg_path))
-            else:
-                from enrichment_pipeline_for_gene_list import run_gene_list_pipeline
-                run_gene_list_pipeline(config_path=str(tmp_cfg_path))
-
-            ges_results_dir = (ndd_root / base_cfg.get("ges_results_folder", "")).resolve()
-            ges_cfg_path    = _locate_ges_config(ges_results_dir)
-
-            rows = _collect_summary_rows(
-                run_dir       = run_dir,
-                tau_filtered  = tau_filtered,
-                run_name      = run_name,
-                scope         = scope,
-                chemistry     = chemistry,
-                gene_list_path = gene_list_path,
-                gene_list_n   = gene_list_n,
-                base_cfg      = base_cfg,
-                ges_cfg_path  = ges_cfg_path,
-            )
-            all_rows.extend(rows)
-            print(f"    ✔ Collected {len(rows)} rows.")
-
-        # Write one batch summary per gene list
-        if all_rows:
-            out_root_default = (ndd_root / "results/enrichment_results").resolve()
-            batch_path = out_root_default / f"{gene_list_stem}_batch_summary_tau_vs_v2_v3_{today}.csv"
-            pd.DataFrame(all_rows).to_csv(batch_path, index=False)
-            print(f"\n  📌 Batch summary: {batch_path}")
+        if tau_filtered:
+            run_dir_name = f"{run_name}_tau{tau_pct}_threshold_{min_thr}_{today}"
         else:
-            print(f"\n  ⚠️ No results collected for {gene_list_path.name}.")
+            run_dir_name = f"{run_name}_threshold_{min_thr}_{today}"
+
+        run_dir      = out_root / run_dir_name
+        tmp_cfg_path = run_dir / "metadata" / "config_used.yaml"
+        tmp_cfg_path.parent.mkdir(parents=True, exist_ok=True)
+
+        cfg = dict(base_cfg)
+        cfg["run_name"]       = run_name
+        cfg["gene_list_path"] = str(gene_list_path)
+        _dump_yaml(cfg, tmp_cfg_path)
+
+        print(f"\n  ▶ scope={scope}  chemistry={chemistry}  tau={tau_filtered}")
+        print(f"    run_dir: {run_dir}")
+
+        if tau_filtered:
+            from search_enrichment_gsea_tau_filtered import run_tau_filtered_pipeline
+            run_tau_filtered_pipeline(config_path=str(tmp_cfg_path))
+        else:
+            from enrichment_pipeline_for_gene_list import run_gene_list_pipeline
+            run_gene_list_pipeline(config_path=str(tmp_cfg_path))
+
+        ges_results_dir = (ndd_root / base_cfg.get("ges_results_folder", "")).resolve()
+        ges_cfg_path    = _locate_ges_config(ges_results_dir)
+
+        rows = _collect_summary_rows(
+            run_dir        = run_dir,
+            tau_filtered   = tau_filtered,
+            run_name       = run_name,
+            scope          = scope,
+            chemistry      = chemistry,
+            gene_list_path = gene_list_path,
+            gene_list_n    = gene_list_n,
+            base_cfg       = base_cfg,
+            ges_cfg_path   = ges_cfg_path,
+        )
+        all_rows.extend(rows)
+        print(f"    ✔ Collected {len(rows)} rows.")
+
+    if all_rows:
+        out_root_default = (ndd_root / "results/enrichment_results").resolve()
+        batch_path = out_root_default / f"{gene_list_stem}_batch_summary_tau_vs_v2_v3_{today}.csv"
+        pd.DataFrame(all_rows).to_csv(batch_path, index=False)
+        print(f"\n📌 Batch summary: {batch_path}")
+    else:
+        print(f"\n⚠️ No results collected for {gene_list_path.name}.")
+
+
+# ---------------------------------------------------------------------------
+# Main — accepts a single CSV or a folder of CSVs
+# ---------------------------------------------------------------------------
+
+def main(input_path: str, ndd_root: str) -> None:
+    p        = Path(input_path).resolve()
+    ndd_root = Path(ndd_root).resolve()
+    today    = datetime.datetime.now().strftime("%Y%m%d")
+
+    if not p.exists():
+        raise FileNotFoundError(f"Input not found: {p}")
+
+    if p.is_dir():
+        csv_files = sorted(p.glob("*.csv"))
+        if not csv_files:
+            raise ValueError(f"No .csv files found in: {p}")
+        print(f"Found {len(csv_files)} gene list(s) in {p}.")
+        for gene_list_path in csv_files:
+            _run_one(gene_list_path, ndd_root, today)
+    else:
+        _run_one(p, ndd_root, today)
 
     print("\nDONE.")
 
@@ -281,8 +292,8 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         raise SystemExit(
             "Usage: python modules/enrichment_cal_lists_loop_tau_comparison.py"
-            " <gene_lists_folder> [ndd_root]"
+            " <gene_list.csv|folder> [ndd_root]"
         )
-    _gene_lists_folder = sys.argv[1]
-    _ndd_root = sys.argv[2] if len(sys.argv) > 2 else "/miridan-data/annaludmir/ndd_gene_modules"
-    main(_gene_lists_folder, _ndd_root)
+    _input_path = sys.argv[1]
+    _ndd_root   = sys.argv[2] if len(sys.argv) > 2 else "/miridan-data/annaludmir/ndd_gene_modules"
+    main(_input_path, _ndd_root)
