@@ -50,7 +50,8 @@ Core analysis scripts.
 
 - `gene_expression_summary.py`: summarizes where selected genes are most enriched across broad brain regions, with optional Wilcoxon comparisons and per-gene boxplots.
 - `dataset_analysis_helper.py`: basic dataset summaries such as CellID counts by age, with optional chemistry and region filtering.
-- `enrichment_cal_lists_loop.py`: helper utilities for running enrichment across multiple gene lists.
+- `enrichment_cal_lists_loop.py`: batch runner that iterates every `*.csv` in a gene-lists folder, runs the standard GSEA enrichment pipeline for each file using a shared base config, optionally prunes non-significant run folders, and writes a single `batch_summary_{date}.csv` collecting NES and FDR results for all gene lists and condition columns.
+- `enrichment_cal_lists_loop_tau_comparison.py`: extended batch runner that, for each gene-list CSV in a folder, runs all 12 combinations of scope (cortex / cell_phase / all_layers) × chemistry (v2 / v3) × tau filtering (with / without). Produces one `{gene_list_stem}_batch_summary_tau_vs_v2_v3_{date}.csv` per gene list with columns `scope`, `chemistry`, and `tau_filtered` for direct cross-variant comparison.
 - `early_late_go_heatmap.py`: Early/Mid/Late developmental heatmaps for leading genes from a selected GSEA condition.
 - `pseudotime_leading_genes_heatmap.py`: pseudotime-style heatmaps for leading genes across ordered ages.
 - `leading_gene_condition_correlations.py`: scans enrichment result trees, computes pairwise Jaccard overlaps for all leading-gene condition pairs, and writes a correlation heatmap.
@@ -60,7 +61,10 @@ Core analysis scripts.
 YAML configs for both steps of the pipeline:
 
 - `ges_score_*.yaml`: configs for the GES scoring step (and Tau pipeline, which accepts the same format)
-- `enrichment_*.yaml`: configs for the enrichment step
+- `enrichment_*.yaml`: configs for the enrichment step. Variants exist for:
+  - scope: `cortex`, `cortex_cell_phase`, `all_layers`
+  - chemistry: plain (v3) and `_v2` suffix
+  - tau filtering: plain and `_tau_filtered` suffix (six tau-filtered configs exist, covering both chemistries and all three scopes)
 
 ### `notebooks/`
 
@@ -73,6 +77,8 @@ Cluster-oriented SLURM launchers for common runs.
 - `python_gsea_enrichment.sh`: submit one enrichment run from one fixed config.
 - `python_gsea_enrichment_all_configs.sh`: run one gene list across the main enrichment configs.
 - `python_gsea_enrichment_folder_all_configs.sh`: run every `*.csv` gene list in a chosen folder across the main enrichment configs.
+- `python_gsea_tau_filtered.sh`: run tau-filtered GSEA for one gene list across all three scope configs (cortex, cell_phase, all_layers).
+- `python_gsea_tau_comparison.sh`: run the full 12-variant batch comparison (v2/v3 × tau/no-tau × all scopes) for every gene list in a folder, producing one summary CSV per gene list.
 - `python_go_terms.sh`: run GO/pathway Enrichr ORA on leading genes from a GSEA summary CSV.
 - `python_omim.sh`: run OMIM disease Enrichr ORA on leading genes from a GSEA summary CSV.
 - `python_gene_expression_summary.sh`, `python_dataset_analysis_helper.sh`, `python_early_late.sh`, `python_pseudotime.sh`, `python_correlation_matrix.sh`: cluster launchers for the matching analysis helper modules.
@@ -276,6 +282,29 @@ Inside `data/`:
 
 ### 3. Run the Tau-filtered GSEA enrichment
 
+The simplest way to run all three scopes for one gene list on the cluster:
+
+```bash
+sbatch running_scripts/python_gsea_tau_filtered.sh data/genes/my_gene_list.csv
+```
+
+This runs `cortex`, `cell_phase`, and `all_layers` tau-filtered configs in sequence. Each scope creates its own dated output folder:
+
+```text
+results/enrichment_results/microcephaly_cortex_tau_filtered_tau90_threshold_1_YYYYMMDD/
+results/enrichment_results/microcephaly_cell_phase_tau_filtered_tau90_threshold_1_YYYYMMDD/
+results/enrichment_results/Microcephaly All Data (Without Week 5) tau filtered_tau90_threshold_1_YYYYMMDD/
+```
+
+Inside each folder the tau-filtered results land in:
+
+```text
+data/enrichment_results/GSEA_tau_filtered/   ← summary CSV and per-condition result CSVs
+data/enrichment_figures/GSEA_tau_filtered/   ← per-column enrichment bar plots
+```
+
+You can also call the pipeline directly from Python:
+
 Call `run_gsea_tau_filtered` from `search_enrichment_gsea_tau_filtered.py` in place of the standard `run_gsea`. It can be called directly from Python or integrated into a custom enrichment config runner:
 
 ```python
@@ -294,6 +323,57 @@ run_gsea_tau_filtered(
 ```
 
 Results are written to `GSEA_tau_filtered/` under the enrichment output folder, so they coexist with standard `GSEA/` outputs. The summary CSV includes a `tau_percentile_cutoff` column for traceability.
+
+## Cross-variant batch comparison (v2 / v3 × tau / no-tau)
+
+To compare enrichment results across chemistries and tau-filtering for a folder of gene lists, use the `enrichment_cal_lists_loop_tau_comparison.py` pipeline.
+
+### What it runs
+
+For each gene-list CSV in the input folder, it executes 12 enrichment variants:
+
+| Scope       | Chemistry | Tau filtered |
+|-------------|-----------|--------------|
+| cortex      | v3        | no           |
+| cortex      | v2        | no           |
+| cortex      | v3        | yes          |
+| cortex      | v2        | yes          |
+| cell_phase  | v3        | no           |
+| cell_phase  | v2        | no           |
+| cell_phase  | v3        | yes          |
+| cell_phase  | v2        | yes          |
+| all_layers  | v3        | no           |
+| all_layers  | v2        | no           |
+| all_layers  | v3        | yes          |
+| all_layers  | v2        | yes          |
+
+Each variant creates its own dated result folder under `results/enrichment_results/`.
+
+### Batch summary output
+
+One CSV is written per gene list:
+
+```text
+results/enrichment_results/{gene_list_stem}_batch_summary_tau_vs_v2_v3_{YYYYMMDD}.csv
+```
+
+The CSV has the same columns as the standard `batch_summary_{date}.csv` produced by `enrichment_cal_lists_loop.py`, plus three extra columns that identify the variant:
+
+| Column        | Values                               |
+|---------------|--------------------------------------|
+| `scope`       | `cortex`, `cell_phase`, `all_layers` |
+| `chemistry`   | `v2`, `v3`                           |
+| `tau_filtered`| `True`, `False`                      |
+
+### Running on the cluster
+
+```bash
+sbatch running_scripts/python_gsea_tau_comparison.sh data/genes/my_gene_lists_folder
+```
+
+### Note on v2 tau scores
+
+The v2 tau-filtered configs currently point to the same `tau_scores_dir` as their v3 counterparts. Update the `tau_scores_dir` field in the three `*_tau_filtered_v2.yaml` config files once v2-specific tau scores have been computed with `tau_pipeline.py` on the v2 dataset.
 
 ## GO term and OMIM extraction
 
