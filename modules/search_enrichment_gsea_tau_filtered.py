@@ -297,7 +297,10 @@ def run_tau_filtered_pipeline(
     for d in (enr_dir, fig_dir, metadata_dir):
         d.mkdir(parents=True, exist_ok=True)
 
-    shutil.copy2(config["_config_path"], metadata_dir / config["_config_path"].name)
+    src = Path(config["_config_path"]).resolve()
+    dst = (metadata_dir / src.name).resolve()
+    if src != dst:
+        shutil.copy2(src, dst)
 
     gmt_folder = Path(config["gmt_folder"])
     gmt_folder.mkdir(parents=True, exist_ok=True)
