@@ -196,6 +196,19 @@ def _run_one(gene_list_path: Path, ndd_root: Path, today: str, tau_percentile: i
     gene_list_stem = gene_list_path.stem
     gene_list_n    = _read_gene_list_size(gene_list_path)
 
+    # Resolve the tau percentile used in the filename: explicit override, or read
+    # from the first tau config that exists, falling back to 90.
+    if tau_percentile is not None:
+        effective_tau_pct = tau_percentile
+    else:
+        effective_tau_pct = 90
+        for (_, _, tau_filtered), cfg_rel in _ENRICHMENT_CONFIGS.items():
+            if tau_filtered:
+                cfg_path = ndd_root / cfg_rel
+                if cfg_path.exists():
+                    effective_tau_pct = int(_load_yaml(cfg_path).get("tau_percentile", 90))
+                    break
+
     print(f"\n{'='*64}")
     print(f"Gene list: {gene_list_path.name}  ({gene_list_n} genes)")
     print(f"Running 12 enrichment variants.")
@@ -276,7 +289,7 @@ def _run_one(gene_list_path: Path, ndd_root: Path, today: str, tau_percentile: i
 
     if all_rows:
         out_root_default = (ndd_root / "results/enrichment_results").resolve()
-        batch_path = out_root_default / f"{gene_list_stem}_batch_summary_tau_vs_v2_v3_{today}.csv"
+        batch_path = out_root_default / f"{gene_list_stem}_batch_summary_tau{effective_tau_pct}_vs_v2_v3_{today}.csv"
         pd.DataFrame(all_rows).to_csv(batch_path, index=False)
         print(f"\n📌 Batch summary: {batch_path}")
     else:
