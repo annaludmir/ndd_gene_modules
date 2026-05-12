@@ -192,15 +192,23 @@ def _collect_summary_rows(
 # Per-gene-list runner
 # ---------------------------------------------------------------------------
 
-def _run_one(gene_list_path: Path, ndd_root: Path, today: str, tau_percentile: int | None = None) -> None:
+def _run_one(
+    gene_list_path: Path,
+    ndd_root: Path,
+    today: str,
+    tau_percentile: int | None = None,
+    tau_score_cutoff: float | None = None,
+) -> None:
     gene_list_stem = gene_list_path.stem
     gene_list_n    = _read_gene_list_size(gene_list_path)
 
-    # Resolve the tau percentile used in the filename: explicit override, or read
-    # from the first tau config that exists, falling back to 90.
-    if tau_percentile is not None:
-        effective_tau_pct = tau_percentile
+    # Build the tau label used in the batch summary filename.
+    if tau_score_cutoff is not None:
+        tau_label = f"tauscore{tau_score_cutoff}"
+    elif tau_percentile is not None:
+        tau_label = f"tau{tau_percentile}"
     else:
+        # Read from the first tau config that exists, fall back to tau90.
         effective_tau_pct = 90
         for (_, _, tau_filtered), cfg_rel in _ENRICHMENT_CONFIGS.items():
             if tau_filtered:
@@ -208,6 +216,7 @@ def _run_one(gene_list_path: Path, ndd_root: Path, today: str, tau_percentile: i
                 if cfg_path.exists():
                     effective_tau_pct = int(_load_yaml(cfg_path).get("tau_percentile", 90))
                     break
+        tau_label = f"tau{effective_tau_pct}"
 
     print(f"\n{'='*64}")
     print(f"Gene list: {gene_list_path.name}  ({gene_list_n} genes)")
@@ -227,12 +236,14 @@ def _run_one(gene_list_path: Path, ndd_root: Path, today: str, tau_percentile: i
         tau_pct  = tau_percentile if tau_percentile is not None else int(base_cfg.get("tau_percentile", 90))
         out_root = (ndd_root / base_cfg["output_folder"]).resolve()
 
-        # run_name encodes gene list + scope + chemistry;
-        # the tau pipeline appends _tau{pct}_ in the folder name automatically.
         run_name = f"{gene_list_stem}_{scope}_{chemistry}"
 
         if tau_filtered:
-            run_dir_name = f"{run_name}_tau{tau_pct}_threshold_{min_thr}_{today}"
+            if tau_score_cutoff is not None:
+                tau_tag = f"tauscore{tau_score_cutoff}"
+            else:
+                tau_tag = f"tau{tau_pct}"
+            run_dir_name = f"{run_name}_{tau_tag}_threshold_{min_thr}_{today}"
         else:
             run_dir_name = f"{run_name}_threshold_{min_thr}_{today}"
 
@@ -254,7 +265,10 @@ def _run_one(gene_list_path: Path, ndd_root: Path, today: str, tau_percentile: i
         try:
             if tau_filtered:
                 from search_enrichment_gsea_tau_filtered import run_tau_filtered_pipeline
-                run_tau_filtered_pipeline(config_path=str(tmp_cfg_path))
+                run_tau_filtered_pipeline(
+                    config_path=str(tmp_cfg_path),
+                    tau_score_cutoff=tau_score_cutoff,
+                )
             else:
                 from enrichment_pipeline_for_gene_list import run_gene_list_pipeline
                 run_gene_list_pipeline(config_path=str(tmp_cfg_path))
@@ -289,7 +303,7 @@ def _run_one(gene_list_path: Path, ndd_root: Path, today: str, tau_percentile: i
 
     if all_rows:
         out_root_default = (ndd_root / "results/enrichment_results").resolve()
-        batch_path = out_root_default / f"{gene_list_stem}_batch_summary_tau{effective_tau_pct}_vs_v2_v3_{today}.csv"
+        batch_path = out_root_default / f"{gene_list_stem}_batch_summary_{tau_label}_vs_v2_v3_{today}.csv"
         pd.DataFrame(all_rows).to_csv(batch_path, index=False)
         print(f"\n📌 Batch summary: {batch_path}")
     else:
@@ -300,7 +314,12 @@ def _run_one(gene_list_path: Path, ndd_root: Path, today: str, tau_percentile: i
 # Main — accepts a single CSV or a folder of CSVs
 # ---------------------------------------------------------------------------
 
-def main(input_path: str, ndd_root: str, tau_percentile: int | None = None) -> None:
+def main(
+    input_path: str,
+    ndd_root: str,
+    tau_percentile: int | None = None,
+    tau_score_cutoff: float | None = None,
+) -> None:
     p        = Path(input_path).resolve()
     ndd_root = Path(ndd_root).resolve()
     today    = datetime.datetime.now().strftime("%Y%m%d")
@@ -310,6 +329,8 @@ def main(input_path: str, ndd_root: str, tau_percentile: int | None = None) -> N
 
     if tau_percentile is not None:
         print(f"Tau percentile override: {tau_percentile}")
+    if tau_score_cutoff is not None:
+        print(f"Tau score cutoff: {tau_score_cutoff}")
 
     if p.is_dir():
         csv_files = sorted(p.glob("*.csv"))
@@ -317,9 +338,9 @@ def main(input_path: str, ndd_root: str, tau_percentile: int | None = None) -> N
             raise ValueError(f"No .csv files found in: {p}")
         print(f"Found {len(csv_files)} gene list(s) in {p}.")
         for gene_list_path in csv_files:
-            _run_one(gene_list_path, ndd_root, today, tau_percentile)
+            _run_one(gene_list_path, ndd_root, today, tau_percentile, tau_score_cutoff)
     else:
-        _run_one(p, ndd_root, today, tau_percentile)
+        _run_one(p, ndd_root, today, tau_percentile, tau_score_cutoff)
 
     print("\nDONE.")
 
@@ -340,7 +361,19 @@ if __name__ == "__main__":
         default=None,
         metavar="N",
         help="Override tau_percentile for all tau-filtered runs (e.g. 90). "
-             "If omitted, each config file's own value is used.",
+             "Mutually exclusive with --tau-score-cutoff.",
+    )
+    parser.add_argument(
+        "--tau-score-cutoff",
+        type=float,
+        default=None,
+        metavar="SCORE",
+        help="Filter tau-filtered runs by absolute tau score (e.g. 0.5). "
+             "Genes with tau >= SCORE are kept. "
+             "Mutually exclusive with --tau-percentile. "
+             "Results folders will use 'tauscore{SCORE}' instead of 'tau{pct}'.",
     )
     args = parser.parse_args()
-    main(args.input, args.ndd_root, args.tau_percentile)
+    if args.tau_percentile is not None and args.tau_score_cutoff is not None:
+        parser.error("--tau-percentile and --tau-score-cutoff are mutually exclusive.")
+    main(args.input, args.ndd_root, args.tau_percentile, args.tau_score_cutoff)

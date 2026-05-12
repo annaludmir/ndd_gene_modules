@@ -49,6 +49,11 @@ def top_tau_gene_set(tau_df: pd.DataFrame, percentile: float = 90.0) -> set:
     return set(tau_df.loc[tau_df["tau"] >= threshold, "gene"])
 
 
+def tau_gene_set_by_score(tau_df: pd.DataFrame, score_cutoff: float) -> set:
+    """Return genes with an absolute tau score >= score_cutoff (e.g. 0.5)."""
+    return set(tau_df.loc[tau_df["tau"] >= score_cutoff, "gene"])
+
+
 # ---------------------------------------------------------------------------
 # Main enrichment function
 # ---------------------------------------------------------------------------
@@ -62,10 +67,14 @@ def run_gsea_tau_filtered(
     out_folder,
     figs_folder,
     tau_percentile: float = 90.0,
+    tau_score_cutoff: float | None = None,
 ) -> Path | None:
     """
-    Run GSEA prerank enrichment, restricting the gene universe to those in the
-    top (100 - tau_percentile)% by global Tau specificity before ranking.
+    Run GSEA prerank enrichment, restricting the gene universe by Tau specificity.
+
+    Two mutually exclusive filter modes:
+      - tau_score_cutoff (preferred when set): keep genes with tau >= this absolute value.
+      - tau_percentile: keep genes at or above the Nth percentile (default 90 → top 10%).
 
     Parameters
     ----------
@@ -87,6 +96,9 @@ def run_gsea_tau_filtered(
         Root folder for figures.
     tau_percentile : float
         Tau quantile cutoff (default 90 → keep genes with tau >= 90th percentile).
+        Ignored when tau_score_cutoff is set.
+    tau_score_cutoff : float or None
+        Absolute tau score threshold (e.g. 0.5). When set, overrides tau_percentile.
 
     Returns
     -------
@@ -99,11 +111,14 @@ def run_gsea_tau_filtered(
     fig_dir.mkdir(parents=True, exist_ok=True)
 
     gmt_name = Path(gmt_file).stem
-    top_pct = 100.0 - tau_percentile
     print(f"\nGMT set: {gmt_name}")
-    print(f"Tau filter: top {top_pct:.0f}% (tau >= {tau_percentile:.0f}th percentile)\n")
+    if tau_score_cutoff is not None:
+        print(f"Tau filter: score cutoff (tau >= {tau_score_cutoff})\n")
+    else:
+        top_pct = 100.0 - tau_percentile
+        print(f"Tau filter: top {top_pct:.0f}% (tau >= {tau_percentile:.0f}th percentile)\n")
 
-    # Cache top-tau gene sets per column to avoid repeated I/O and computation
+    # Cache tau gene sets per column to avoid repeated I/O and computation
     tau_cache: dict[str, set | None] = {}
 
     summary_rows = []
@@ -114,12 +129,19 @@ def run_gsea_tau_filtered(
             if tau_df is None:
                 tau_cache[column] = None
             else:
-                gene_set = top_tau_gene_set(tau_df, percentile=tau_percentile)
+                if tau_score_cutoff is not None:
+                    gene_set = tau_gene_set_by_score(tau_df, score_cutoff=tau_score_cutoff)
+                    print(
+                        f"Column '{column}': {len(gene_set)} genes retained "
+                        f"(tau >= {tau_score_cutoff})"
+                    )
+                else:
+                    gene_set = top_tau_gene_set(tau_df, percentile=tau_percentile)
+                    print(
+                        f"Column '{column}': {len(gene_set)} genes retained "
+                        f"(tau >= {tau_percentile:.0f}th percentile)"
+                    )
                 tau_cache[column] = gene_set
-                print(
-                    f"Column '{column}': {len(gene_set)} genes retained "
-                    f"(tau >= {tau_percentile:.0f}th percentile)"
-                )
 
         top_tau_set = tau_cache[column]
 
@@ -188,7 +210,9 @@ def run_gsea_tau_filtered(
                 "Tag %": top["Tag %"],
                 "Gene %": top["Gene %"],
                 "Lead_genes": top["Lead_genes"],
-                "tau_percentile_cutoff": tau_percentile,
+                "tau_filter_mode":       "score"      if tau_score_cutoff is not None else "percentile",
+                "tau_score_cutoff":      tau_score_cutoff,
+                "tau_percentile_cutoff": None         if tau_score_cutoff is not None else tau_percentile,
             })
 
             term = gsea_res.res2d["Term"].iloc[0]
@@ -260,6 +284,7 @@ def load_config(config_path: str) -> dict:
 def run_tau_filtered_pipeline(
     config_path: str,
     gene_list_path: str | None = None,
+    tau_score_cutoff: float | None = None,
 ) -> Path | None:
     """
     Full tau-filtered GSEA pipeline driven by a YAML config file.
@@ -271,8 +296,11 @@ def run_tau_filtered_pipeline(
     config_path : str
         Path to the YAML config file.
     gene_list_path : str, optional
-        Override for gene_list_path in the config. Useful when running
-        multiple configs with a single gene list passed on the command line.
+        Override for gene_list_path in the config.
+    tau_score_cutoff : float, optional
+        Absolute tau score threshold (e.g. 0.5). When set, overrides
+        the percentile-based filter from the config.
+        Folder name will use 'tauscore{value}' instead of 'tau{pct}'.
     """
     from get_gmt import save_to_gmt
 
@@ -287,9 +315,13 @@ def run_tau_filtered_pipeline(
     column_conditions = config.get("column_conditions_for_gsea", {})
 
     date_str = datetime.datetime.now().strftime("%Y%m%d")
+    if tau_score_cutoff is not None:
+        tau_tag = f"tauscore{tau_score_cutoff}"
+    else:
+        tau_tag = f"tau{int(tau_percentile)}"
     run_dir = (
         Path(config["output_folder"])
-        / f"{run_name}_tau{int(tau_percentile)}_threshold_{ges_threshold}_{date_str}"
+        / f"{run_name}_{tau_tag}_threshold_{ges_threshold}_{date_str}"
     )
     enr_dir = run_dir / "data" / "enrichment_results"
     fig_dir = run_dir / "data" / "enrichment_figures"
@@ -317,7 +349,10 @@ def run_tau_filtered_pipeline(
     print(f"• Run name:        {run_name}")
     print(f"• GES folder:      {config['ges_results_folder']}")
     print(f"• Tau scores dir:  {config['tau_scores_dir']}")
-    print(f"• Tau percentile:  {tau_percentile}  (top {100 - tau_percentile:.0f}%)")
+    if tau_score_cutoff is not None:
+        print(f"• Tau score cutoff: {tau_score_cutoff}  (absolute)")
+    else:
+        print(f"• Tau percentile:  {tau_percentile}  (top {100 - tau_percentile:.0f}%)")
     print(f"• GES threshold:   {ges_threshold}")
     print(f"• GMT:             {gmt_out}")
     print(f"• Output:          {run_dir}")
@@ -332,6 +367,7 @@ def run_tau_filtered_pipeline(
         out_folder=enr_dir,
         figs_folder=fig_dir,
         tau_percentile=tau_percentile,
+        tau_score_cutoff=tau_score_cutoff,
     )
 
     if summary_path is not None:
