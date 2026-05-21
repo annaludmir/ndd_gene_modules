@@ -8,9 +8,12 @@
 #SBATCH --error=/miridan-data/annaludmir/jobs_output/%j.err
 #SBATCH --time=2-00:00:00
 # public
-#SBATCH --partition=power-general-public-pool
-#SBATCH --qos=public
-
+# #SBATCH --partition=power-general-public-pool
+# #SBATCH --qos=public
+# # miris partition
+#SBATCH --partition=gpu-miridan-pool
+#SBATCH --qos=owner
+#SBATCH --gres=gpu:0
 set -euo pipefail
 
 # Usage: sbatch python_gsea_tau_comparison.sh <gene_list.csv|folder> [tau_percentile] [tau_score_cutoff]
