@@ -143,7 +143,7 @@ def plot_bar_chart(
             max_text_y = max(max_text_y, y)
 
             ax.text(
-                x, y, f"q={fdr:.2g}",
+                x, y, f"q≈0" if fdr == 0.0 else f"q={fdr:.2e}",
                 ha="center", va="bottom",
                 fontsize=8,
                 color="black",

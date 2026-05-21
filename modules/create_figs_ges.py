@@ -76,7 +76,7 @@ def plot_bar_chart(ges_results_df, output_file, gene_list_name, comparison):
           qv = q_series[i] if i < len(q_series) else np.nan
       
           if np.isfinite(qv):
-              q_txt = f"q={qv:.2g}"
+              q_txt = "q≈0" if qv == 0.0 else f"q={qv:.2e}"
               sig = (qv < 0.05)
           else:
               q_txt = "q=NA"
