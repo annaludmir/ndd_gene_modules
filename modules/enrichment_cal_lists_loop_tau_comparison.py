@@ -303,9 +303,32 @@ def _run_one(
 
     if all_rows:
         out_root_default = (ndd_root / "results/enrichment_results").resolve()
+        df_batch = pd.DataFrame(all_rows)
+
         batch_path = out_root_default / f"{gene_list_stem}_batch_summary_{tau_label}_vs_v2_v3_{today}.csv"
-        pd.DataFrame(all_rows).to_csv(batch_path, index=False)
+        df_batch.to_csv(batch_path, index=False)
         print(f"\n📌 Batch summary: {batch_path}")
+
+        # Context file: for every (scope, column, condition) that has at least one
+        # significant result, include ALL parameter variants (v2/v3 × tau/no-tau)
+        # so results can be compared across parameters side-by-side.
+        key_cols = ["scope", "column_condition_title", "column_condition_value"]
+        sig_keys = df_batch.loc[df_batch["is_significant"], key_cols].drop_duplicates()
+        if not sig_keys.empty:
+            df_context = (
+                df_batch
+                .merge(sig_keys, on=key_cols, how="inner")
+                .sort_values(key_cols + ["chemistry", "tau_filtered"])
+                .reset_index(drop=True)
+            )
+            context_path = (
+                out_root_default
+                / f"{gene_list_stem}_significant_with_context_{tau_label}_vs_v2_v3_{today}.csv"
+            )
+            df_context.to_csv(context_path, index=False)
+            print(f"📌 Significant+context ({len(sig_keys)} condition(s)): {context_path}")
+        else:
+            print("   (No significant results — context file not written.)")
     else:
         print(f"\n⚠️ No results collected for {gene_list_path.name}.")
 
