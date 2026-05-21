@@ -118,6 +118,17 @@ def run_gsea_tau_filtered(
         top_pct = 100.0 - tau_percentile
         print(f"Tau filter: top {top_pct:.0f}% (tau >= {tau_percentile:.0f}th percentile)\n")
 
+    # Parse the GMT to know which genes are in the disease gene set.
+    # GMT format: gene_set_name \t description \t gene1 \t gene2 \t ...
+    disease_genes: set = set()
+    try:
+        with open(gmt_file) as _f:
+            for line in _f:
+                parts = line.strip().split("\t")
+                disease_genes.update(parts[2:])  # skip name + description
+    except Exception:
+        pass  # non-fatal; overlap print will be skipped below
+
     # Cache tau gene sets per column to avoid repeated I/O and computation
     tau_cache: dict[str, set | None] = {}
 
@@ -142,6 +153,11 @@ def run_gsea_tau_filtered(
                         f"(tau >= {tau_percentile:.0f}th percentile)"
                     )
                 tau_cache[column] = gene_set
+                if disease_genes:
+                    n_disease_retained = len(disease_genes & gene_set)
+                    print(
+                        f"  Disease genes retained: {n_disease_retained} / {len(disease_genes)}"
+                    )
 
         top_tau_set = tau_cache[column]
 
