@@ -164,6 +164,9 @@ def _collect_summary_rows(
             else 0
         )
 
+        def _opt(col_name_csv):
+            return r[col_name_csv] if col_name_csv in df_sum.columns else ""
+
         rows.append({
             "run_name":               run_name,
             "scope":                  scope,
@@ -183,6 +186,12 @@ def _collect_summary_rows(
             "is_significant": is_sig,
             "lead_genes":     lead_genes,
             "num_of_lead_genes": n_lead,
+            "disease_genes_after_tau_filtering":                 _opt("disease_genes_after_tau_filtering"),
+            "filtered_out_disease_genes_after_tau_location":     _opt("filtered_out_disease_genes_after_tau_location"),
+            "expressing_genes_after_tau_filtering":              _opt("expressing_genes_after_tau_filtering"),
+            "filtered_out_expressing_genes_after_tau":           _opt("filtered_out_expressing_genes_after_tau"),
+            "expressing_genes_after_ges_threshold_filtering":    _opt("expressing_genes_after_ges_threshold_filtering"),
+            "filtered_out_expressing_genes_after_ges_threshold": _opt("filtered_out_expressing_genes_after_ges_threshold"),
         })
 
     return rows
