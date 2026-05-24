@@ -120,6 +120,7 @@ def _dump_yaml(cfg: dict, path: Path) -> None:
 def _collect_summary_rows(
     run_dir: Path,
     tau_filtered: bool,
+    tau_score_cutoff: float | None,
     run_name: str,
     scope: str,
     chemistry: str,
@@ -172,6 +173,7 @@ def _collect_summary_rows(
             "scope":                  scope,
             "chemistry":              chemistry,
             "tau_filtered":           tau_filtered,
+            "tau_score_cutoff":       tau_score_cutoff,
             "enrichment_config_path": str(run_dir / "metadata" / "config_used.yaml"),
             "ges_config_path":        ges_cfg_path,
             "gene_list_file_name":    gene_list_path.name,
@@ -205,36 +207,33 @@ def _run_one(
     gene_list_path: Path,
     ndd_root: Path,
     today: str,
-    tau_percentile: int | None = None,
-    tau_score_cutoff: float | None = None,
+    tau_score_cutoffs: list[float] | None = None,
 ) -> None:
     gene_list_stem = gene_list_path.stem
     gene_list_n    = _read_gene_list_size(gene_list_path)
 
-    # Build the tau label used in the batch summary filename.
-    if tau_score_cutoff is not None:
-        tau_label = f"tauscore{tau_score_cutoff}"
-    elif tau_percentile is not None:
-        tau_label = f"tau{tau_percentile}"
-    else:
-        # Read from the first tau config that exists, fall back to tau90.
-        effective_tau_pct = 90
-        for (_, _, tau_filtered), cfg_rel in _ENRICHMENT_CONFIGS.items():
-            if tau_filtered:
-                cfg_path = ndd_root / cfg_rel
-                if cfg_path.exists():
-                    effective_tau_pct = int(_load_yaml(cfg_path).get("tau_percentile", 90))
-                    break
-        tau_label = f"tau{effective_tau_pct}"
+    cutoffs = tau_score_cutoffs or []
+    tau_label = ("tauscore" + "_".join(str(c) for c in cutoffs)) if cutoffs else "notau"
+
+    n_tau_configs    = sum(1 for (_, _, tf) in _ENRICHMENT_CONFIGS if tf)
+    n_nontau_configs = sum(1 for (_, _, tf) in _ENRICHMENT_CONFIGS if not tf)
+    total_variants   = n_nontau_configs + n_tau_configs * len(cutoffs)
 
     print(f"\n{'='*64}")
     print(f"Gene list: {gene_list_path.name}  ({gene_list_n} genes)")
-    print(f"Running 12 enrichment variants.")
+    print(f"Tau score cutoffs: {cutoffs if cutoffs else '(none)'}")
+    print(f"Running {total_variants} enrichment variants "
+          f"({n_nontau_configs} non-tau + {n_tau_configs} tau × {len(cutoffs)} cutoff(s)).")
     print(f"{'='*64}")
 
     all_rows: list[dict] = []
 
     for (scope, chemistry, tau_filtered), cfg_rel in _ENRICHMENT_CONFIGS.items():
+        # Non-tau: run once. Tau-filtered: run for each cutoff.
+        iter_cutoffs: list[float | None] = cutoffs if tau_filtered else [None]
+        if tau_filtered and not cutoffs:
+            continue  # no cutoffs provided — skip all tau-filtered variants
+
         cfg_path = ndd_root / cfg_rel
         if not cfg_path.exists():
             print(f"  ⚠️ Config not found: {cfg_path} — skipping.")
@@ -242,73 +241,69 @@ def _run_one(
 
         base_cfg = _load_yaml(cfg_path)
         min_thr  = base_cfg.get("gsea", {}).get("min_ges_score_threshold", 1)
-        tau_pct  = tau_percentile if tau_percentile is not None else int(base_cfg.get("tau_percentile", 90))
         out_root = (ndd_root / base_cfg["output_folder"]).resolve()
 
-        run_name = f"{gene_list_stem}_{scope}_{chemistry}"
+        for cutoff in iter_cutoffs:
+            run_name = f"{gene_list_stem}_{scope}_{chemistry}"
 
-        if tau_filtered:
-            if tau_score_cutoff is not None:
-                tau_tag = f"tauscore{tau_score_cutoff}"
-            else:
-                tau_tag = f"tau{tau_pct}"
-            run_dir_name = f"{run_name}_{tau_tag}_threshold_{min_thr}_{today}"
-        else:
-            run_dir_name = f"{run_name}_threshold_{min_thr}_{today}"
-
-        run_dir      = out_root / run_dir_name
-        tmp_cfg_path = run_dir / "metadata" / "config_used.yaml"
-        tmp_cfg_path.parent.mkdir(parents=True, exist_ok=True)
-
-        cfg = dict(base_cfg)
-        cfg["run_name"]       = run_name
-        cfg["gene_list_path"] = str(gene_list_path)
-        if tau_filtered and tau_percentile is not None:
-            cfg["tau_percentile"] = tau_percentile
-        _dump_yaml(cfg, tmp_cfg_path)
-
-        print(f"\n  ▶ scope={scope}  chemistry={chemistry}  tau={tau_filtered}")
-        print(f"    run_dir: {run_dir}")
-
-        pipeline_ok = True
-        try:
             if tau_filtered:
-                from search_enrichment_gsea_tau_filtered import run_tau_filtered_pipeline
-                run_tau_filtered_pipeline(
-                    config_path=str(tmp_cfg_path),
-                    tau_score_cutoff=tau_score_cutoff,
-                )
+                run_dir_name = f"{run_name}_tauscore{cutoff}_threshold_{min_thr}_{today}"
             else:
-                from enrichment_pipeline_for_gene_list import run_gene_list_pipeline
-                run_gene_list_pipeline(config_path=str(tmp_cfg_path))
-        except Exception:
-            print(f"  ✗ Pipeline raised an exception — skipping summary collection.")
-            traceback.print_exc()
-            pipeline_ok = False
+                run_dir_name = f"{run_name}_threshold_{min_thr}_{today}"
 
-        expected_summary = run_dir / _SUMMARY_REL[tau_filtered]
-        print(f"    Expected summary: {expected_summary}")
-        print(f"    Summary exists:   {expected_summary.exists()}")
+            run_dir      = out_root / run_dir_name
+            tmp_cfg_path = run_dir / "metadata" / "config_used.yaml"
+            tmp_cfg_path.parent.mkdir(parents=True, exist_ok=True)
 
-        if not pipeline_ok:
-            continue
+            cfg = dict(base_cfg)
+            cfg["run_name"]       = run_name
+            cfg["gene_list_path"] = str(gene_list_path)
+            _dump_yaml(cfg, tmp_cfg_path)
 
-        ges_results_dir = (ndd_root / base_cfg.get("ges_results_folder", "")).resolve()
-        ges_cfg_path    = _locate_ges_config(ges_results_dir)
+            cutoff_tag = f"  cutoff={cutoff}" if tau_filtered else ""
+            print(f"\n  ▶ scope={scope}  chemistry={chemistry}  tau={tau_filtered}{cutoff_tag}")
+            print(f"    run_dir: {run_dir}")
 
-        rows = _collect_summary_rows(
-            run_dir        = run_dir,
-            tau_filtered   = tau_filtered,
-            run_name       = run_name,
-            scope          = scope,
-            chemistry      = chemistry,
-            gene_list_path = gene_list_path,
-            gene_list_n    = gene_list_n,
-            base_cfg       = base_cfg,
-            ges_cfg_path   = ges_cfg_path,
-        )
-        all_rows.extend(rows)
-        print(f"    ✔ Collected {len(rows)} rows.")
+            pipeline_ok = True
+            try:
+                if tau_filtered:
+                    from search_enrichment_gsea_tau_filtered import run_tau_filtered_pipeline
+                    run_tau_filtered_pipeline(
+                        config_path=str(tmp_cfg_path),
+                        tau_score_cutoff=cutoff,
+                    )
+                else:
+                    from enrichment_pipeline_for_gene_list import run_gene_list_pipeline
+                    run_gene_list_pipeline(config_path=str(tmp_cfg_path))
+            except Exception:
+                print(f"  ✗ Pipeline raised an exception — skipping summary collection.")
+                traceback.print_exc()
+                pipeline_ok = False
+
+            expected_summary = run_dir / _SUMMARY_REL[tau_filtered]
+            print(f"    Expected summary: {expected_summary}")
+            print(f"    Summary exists:   {expected_summary.exists()}")
+
+            if not pipeline_ok:
+                continue
+
+            ges_results_dir = (ndd_root / base_cfg.get("ges_results_folder", "")).resolve()
+            ges_cfg_path    = _locate_ges_config(ges_results_dir)
+
+            rows = _collect_summary_rows(
+                run_dir          = run_dir,
+                tau_filtered     = tau_filtered,
+                tau_score_cutoff = cutoff,
+                run_name         = run_name,
+                scope            = scope,
+                chemistry        = chemistry,
+                gene_list_path   = gene_list_path,
+                gene_list_n      = gene_list_n,
+                base_cfg         = base_cfg,
+                ges_cfg_path     = ges_cfg_path,
+            )
+            all_rows.extend(rows)
+            print(f"    ✔ Collected {len(rows)} rows.")
 
     if all_rows:
         out_root_default = (ndd_root / "results/enrichment_results").resolve()
@@ -318,16 +313,26 @@ def _run_one(
         df_batch.to_csv(batch_path, index=False)
         print(f"\n📌 Batch summary: {batch_path}")
 
-        # Context file: for every (scope, column, condition) that has at least one
-        # significant result, include ALL parameter variants (v2/v3 × tau/no-tau)
-        # so results can be compared across parameters side-by-side.
+        # Context file: for every (scope, column, condition) with at least one
+        # significant result, include ALL rows — all cutoffs × v2/v3 × tau/no-tau —
+        # so every parameter combination can be compared side-by-side.
         key_cols = ["scope", "column_condition_title", "column_condition_value"]
         sig_keys = df_batch.loc[df_batch["is_significant"], key_cols].drop_duplicates()
         if not sig_keys.empty:
             df_context = (
                 df_batch
                 .merge(sig_keys, on=key_cols, how="inner")
-                .sort_values(key_cols + ["chemistry", "tau_filtered"])
+                .assign(
+                    _sort_cutoff=lambda d: pd.to_numeric(
+                        d["tau_score_cutoff"] if "tau_score_cutoff" in d.columns else np.nan,
+                        errors="coerce",
+                    )
+                )
+                .sort_values(
+                    key_cols + ["tau_filtered", "chemistry", "_sort_cutoff"],
+                    na_position="first",
+                )
+                .drop(columns=["_sort_cutoff"])
                 .reset_index(drop=True)
             )
             context_path = (
@@ -349,8 +354,7 @@ def _run_one(
 def main(
     input_path: str,
     ndd_root: str,
-    tau_percentile: int | None = None,
-    tau_score_cutoff: float | None = None,
+    tau_score_cutoffs: list[float] | None = None,
 ) -> None:
     p        = Path(input_path).resolve()
     ndd_root = Path(ndd_root).resolve()
@@ -359,10 +363,10 @@ def main(
     if not p.exists():
         raise FileNotFoundError(f"Input not found: {p}")
 
-    if tau_percentile is not None:
-        print(f"Tau percentile override: {tau_percentile}")
-    if tau_score_cutoff is not None:
-        print(f"Tau score cutoff: {tau_score_cutoff}")
+    if tau_score_cutoffs:
+        print(f"Tau score cutoffs: {tau_score_cutoffs}")
+    else:
+        print("No tau score cutoffs specified — only non-tau variants will run.")
 
     if p.is_dir():
         csv_files = sorted(p.glob("*.csv"))
@@ -370,16 +374,19 @@ def main(
             raise ValueError(f"No .csv files found in: {p}")
         print(f"Found {len(csv_files)} gene list(s) in {p}.")
         for gene_list_path in csv_files:
-            _run_one(gene_list_path, ndd_root, today, tau_percentile, tau_score_cutoff)
+            _run_one(gene_list_path, ndd_root, today, tau_score_cutoffs)
     else:
-        _run_one(p, ndd_root, today, tau_percentile, tau_score_cutoff)
+        _run_one(p, ndd_root, today, tau_score_cutoffs)
 
     print("\nDONE.")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Run 12-variant GSEA enrichment (v2/v3 × tau/no-tau × all scopes)."
+        description=(
+            "Run GSEA enrichment across v2/v3 chemistries and tau score cutoffs. "
+            "Non-tau variants always run once; tau-filtered variants run once per cutoff."
+        )
     )
     parser.add_argument("input", help="Gene-list CSV or folder of CSVs.")
     parser.add_argument(
@@ -388,24 +395,17 @@ if __name__ == "__main__":
         help="Project root directory (default: /miridan-data/annaludmir/ndd_gene_modules).",
     )
     parser.add_argument(
-        "--tau-percentile",
-        type=int,
-        default=None,
-        metavar="N",
-        help="Override tau_percentile for all tau-filtered runs (e.g. 90). "
-             "Mutually exclusive with --tau-score-cutoff.",
-    )
-    parser.add_argument(
         "--tau-score-cutoff",
         type=float,
+        nargs="+",
         default=None,
         metavar="SCORE",
-        help="Filter tau-filtered runs by absolute tau score (e.g. 0.5). "
-             "Genes with tau >= SCORE are kept. "
-             "Mutually exclusive with --tau-percentile. "
-             "Results folders will use 'tauscore{SCORE}' instead of 'tau{pct}'.",
+        help=(
+            "One or more absolute tau score thresholds (e.g. 0.3 0.5 0.7). "
+            "Tau-filtered variants are run independently for each cutoff. "
+            "Results folders use 'tauscore{value}' in their name. "
+            "If omitted, only non-tau variants run."
+        ),
     )
     args = parser.parse_args()
-    if args.tau_percentile is not None and args.tau_score_cutoff is not None:
-        parser.error("--tau-percentile and --tau-score-cutoff are mutually exclusive.")
-    main(args.input, args.ndd_root, args.tau_percentile, args.tau_score_cutoff)
+    main(args.input, args.ndd_root, args.tau_score_cutoff)
