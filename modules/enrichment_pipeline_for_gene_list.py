@@ -1,9 +1,12 @@
-import yaml
-from pathlib import Path
+import contextlib
+import datetime
 import os
 import shutil
-import datetime
+import sys
+from pathlib import Path
+
 import pandas as pd
+import yaml
 
 from get_gmt import save_to_gmt
 from search_enrichment_gsea import run_gsea
@@ -11,6 +14,31 @@ from deseq_calculations import main as run_deseq
 # from create_figs_ges import plot_bar_chart as plot_ges
 from create_figs_ges_for_presentation import plot_bar_chart as plot_ges
 from create_figs_deseq import plot_bar_chart as plot_deseq
+
+
+@contextlib.contextmanager
+def _log_to_file(log_path: Path):
+    """Tee all stdout (print output) to log_path while keeping it on the terminal."""
+    class _Tee:
+        def __init__(self, *streams):
+            self._streams = streams
+        def write(self, s):
+            for st in self._streams:
+                st.write(s)
+        def flush(self):
+            for st in self._streams:
+                st.flush()
+        @property
+        def encoding(self):
+            return getattr(self._streams[0], "encoding", "utf-8")
+
+    orig = sys.stdout
+    with open(log_path, "w", encoding="utf-8") as fh:
+        sys.stdout = _Tee(orig, fh)
+        try:
+            yield
+        finally:
+            sys.stdout = orig
 
 
 # =============================================================
@@ -212,33 +240,35 @@ def run_gene_list_pipeline(config_path: str):
     fig_dir.mkdir(parents=True, exist_ok=True)
     add_fig_dir.mkdir(parents=True, exist_ok=True)
 
-    # Copy YAML config to metadata
-    src = Path(config_path).resolve()
-    dst = (metadata_dir / src.name).resolve()
-    
-    # Only copy if different paths (or if you want: if different inode)
-    if src != dst:
-        shutil.copy2(src, dst)
-    else:
-        print(f"Config already in metadata: {dst} (skipping copy)")
-      
-    # ---------- Step A: GMT ----------
-    gmt_file = create_gmt_file(
-        gmt_folder=config["gmt_folder"],
-        gene_list_file=config['gene_list_path']
-    )
+    with _log_to_file(metadata_dir / "pipeline_output.log"):
+        print(f"📋 Log: {metadata_dir / 'pipeline_output.log'}")
 
-    # ---------- Step B: GSEA ----------
-    gsea_out = run_gsea_enrichment(config, gmt_file, enr_results_dir, fig_dir)
+        # Copy YAML config to metadata
+        src = Path(config_path).resolve()
+        dst = (metadata_dir / src.name).resolve()
 
-    # ---------- Step C: DESEQ ----------
-    deseq_out = run_deseq_enrichment(config, config['gene_list_path'], enr_results_dir)
+        if src != dst:
+            shutil.copy2(src, dst)
+        else:
+            print(f"Config already in metadata: {dst} (skipping copy)")
 
-    # ---------- Step D: GSEA Plots ----------
-    if gsea_out:
-      run_gsea_plots(gsea_out, fig_dir, config['run_name'])
-  
-    print("\n🎉 PIPELINE COMPLETE — enrichment steps finished.")
+        # ---------- Step A: GMT ----------
+        gmt_file = create_gmt_file(
+            gmt_folder=config["gmt_folder"],
+            gene_list_file=config['gene_list_path']
+        )
+
+        # ---------- Step B: GSEA ----------
+        gsea_out = run_gsea_enrichment(config, gmt_file, enr_results_dir, fig_dir)
+
+        # ---------- Step C: DESEQ ----------
+        deseq_out = run_deseq_enrichment(config, config['gene_list_path'], enr_results_dir)
+
+        # ---------- Step D: GSEA Plots ----------
+        if gsea_out:
+            run_gsea_plots(gsea_out, fig_dir, config['run_name'])
+
+        print("\n🎉 PIPELINE COMPLETE — enrichment steps finished.")
     
 if __name__ == "__main__":
     # Example:

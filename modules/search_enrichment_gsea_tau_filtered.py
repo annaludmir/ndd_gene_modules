@@ -14,6 +14,7 @@ with unfiltered runs.
 """
 
 import argparse
+import contextlib
 import datetime
 import shutil
 import sys
@@ -25,6 +26,31 @@ import statsmodels.stats.multitest as smm
 import yaml
 
 from search_enrichment_gsea import plot_enhanced_gsea
+
+
+@contextlib.contextmanager
+def _log_to_file(log_path: Path):
+    """Tee all stdout (print output) to log_path while keeping it on the terminal."""
+    class _Tee:
+        def __init__(self, *streams):
+            self._streams = streams
+        def write(self, s):
+            for st in self._streams:
+                st.write(s)
+        def flush(self):
+            for st in self._streams:
+                st.flush()
+        @property
+        def encoding(self):
+            return getattr(self._streams[0], "encoding", "utf-8")
+
+    orig = sys.stdout
+    with open(log_path, "w", encoding="utf-8") as fh:
+        sys.stdout = _Tee(orig, fh)
+        try:
+            yield
+        finally:
+            sys.stdout = orig
 
 
 # ---------------------------------------------------------------------------
@@ -345,49 +371,53 @@ def run_tau_filtered_pipeline(
     for d in (enr_dir, fig_dir, metadata_dir):
         d.mkdir(parents=True, exist_ok=True)
 
-    src = Path(config["_config_path"]).resolve()
-    dst = (metadata_dir / src.name).resolve()
-    if src != dst:
-        shutil.copy2(src, dst)
+    summary_path = None
+    with _log_to_file(metadata_dir / "pipeline_output.log"):
+        print(f"📋 Log: {metadata_dir / 'pipeline_output.log'}")
 
-    gmt_folder = Path(config["gmt_folder"])
-    gmt_folder.mkdir(parents=True, exist_ok=True)
-    gmt_out = gmt_folder / (Path(config["gene_list_path"]).stem + ".gmt")
-    if not gmt_out.exists():
-        print(f"Creating GMT: {gmt_out}")
-        save_to_gmt(str(config["gene_list_path"]), gmt_out)
-    else:
-        print(f"GMT already exists: {gmt_out}")
+        src = Path(config["_config_path"]).resolve()
+        dst = (metadata_dir / src.name).resolve()
+        if src != dst:
+            shutil.copy2(src, dst)
 
-    print(f"\n{'='*52}")
-    print("  Tau-filtered GSEA Pipeline")
-    print(f"{'='*52}")
-    print(f"• Run name:        {run_name}")
-    print(f"• GES folder:      {config['ges_results_folder']}")
-    print(f"• Tau scores dir:  {config['tau_scores_dir']}")
-    if tau_score_cutoff is not None:
-        print(f"• Tau score cutoff: {tau_score_cutoff}  (absolute)")
-    else:
-        print(f"• Tau percentile:  {tau_percentile}  (top {100 - tau_percentile:.0f}%)")
-    print(f"• GES threshold:   {ges_threshold}")
-    print(f"• GMT:             {gmt_out}")
-    print(f"• Output:          {run_dir}")
-    print(f"{'='*52}\n")
+        gmt_folder = Path(config["gmt_folder"])
+        gmt_folder.mkdir(parents=True, exist_ok=True)
+        gmt_out = gmt_folder / (Path(config["gene_list_path"]).stem + ".gmt")
+        if not gmt_out.exists():
+            print(f"Creating GMT: {gmt_out}")
+            save_to_gmt(str(config["gene_list_path"]), gmt_out)
+        else:
+            print(f"GMT already exists: {gmt_out}")
 
-    summary_path = run_gsea_tau_filtered(
-        ges_score_path=config["ges_results_folder"],
-        tau_scores_dir=config["tau_scores_dir"],
-        gmt_file=str(gmt_out),
-        column_conditions=column_conditions,
-        ges_score_threshold=ges_threshold,
-        out_folder=enr_dir,
-        figs_folder=fig_dir,
-        tau_percentile=tau_percentile,
-        tau_score_cutoff=tau_score_cutoff,
-    )
+        print(f"\n{'='*52}")
+        print("  Tau-filtered GSEA Pipeline")
+        print(f"{'='*52}")
+        print(f"• Run name:        {run_name}")
+        print(f"• GES folder:      {config['ges_results_folder']}")
+        print(f"• Tau scores dir:  {config['tau_scores_dir']}")
+        if tau_score_cutoff is not None:
+            print(f"• Tau score cutoff: {tau_score_cutoff}  (absolute)")
+        else:
+            print(f"• Tau percentile:  {tau_percentile}  (top {100 - tau_percentile:.0f}%)")
+        print(f"• GES threshold:   {ges_threshold}")
+        print(f"• GMT:             {gmt_out}")
+        print(f"• Output:          {run_dir}")
+        print(f"{'='*52}\n")
 
-    if summary_path is not None:
-        _make_tau_gsea_summary_plots(summary_path, fig_dir, run_name)
+        summary_path = run_gsea_tau_filtered(
+            ges_score_path=config["ges_results_folder"],
+            tau_scores_dir=config["tau_scores_dir"],
+            gmt_file=str(gmt_out),
+            column_conditions=column_conditions,
+            ges_score_threshold=ges_threshold,
+            out_folder=enr_dir,
+            figs_folder=fig_dir,
+            tau_percentile=tau_percentile,
+            tau_score_cutoff=tau_score_cutoff,
+        )
+
+        if summary_path is not None:
+            _make_tau_gsea_summary_plots(summary_path, fig_dir, run_name)
 
     return summary_path
 
