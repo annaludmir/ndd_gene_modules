@@ -1,0 +1,82 @@
+dataset_name: "combined_v3"
+ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules/"
+output_folder: "results/gene_clusters/"
+
+# ── Datasets (all v3 chemistry) ──────────────────────────────────────────────
+datasets:
+  cortex:
+    ges_results_folder: "results/ges_score_results/ges_score_for_cortex_20251221"
+    column_conditions:
+      CellClass:
+        - "Radial glia"
+        - "Neuronal IPC"
+        - "Neuroblast"
+        - "Neuron"
+        - "Glioblast"
+      NPCs:
+        - True
+        - False
+      Proliferation_CellCycle:
+        - Proliferating_Cycling
+        - Differentiating_Cycling
+        - Proliferating_NonCycling
+        - Differentiating_NonCycling
+
+  all_layers:
+    ges_results_folder: "results/ges_score_results/ges_score_for_all_layers_without_week_5_20260322"
+    column_conditions:
+      Region:
+        - "Forebrain"
+        - "Telencephalon"
+        - "Diencephalon"
+        - "Midbrain"
+        - "Hindbrain"
+        - "Cerebellum"
+        - "Pons"
+        - "Medulla"
+      CellClass:
+        - "Radial glia"
+        - "Neuronal IPC"
+        - "Neuroblast"
+        - "Neuron"
+        - "Fibroblast"
+        - "Glioblast"
+        - "Oligo"
+        - "Neural crest"
+        - "Placode"
+        - "Immune"
+        - "Vascular"
+        - "Erythrocyte"
+      RegionsGeneral:
+        - "Forebrain_General"
+        - "Midbrain_General"
+        - "Hindbrain_General"
+
+  cell_phase:
+    ges_results_folder: "results/ges_score_results/ges_score_for_cortex_cell_cycle_20251221"
+    column_conditions:
+      CellCyclePhase:
+        - "G1"
+        - "S"
+        - "G2M"
+        - "PostM"
+        - "Non-cycling"
+
+# ── Gene filtering ──────────────────────────────────────────────────────────
+# Keep genes that appear in at least this many GES files (across all datasets).
+min_conditions_expressed: 2
+
+# Optional: only keep genes with GES >= threshold in at least one condition.
+ges_score_threshold: null
+
+# ── Scaling ─────────────────────────────────────────────────────────────────
+# 'gene'      : z-score each gene across all conditions (recommended for combined)
+# 'condition' : z-score each condition across genes
+# 'none'      : raw GES scores
+scale: "gene"
+
+# ── Dimensionality reduction & clustering ────────────────────────────────────
+pca_n_components: 50
+umap_n_neighbors: 15
+umap_min_dist: 0.3
+leiden_resolution: 0.5
