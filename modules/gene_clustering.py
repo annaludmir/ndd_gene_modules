@@ -4,40 +4,41 @@ gene_clustering.py
 Discover gene modules by clustering genes based on their GES (Gene Expression
 Specificity) score profiles.
 
-Each gene is represented as a vector of GES scores across all conditions from
-one or more datasets. PCA → neighbor graph → UMAP → Leiden clustering groups
-genes with similar expression specificity patterns.
+Each gene is represented as a vector of GES scores across all conditions in a
+dataset. PCA → neighbor graph → UMAP → Leiden clustering groups genes with
+similar expression specificity patterns.
+
+For multi-dataset configs (combined runs), the pipeline is executed
+independently for each dataset and results are saved in separate subfolders:
+
+  results/gene_clusters/combined_v3_{YYYYMMDD}/
+    config_used.yaml
+    cortex/
+      data/gene_clusters.csv, cluster_profiles.csv
+      figures/umap_clusters.png, umap_all_conditions.png,
+              cluster_heatmap.png, umap_{column}.png …
+      metadata/pipeline_output.log
+    all_layers/ …
+    cell_phase/  …
+
+For single-dataset configs the output is flat (no dataset subfolder):
+
+  results/gene_clusters/cortex_{YYYYMMDD}/
+    data/ figures/ metadata/
 
 Two config modes
 ----------------
-Single-dataset (backward compatible):
-    ges_results_folder: ...
+Single-dataset:
+    ges_results_folder: …
     column_conditions:  {column: [conditions]}
-    Column labels in output: '{column}__{condition}'
 
-Multi-dataset (combined analysis):
+Multi-dataset (combined):
     datasets:
       cortex:
-        ges_results_folder: ...
-        column_conditions: {...}
-      all_layers:
-        ges_results_folder: ...
-        column_conditions: {...}
-      cell_phase:
-        ...
-    Column labels in output: '{dataset}__{column}__{condition}'
-
-Outputs in results/gene_clusters/{dataset_name}_{YYYYMMDD}/:
-  data/
-    gene_clusters.csv        — gene, cluster, UMAP_1, UMAP_2, all GES features
-    cluster_profiles.csv     — mean GES per (cluster × condition)
-  figures/
-    umap_clusters.png        — UMAP coloured by Leiden cluster
-    cluster_heatmap.png      — clustermap: clusters × conditions (mean GES)
-    umap_{dataset}_{column}.png  — one per (dataset, column) coloured by GES
-  metadata/
-    config_used.yaml
-    pipeline_output.log
+        ges_results_folder: …
+        column_conditions: {…}
+      all_layers: …
+      cell_phase: …
 
 Usage:
   python modules/gene_clustering.py config_files/gene_clusters_combined_v3_config.yaml
@@ -121,7 +122,6 @@ def load_config(config_path: str) -> tuple[dict, list[DatasetSpec], bool]:
     cfg["_config_path"] = config_path
 
     if "datasets" in cfg:
-        # Multi-dataset mode
         specs = []
         for label, ds in cfg["datasets"].items():
             if "ges_results_folder" not in ds or "column_conditions" not in ds:
@@ -150,74 +150,67 @@ def load_config(config_path: str) -> tuple[dict, list[DatasetSpec], bool]:
 
 
 # ---------------------------------------------------------------------------
-# Data loading
+# Data loading  (always called per-dataset; multi_dataset flag unused here)
 # ---------------------------------------------------------------------------
 
-def _col_label(dataset_label: str, column: str, condition, multi_dataset: bool) -> str:
-    cond_str = str(condition)
-    if multi_dataset:
-        return f"{dataset_label}__{column}__{cond_str}"
-    return f"{column}__{cond_str}"
-
-
 def load_ges_matrix(
-    specs: list[DatasetSpec],
-    multi_dataset: bool,
+    spec: DatasetSpec,
     ges_score_threshold: float | None,
 ) -> tuple[pd.DataFrame, pd.Series, pd.DataFrame]:
     """
-    Load GES CSVs from all dataset specs and build a gene × condition matrix.
+    Load GES CSVs for one dataset and build a gene × condition matrix.
+
+    Column labels: '{column}__{condition}'.
 
     Returns:
       matrix     — gene × condition DataFrame (NaN filled with 0)
       n_present  — Series: number of GES files each gene appears in
-      col_meta   — DataFrame describing each matrix column:
-                   columns: col_label, dataset, column, condition
+      col_meta   — DataFrame with columns [dataset, column, condition]
+                   indexed by col_label
     """
+    ges_dir = spec.ges_folder / "data"
     series_list: list[pd.Series] = []
     col_meta_rows: list[dict] = []
 
-    for spec in specs:
-        ges_dir = spec.ges_folder / "data"
-        print(f"\n  Dataset '{spec.label}'  ← {ges_dir}")
-
-        for column, conditions in spec.column_conditions.items():
-            for condition in conditions:
-                fname = ges_dir / f"ges_spec_{column}_{condition}.csv"
-                if not fname.exists():
-                    print(f"    ⚠️  Missing: {fname.name} — skipping.")
-                    continue
-                df = pd.read_csv(fname)
-                if "gene" not in df.columns or "ges_score" not in df.columns:
-                    print(f"    ⚠️  Unexpected columns in {fname.name} — skipping.")
-                    continue
-                label = _col_label(spec.label, column, condition, multi_dataset)
-                s = df.set_index("gene")["ges_score"].rename(label)
-                series_list.append(s)
-                col_meta_rows.append({
-                    "col_label": label,
-                    "dataset":   spec.label,
-                    "column":    column,
-                    "condition": str(condition),
-                })
-                print(f"    ✔  {fname.name}  ({len(s):,} genes)")
+    for column, conditions in spec.column_conditions.items():
+        for condition in conditions:
+            fname = ges_dir / f"ges_spec_{column}_{condition}.csv"
+            if not fname.exists():
+                print(f"  ⚠️  Missing: {fname.name} — skipping.")
+                continue
+            df = pd.read_csv(fname)
+            if "gene" not in df.columns or "ges_score" not in df.columns:
+                print(f"  ⚠️  Unexpected columns in {fname.name} — skipping.")
+                continue
+            col_label = f"{column}__{condition}"
+            s = df.set_index("gene")["ges_score"].rename(col_label)
+            series_list.append(s)
+            col_meta_rows.append({
+                "col_label": col_label,
+                "dataset":   spec.label,
+                "column":    column,
+                "condition": str(condition),
+            })
+            print(f"  ✔  {fname.name}  ({len(s):,} genes)")
 
     if not series_list:
-        raise ValueError("No GES files could be loaded. Check config paths and column_conditions.")
+        raise ValueError(
+            f"No GES files found in {ges_dir}. "
+            "Check ges_results_folder and column_conditions in the config."
+        )
 
-    col_meta = pd.DataFrame(col_meta_rows).set_index("col_label")
+    col_meta   = pd.DataFrame(col_meta_rows).set_index("col_label")
     matrix_raw = pd.concat(series_list, axis=1)
     n_present  = matrix_raw.notna().sum(axis=1)
     matrix     = matrix_raw.fillna(0.0)
 
     print(
-        f"\nCombined matrix: {matrix.shape[0]:,} genes × {matrix.shape[1]} conditions"
-        f" ({len(specs)} dataset(s))"
+        f"\nMatrix: {matrix.shape[0]:,} genes × {matrix.shape[1]} conditions"
     )
 
     if ges_score_threshold is not None:
         before = len(matrix)
-        keep   = (matrix >= ges_score_threshold).any(axis=1)
+        keep      = (matrix >= ges_score_threshold).any(axis=1)
         matrix    = matrix[keep]
         n_present = n_present[keep]
         print(f"GES threshold (>= {ges_score_threshold}): {before:,} → {len(matrix):,} genes")
@@ -245,8 +238,7 @@ def filter_genes(
 
 def scale_matrix(matrix: pd.DataFrame, mode: str) -> pd.DataFrame:
     """
-    'gene'      — z-score each gene across conditions (highlights which conditions
-                  it is specific to, relative to its own average; default).
+    'gene'      — z-score each gene across conditions (default).
     'condition' — z-score each condition across genes.
     'none'      — raw GES scores.
     """
@@ -256,7 +248,6 @@ def scale_matrix(matrix: pd.DataFrame, mode: str) -> pd.DataFrame:
         mean = matrix.mean(axis=0)
         std  = matrix.std(axis=0).replace(0, 1)
         return (matrix - mean) / std
-    # gene-wise (default)
     mean = matrix.mean(axis=1)
     std  = matrix.std(axis=1).replace(0, 1)
     return matrix.subtract(mean, axis=0).div(std, axis=0)
@@ -311,9 +302,9 @@ def cluster_genes(
 def save_results(
     adata: sc.AnnData,
     matrix_raw: pd.DataFrame,
-    run_dir: Path,
+    out_dir: Path,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    data_dir = run_dir / "data"
+    data_dir = out_dir / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
 
     umap_df = pd.DataFrame(
@@ -347,12 +338,10 @@ def make_figures(
     profiles: pd.DataFrame,
     matrix_raw: pd.DataFrame,
     col_meta: pd.DataFrame,
-    run_dir: Path,
-    dataset_name: str,
-    specs: list[DatasetSpec],
-    multi_dataset: bool,
+    out_dir: Path,
+    title_prefix: str,
 ) -> None:
-    fig_dir = run_dir / "figures"
+    fig_dir = out_dir / "figures"
     fig_dir.mkdir(parents=True, exist_ok=True)
 
     n_clusters   = adata.obs["leiden"].nunique()
@@ -375,7 +364,7 @@ def make_figures(
         )
     ax.set_xlabel("UMAP 1"); ax.set_ylabel("UMAP 2")
     ax.set_title(
-        f"Gene modules — {dataset_name}\n"
+        f"Gene modules — {title_prefix}\n"
         f"({adata.n_obs:,} genes, {n_clusters} Leiden clusters)"
     )
     ax.legend(
@@ -388,59 +377,51 @@ def make_figures(
     plt.close(fig)
     print(f"  🖼  umap_clusters.png")
 
-    # ── 2. Cluster profile heatmap ───────────────────────────────────────────
-    _make_cluster_heatmap(profiles, col_meta, fig_dir, dataset_name, multi_dataset)
+    # ── 2. All-conditions UMAP grid ──────────────────────────────────────────
+    _make_all_conditions_umap(ges_raw, umap_xy, col_meta, fig_dir, title_prefix)
 
-    # ── 3. All-conditions UMAP grid ──────────────────────────────────────────
-    _make_all_conditions_umap(ges_raw, umap_xy, col_meta, fig_dir, dataset_name)
+    # ── 3. Cluster profile heatmap ───────────────────────────────────────────
+    _make_cluster_heatmap(profiles, col_meta, fig_dir, title_prefix)
 
-    # ── 4. Per-(dataset, column) UMAPs coloured by GES ──────────────────────
-    for spec in specs:
-        for column, conditions in spec.column_conditions.items():
-            cond_cols = [
-                _col_label(spec.label, column, c, multi_dataset)
-                for c in conditions
-                if _col_label(spec.label, column, c, multi_dataset) in matrix_raw.columns
-            ]
-            if not cond_cols:
-                continue
+    # ── 4. Per-column UMAPs ──────────────────────────────────────────────────
+    for column in col_meta["column"].unique():
+        cond_cols = col_meta[col_meta["column"] == column].index.tolist()
+        conditions = col_meta.loc[cond_cols, "condition"].tolist()
 
-            n = len(cond_cols)
-            ncols_plot = min(4, n)
-            nrows_plot = (n + ncols_plot - 1) // ncols_plot
-            fig, axes = plt.subplots(
-                nrows_plot, ncols_plot,
-                figsize=(ncols_plot * 3.5, nrows_plot * 3.2),
-                squeeze=False,
+        n = len(cond_cols)
+        ncols_plot = min(4, n)
+        nrows_plot = (n + ncols_plot - 1) // ncols_plot
+        fig, axes = plt.subplots(
+            nrows_plot, ncols_plot,
+            figsize=(ncols_plot * 3.5, nrows_plot * 3.2),
+            squeeze=False,
+        )
+        axes_flat = axes.flatten()
+
+        for idx, (col_key, cond_label) in enumerate(zip(cond_cols, conditions)):
+            ax = axes_flat[idx]
+            vals = ges_raw[col_key].values
+            nonzero = vals[vals != 0]
+            vmax = float(np.percentile(np.abs(nonzero), 95)) if len(nonzero) else 1.0
+            sc_plot = ax.scatter(
+                umap_xy[:, 0], umap_xy[:, 1],
+                c=vals, s=2, cmap="RdBu_r", vmin=-vmax, vmax=vmax,
             )
-            axes_flat = axes.flatten()
+            ax.set_title(cond_label, fontsize=8)
+            ax.set_frame_on(False)
+            ax.set_xticks([]); ax.set_yticks([])
+            plt.colorbar(sc_plot, ax=ax, shrink=0.6, label="GES")
 
-            for idx, col_key in enumerate(cond_cols):
-                ax = axes_flat[idx]
-                vals = ges_raw[col_key].values
-                nonzero = vals[vals != 0]
-                vmax = float(np.percentile(np.abs(nonzero), 95)) if len(nonzero) else 1.0
-                sc_plot = ax.scatter(
-                    umap_xy[:, 0], umap_xy[:, 1],
-                    c=vals, s=2, cmap="RdBu_r", vmin=-vmax, vmax=vmax,
-                )
-                cond_label = str(conditions[idx])
-                ax.set_title(cond_label, fontsize=8)
-                ax.set_frame_on(False)
-                ax.set_xticks([]); ax.set_yticks([])
-                plt.colorbar(sc_plot, ax=ax, shrink=0.6, label="GES")
+        for idx in range(n, len(axes_flat)):
+            axes_flat[idx].set_visible(False)
 
-            for idx in range(n, len(axes_flat)):
-                axes_flat[idx].set_visible(False)
-
-            title = f"GES — {spec.label} / {column} ({dataset_name})"
-            fig.suptitle(title, fontsize=10)
-            plt.tight_layout()
-            safe_col = column.replace(" ", "_")
-            fname = f"umap_{spec.label}_{safe_col}.png"
-            fig.savefig(fig_dir / fname, dpi=130, bbox_inches="tight")
-            plt.close(fig)
-            print(f"  🖼  {fname}")
+        fig.suptitle(f"GES — {column} ({title_prefix})", fontsize=10)
+        plt.tight_layout()
+        safe_col = column.replace(" ", "_")
+        fname = f"umap_{safe_col}.png"
+        fig.savefig(fig_dir / fname, dpi=130, bbox_inches="tight")
+        plt.close(fig)
+        print(f"  🖼  {fname}")
 
 
 def _make_all_conditions_umap(
@@ -448,16 +429,16 @@ def _make_all_conditions_umap(
     umap_xy: np.ndarray,
     col_meta: pd.DataFrame,
     fig_dir: Path,
-    dataset_name: str,
+    title_prefix: str,
 ) -> None:
-    """
-    Single figure with one subplot per condition (all datasets combined).
-    Subplots are grouped and titled by dataset + column.
-    """
+    """Single figure with one subplot per condition, borders coloured by column group."""
     all_cols = col_meta.index.tolist()
     n = len(all_cols)
     ncols_plot = min(6, n)
     nrows_plot = (n + ncols_plot - 1) // ncols_plot
+
+    columns_in_meta = col_meta["column"].unique().tolist()
+    col_palette     = dict(zip(columns_in_meta, sns.color_palette("tab10", len(columns_in_meta))))
 
     fig, axes = plt.subplots(
         nrows_plot, ncols_plot,
@@ -465,10 +446,6 @@ def _make_all_conditions_umap(
         squeeze=False,
     )
     axes_flat = axes.flatten()
-
-    # Group colour: one colour per (dataset, column) combination for subplot borders
-    groups = (col_meta["dataset"] + " / " + col_meta["column"]).unique().tolist()
-    group_palette = dict(zip(groups, sns.color_palette("tab10", len(groups))))
 
     for idx, col_key in enumerate(all_cols):
         ax = axes_flat[idx]
@@ -479,16 +456,14 @@ def _make_all_conditions_umap(
             umap_xy[:, 0], umap_xy[:, 1],
             c=vals, s=1, cmap="RdBu_r", vmin=-vmax, vmax=vmax, rasterized=True,
         )
-        condition_label = col_meta.loc[col_key, "condition"]
-        ax.set_title(condition_label, fontsize=6.5, pad=2)
-        ax.set_frame_on(False)
+        ax.set_title(col_meta.loc[col_key, "condition"], fontsize=6.5, pad=2)
         ax.set_xticks([]); ax.set_yticks([])
 
-        # Coloured border by (dataset, column) group
-        group_key = col_meta.loc[col_key, "dataset"] + " / " + col_meta.loc[col_key, "column"]
+        # Coloured border by column group
+        border_color = col_palette[col_meta.loc[col_key, "column"]]
         for spine in ax.spines.values():
             spine.set_visible(True)
-            spine.set_edgecolor(group_palette[group_key])
+            spine.set_edgecolor(border_color)
             spine.set_linewidth(1.5)
 
         plt.colorbar(sc_plot, ax=ax, shrink=0.55, pad=0.02)
@@ -496,22 +471,16 @@ def _make_all_conditions_umap(
     for idx in range(n, len(axes_flat)):
         axes_flat[idx].set_visible(False)
 
-    # Legend for border colours
     from matplotlib.patches import Patch
-    handles = [Patch(color=c, label=g) for g, c in group_palette.items()]
+    handles = [Patch(color=c, label=col) for col, c in col_palette.items()]
     fig.legend(
-        handles=handles, title="Dataset / Column",
+        handles=handles, title="Column",
         loc="lower right", bbox_to_anchor=(1.0, 0.0),
         fontsize=7, frameon=False,
     )
-
-    fig.suptitle(
-        f"GES scores — all conditions ({dataset_name})",
-        fontsize=11, y=1.01,
-    )
+    fig.suptitle(f"GES scores — all conditions ({title_prefix})", fontsize=11, y=1.01)
     plt.tight_layout()
-    out = fig_dir / "umap_all_conditions.png"
-    fig.savefig(out, dpi=130, bbox_inches="tight")
+    fig.savefig(fig_dir / "umap_all_conditions.png", dpi=130, bbox_inches="tight")
     plt.close(fig)
     print(f"  🖼  umap_all_conditions.png")
 
@@ -520,45 +489,28 @@ def _make_cluster_heatmap(
     profiles: pd.DataFrame,
     col_meta: pd.DataFrame,
     fig_dir: Path,
-    dataset_name: str,
-    multi_dataset: bool,
+    title_prefix: str,
 ) -> None:
-    # Short display labels (strip dataset prefix if present)
-    def short_label(col: str) -> str:
-        parts = col.split("__")
-        return parts[-1]  # just the condition name
+    # Display labels: just the condition name (strip column prefix)
+    short_labels = {c: col_meta.loc[c, "condition"] for c in profiles.columns}
+    plot_profiles = profiles.rename(columns=short_labels)
 
-    plot_profiles = profiles.rename(columns=short_label)
-
-    # Build column annotation colours
-    datasets_in_meta  = col_meta["dataset"].unique().tolist()
-    columns_in_meta   = col_meta["column"].unique().tolist()
-    dataset_palette   = dict(zip(datasets_in_meta, sns.color_palette("Set2",  len(datasets_in_meta))))
-    col_grp_palette   = dict(zip(columns_in_meta,  sns.color_palette("Paired", len(columns_in_meta))))
-
-    if multi_dataset:
-        col_annotation = pd.DataFrame(
-            {
-                "Dataset": [dataset_palette[col_meta.loc[c, "dataset"]] for c in profiles.columns],
-                "Column":  [col_grp_palette[col_meta.loc[c, "column"]]  for c in profiles.columns],
-            },
-            index=plot_profiles.columns,
-        ).T
-    else:
-        col_annotation = pd.Series(
-            [col_grp_palette[col_meta.loc[c, "column"]] for c in profiles.columns],
-            index=plot_profiles.columns,
-            name="Column",
-        )
+    columns_in_meta = col_meta["column"].unique().tolist()
+    col_palette     = dict(zip(columns_in_meta, sns.color_palette("Paired", len(columns_in_meta))))
+    col_colors      = pd.Series(
+        [col_palette[col_meta.loc[c, "column"]] for c in profiles.columns],
+        index=plot_profiles.columns,
+        name="Column",
+    )
 
     fig_w = max(10, len(profiles.columns) * 0.45 + 3)
     fig_h = max(5,  len(profiles)         * 0.5  + 3)
 
     g = sns.clustermap(
         plot_profiles,
-        col_colors=col_annotation,
+        col_colors=col_colors,
         row_cluster=True,
-        col_cluster=False,      # keep conditions in original dataset/column order
+        col_cluster=False,
         cmap="RdBu_r",
         center=0,
         figsize=(fig_w, fig_h),
@@ -571,27 +523,72 @@ def _make_cluster_heatmap(
     g.ax_heatmap.set_xticklabels(
         g.ax_heatmap.get_xticklabels(), rotation=45, ha="right", fontsize=7
     )
-    g.ax_heatmap.set_title(f"Cluster expression profiles — {dataset_name}", pad=14)
+    g.ax_heatmap.set_title(f"Cluster expression profiles — {title_prefix}", pad=14)
 
-    # Legend patches
     from matplotlib.patches import Patch
-    legend_handles = []
-    if multi_dataset:
-        legend_handles += [Patch(color=c, label=d) for d, c in dataset_palette.items()]
-        legend_handles += [Patch(facecolor="white", label="")]   # spacer
-    legend_handles += [Patch(color=c, label=col) for col, c in col_grp_palette.items()]
+    handles = [Patch(color=c, label=col) for col, c in col_palette.items()]
     g.ax_col_colors.legend(
-        handles=legend_handles,
-        loc="upper right",
-        bbox_to_anchor=(1.18, 2.0 if multi_dataset else 1.5),
-        fontsize=7,
-        title="Dataset / Column" if multi_dataset else "Column",
-        frameon=False,
+        handles=handles, loc="upper right",
+        bbox_to_anchor=(1.18, 1.5),
+        fontsize=7, title="Column", frameon=False,
     )
 
     g.savefig(fig_dir / "cluster_heatmap.png", dpi=150, bbox_inches="tight")
     plt.close()
     print(f"  🖼  cluster_heatmap.png")
+
+
+# ---------------------------------------------------------------------------
+# Single-dataset pipeline (called once per dataset)
+# ---------------------------------------------------------------------------
+
+def _run_one_dataset(
+    spec: DatasetSpec,
+    params: dict,
+    out_dir: Path,
+) -> None:
+    metadata_dir = out_dir / "metadata"
+    metadata_dir.mkdir(parents=True, exist_ok=True)
+
+    with _log_to_file(metadata_dir / "pipeline_output.log"):
+        print(f"\n{'='*62}")
+        print(f"  Dataset: {spec.label}")
+        print(f"{'='*62}")
+        print(f"• GES folder:          {spec.ges_folder}")
+        print(f"• Output:              {out_dir}")
+        print(f"• Scale mode:          {params['scale_mode']}")
+        print(f"• Min conditions:      {params['min_conditions']}")
+        ges_thr = params['ges_threshold']
+        print(f"• GES threshold:       {ges_thr if ges_thr is not None else '(none)'}")
+        print(f"• PCA components:      {params['pca_n_components']}")
+        print(f"• UMAP neighbors:      {params['n_neighbors']}")
+        print(f"• UMAP min_dist:       {params['umap_min_dist']}")
+        print(f"• Leiden resolution:   {params['leiden_resolution']}")
+        print(f"{'='*62}\n")
+
+        print("Loading GES scores...")
+        matrix_raw, n_present, col_meta = load_ges_matrix(spec, ges_thr)
+
+        matrix_raw = filter_genes(matrix_raw, n_present, params["min_conditions"])
+
+        print(f"\nScaling (mode='{params['scale_mode']}')...")
+        matrix_scaled = scale_matrix(matrix_raw, params["scale_mode"])
+
+        adata = cluster_genes(
+            matrix_scaled,
+            params["pca_n_components"],
+            params["n_neighbors"],
+            params["umap_min_dist"],
+            params["leiden_resolution"],
+        )
+
+        print("\nSaving results...")
+        _, profiles = save_results(adata, matrix_raw, out_dir)
+
+        print("\nGenerating figures...")
+        make_figures(adata, profiles, matrix_raw, col_meta, out_dir, spec.label)
+
+        print(f"\n✔ {spec.label} complete → {out_dir}")
 
 
 # ---------------------------------------------------------------------------
@@ -601,71 +598,42 @@ def _make_cluster_heatmap(
 def run_gene_clustering(config_path: str) -> None:
     cfg, specs, multi_dataset = load_config(config_path)
 
-    dataset_name      = cfg["dataset_name"]
-    out_root          = cfg["output_folder"]
-    min_conditions    = int(cfg.get("min_conditions_expressed", 2))
-    ges_threshold     = cfg.get("ges_score_threshold", None)
-    if ges_threshold is not None:
-        ges_threshold = float(ges_threshold)
-    scale_mode        = cfg.get("scale", "gene")
-    pca_n_components  = int(cfg.get("pca_n_components", 50))
-    n_neighbors       = int(cfg.get("umap_n_neighbors", 15))
-    umap_min_dist     = float(cfg.get("umap_min_dist", 0.3))
-    leiden_resolution = float(cfg.get("leiden_resolution", 0.5))
-
+    dataset_name = cfg["dataset_name"]
+    out_root     = cfg["output_folder"]
     date_str     = datetime.datetime.now().strftime("%Y%m%d")
     run_dir      = out_root / f"{dataset_name}_{date_str}"
-    metadata_dir = run_dir / "metadata"
-    metadata_dir.mkdir(parents=True, exist_ok=True)
+    run_dir.mkdir(parents=True, exist_ok=True)
 
-    with _log_to_file(metadata_dir / "pipeline_output.log"):
-        print(f"📋 Log: {metadata_dir / 'pipeline_output.log'}")
+    # Copy config once to the top-level run folder
+    src = Path(cfg["_config_path"])
+    dst = run_dir / src.name
+    if src.resolve() != dst.resolve():
+        shutil.copy2(src, dst)
 
-        src = Path(cfg["_config_path"])
-        dst = metadata_dir / src.name
-        if src.resolve() != dst.resolve():
-            shutil.copy2(src, dst)
+    params = {
+        "min_conditions":    int(cfg.get("min_conditions_expressed", 2)),
+        "ges_threshold":     float(cfg["ges_score_threshold"]) if cfg.get("ges_score_threshold") else None,
+        "scale_mode":        cfg.get("scale", "gene"),
+        "pca_n_components":  int(cfg.get("pca_n_components", 50)),
+        "n_neighbors":       int(cfg.get("umap_n_neighbors", 15)),
+        "umap_min_dist":     float(cfg.get("umap_min_dist", 0.3)),
+        "leiden_resolution": float(cfg.get("leiden_resolution", 0.5)),
+    }
 
-        mode_str = "multi-dataset" if multi_dataset else "single-dataset"
-        print(f"\n{'='*62}")
-        print("  Gene Clustering Pipeline")
-        print(f"{'='*62}")
-        print(f"• Dataset name:        {dataset_name}  ({mode_str})")
-        for s in specs:
-            print(f"  · {s.label:<16} {s.ges_folder}")
-        print(f"• Output:              {run_dir}")
-        print(f"• Scale mode:          {scale_mode}")
-        print(f"• Min conditions:      {min_conditions}")
-        print(f"• GES threshold:       {ges_threshold if ges_threshold is not None else '(none)'}")
-        print(f"• PCA components:      {pca_n_components}")
-        print(f"• UMAP neighbors:      {n_neighbors}")
-        print(f"• UMAP min_dist:       {umap_min_dist}")
-        print(f"• Leiden resolution:   {leiden_resolution}")
-        print(f"{'='*62}\n")
+    mode_str = "multi-dataset" if multi_dataset else "single-dataset"
+    print(f"\n{'='*62}")
+    print(f"  Gene Clustering Pipeline — {dataset_name}  ({mode_str})")
+    print(f"{'='*62}")
+    for s in specs:
+        print(f"  · {s.label:<16} {s.ges_folder}")
+    print(f"• Output root: {run_dir}")
+    print(f"{'='*62}\n")
 
-        print("Loading GES scores...")
-        matrix_raw, n_present, col_meta = load_ges_matrix(specs, multi_dataset, ges_threshold)
+    for spec in specs:
+        out_dir = run_dir / spec.label if multi_dataset else run_dir
+        _run_one_dataset(spec, params, out_dir)
 
-        matrix_raw = filter_genes(matrix_raw, n_present, min_conditions)
-
-        print(f"\nScaling (mode='{scale_mode}')...")
-        matrix_scaled = scale_matrix(matrix_raw, scale_mode)
-
-        adata = cluster_genes(
-            matrix_scaled, pca_n_components, n_neighbors,
-            umap_min_dist, leiden_resolution,
-        )
-
-        print("\nSaving results...")
-        gene_clusters, profiles = save_results(adata, matrix_raw, run_dir)
-
-        print("\nGenerating figures...")
-        make_figures(
-            adata, profiles, matrix_raw, col_meta,
-            run_dir, dataset_name, specs, multi_dataset,
-        )
-
-        print(f"\n🎉 Gene clustering complete → {run_dir}")
+    print(f"\n🎉 All datasets complete → {run_dir}")
 
 
 # ---------------------------------------------------------------------------
