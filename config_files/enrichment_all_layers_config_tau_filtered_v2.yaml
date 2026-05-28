@@ -7,7 +7,7 @@ output_folder: "results/enrichment_results/"
 ges_results_folder: "results/ges_score_results/ges_score_for_all_layers_without_week_5_v2_20260426"
 
 # Tau scores folder — update this path when v2-specific tau scores are computed
-tau_scores_dir: "results/ges_score_results/ges_score_for_all_layers_without_week_5_tau_scores_20260502/data"
+tau_scores_dir: "results/ges_score_results/ges_score_for_all_layers_without_week_5_v2_tau_scores_20260512/data"
 
 # Percentile cutoff: genes with tau >= this percentile are kept (top 10% = 90)
 tau_percentile: 90
