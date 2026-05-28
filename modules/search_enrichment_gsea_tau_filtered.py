@@ -156,22 +156,22 @@ def run_gsea_tau_filtered(
     except Exception:
         pass  # non-fatal; overlap print will be skipped below
 
-    # Pre-compute filtered-out file paths (files written after the main loop).
     if metadata_dir is not None:
         metadata_dir = Path(metadata_dir)
-        _filtered_disease_path  = metadata_dir / "filtered_out_disease_genes_after_tau.txt"
-        _filtered_expr_tau_path = metadata_dir / "filtered_out_expressing_genes_after_tau.txt"
-        _filtered_expr_ges_path = metadata_dir / "filtered_out_expressing_genes_after_ges_threshold.txt"
-        _disease_path_str    = str(_filtered_disease_path)
-        _expr_tau_path_str   = str(_filtered_expr_tau_path)
-        _expr_ges_path_str   = str(_filtered_expr_ges_path)
+        filtered_dir = metadata_dir / "filtered_genes"
+        filtered_dir.mkdir(exist_ok=True)
     else:
-        _disease_path_str = _expr_tau_path_str = _expr_ges_path_str = ""
+        filtered_dir = None
 
-    # Accumulate filtered-out genes across all columns / conditions.
-    _filtered_disease_genes: set = set()
-    _filtered_expr_tau:      set = set()
-    _filtered_expr_ges:      set = set()
+    # Filtered-out genes stored per column (disease + expressing-after-tau)
+    # and per condition (expressing-after-GES).  Keys: column or "column__condition".
+    # Tau gene set is computed per column, so disease and tau-filtered expressing
+    # genes are the same for every condition within a column.
+    _safe = lambda s: str(s).replace(" ", "_").replace("/", "-")
+
+    _filtered_disease_genes: dict[str, set] = {}   # keyed by column
+    _filtered_expr_tau:      dict[str, set] = {}   # keyed by column
+    _filtered_expr_ges:      dict[str, set] = {}   # keyed by "column__condition"
 
     # Cache disease-gene ratio per column: "kept/total"
     _disease_ratio_cache: dict[str, str] = {}
@@ -204,7 +204,10 @@ def run_gsea_tau_filtered(
                 if disease_genes:
                     n_disease_in = len(disease_genes & gene_set)
                     _disease_ratio_cache[column] = f"{n_disease_in}/{len(disease_genes)}"
-                    _filtered_disease_genes.update(disease_genes - gene_set)
+                    _filtered_disease_genes[column] = disease_genes - gene_set
+                    # Also track which expressing genes are dropped by the tau filter
+                    # (shared across all conditions in this column).
+                    _filtered_expr_tau[column] = set()
                     print(f"  Disease genes retained: {n_disease_in} / {len(disease_genes)}")
                 else:
                     _disease_ratio_cache[column] = "N/A"
@@ -223,13 +226,16 @@ def run_gsea_tau_filtered(
             n_ges_total   = len(ges_df)
             all_ges_genes = set(ges_df["gene"])
 
+            cond_key = f"{column}__{_safe(condition)}"
+
             # --- Tau filter ---
             if top_tau_set is not None:
                 ges_df = ges_df[ges_df["gene"].isin(top_tau_set)].copy()
-                n_ges_after_tau  = len(ges_df)
-                genes_after_tau  = set(ges_df["gene"])
-                _filtered_expr_tau.update(all_ges_genes - genes_after_tau)
-                expr_tau_ratio   = f"{n_ges_after_tau}/{n_ges_total}"
+                n_ges_after_tau = len(ges_df)
+                genes_after_tau = set(ges_df["gene"])
+                # Accumulate per-column (tau set is the same for all conditions).
+                _filtered_expr_tau.setdefault(column, set()).update(all_ges_genes - genes_after_tau)
+                expr_tau_ratio  = f"{n_ges_after_tau}/{n_ges_total}"
                 print(f"  Tau filter:  {n_ges_total} → {n_ges_after_tau} genes")
             else:
                 print("  ⚠️ No Tau scores available for this column — Tau filter skipped.")
@@ -237,10 +243,11 @@ def run_gsea_tau_filtered(
                 expr_tau_ratio  = f"{n_ges_total}/{n_ges_total}"
 
             # --- GES threshold ---
-            n_before_ges   = len(ges_df)
-            ges_df         = ges_df[ges_df["ges_score"] > ges_score_threshold]
+            n_before_ges    = len(ges_df)
+            ges_df          = ges_df[ges_df["ges_score"] > ges_score_threshold]
             genes_after_ges = set(ges_df["gene"])
-            _filtered_expr_ges.update(genes_after_tau - genes_after_ges)
+            # Per condition: GES scores differ per condition.
+            _filtered_expr_ges[cond_key] = genes_after_tau - genes_after_ges
             expr_ges_ratio  = f"{len(genes_after_ges)}/{n_before_ges}"
             print(f"  GES filter:  {n_before_ges} → {len(genes_after_ges)} genes (threshold={ges_score_threshold})")
 
@@ -290,11 +297,11 @@ def run_gsea_tau_filtered(
                 "tau_score_cutoff":      tau_score_cutoff,
                 "tau_percentile_cutoff": None         if tau_score_cutoff is not None else tau_percentile,
                 "disease_genes_after_tau_filtering":                 _disease_ratio_cache.get(column, "N/A"),
-                "filtered_out_disease_genes_after_tau_location":     _disease_path_str,
+                "filtered_out_disease_genes_after_tau_location":     str(filtered_dir / f"disease_after_tau__{_safe(column)}.txt")     if filtered_dir else "",
                 "expressing_genes_after_tau_filtering":              expr_tau_ratio,
-                "filtered_out_expressing_genes_after_tau":           _expr_tau_path_str,
+                "filtered_out_expressing_genes_after_tau":           str(filtered_dir / f"expressing_after_tau__{_safe(column)}.txt")  if filtered_dir else "",
                 "expressing_genes_after_ges_threshold_filtering":    expr_ges_ratio,
-                "filtered_out_expressing_genes_after_ges_threshold": _expr_ges_path_str,
+                "filtered_out_expressing_genes_after_ges_threshold": str(filtered_dir / f"expressing_after_ges__{cond_key}.txt")       if filtered_dir else "",
             })
 
             term = gsea_res.res2d["Term"].iloc[0]
@@ -304,18 +311,23 @@ def run_gsea_tau_filtered(
             else:
                 print(f"  ⚠️ Term '{term}' not in result dict — skipping plot.")
 
-    # Write filtered-out gene lists to metadata folder.
-    if metadata_dir is not None:
-        for _path, _genes in [
-            (_filtered_disease_path,  _filtered_disease_genes),
-            (_filtered_expr_tau_path, _filtered_expr_tau),
-            (_filtered_expr_ges_path, _filtered_expr_ges),
-        ]:
-            _path.write_text(
-                "\n".join(sorted(_genes)) + ("\n" if _genes else ""),
+    # Write filtered-out gene lists — one file per column or per condition.
+    if filtered_dir is not None:
+        def _write_genes(path: Path, genes: set) -> None:
+            path.write_text(
+                "\n".join(sorted(genes)) + ("\n" if genes else ""),
                 encoding="utf-8",
             )
-            print(f"  📄 {_path.name}  ({len(_genes)} genes)")
+            print(f"  📄 filtered_genes/{path.name}  ({len(genes)} genes)")
+
+        for col, genes in _filtered_disease_genes.items():
+            _write_genes(filtered_dir / f"disease_after_tau__{_safe(col)}.txt", genes)
+
+        for col, genes in _filtered_expr_tau.items():
+            _write_genes(filtered_dir / f"expressing_after_tau__{_safe(col)}.txt", genes)
+
+        for ck, genes in _filtered_expr_ges.items():
+            _write_genes(filtered_dir / f"expressing_after_ges__{ck}.txt", genes)
 
     if not summary_rows:
         print("\n⚠️ No GSEA results produced — summary not written.")
