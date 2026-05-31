@@ -64,9 +64,9 @@ import yaml
 
 # Palette used consistently for gene groups across all figures.
 _GROUP_PALETTE = (
-    sns.color_palette("Set1",  9)
-    + sns.color_palette("Set2",  8)
-    + sns.color_palette("tab20", 20)
+    list(sns.color_palette("Set1",  9))
+    + list(sns.color_palette("Set2",  8))
+    + list(sns.color_palette("tab20", 20))
 )
 
 
@@ -318,7 +318,8 @@ def cluster_genes(
     sc.tl.umap(adata, min_dist=umap_min_dist, random_state=random_state)
 
     print(f"Leiden clustering (resolution={leiden_resolution})")
-    sc.tl.leiden(adata, resolution=leiden_resolution, random_state=random_state)
+    sc.tl.leiden(adata, resolution=leiden_resolution, random_state=random_state,
+                 flavor="igraph", n_iterations=2, directed=False)
 
     n_clusters = adata.obs["leiden"].nunique()
     print(f"  → {n_clusters} clusters found")
@@ -355,7 +356,7 @@ def save_results(
     print(f"  📄 gene_clusters.csv  ({len(gene_clusters):,} genes)")
 
     ges_cols = matrix_raw.columns.tolist()
-    profiles = gene_clusters[["cluster"] + ges_cols].groupby("cluster")[ges_cols].mean()
+    profiles = gene_clusters[["cluster"] + ges_cols].groupby("cluster", observed=True)[ges_cols].mean()
     profiles.to_csv(data_dir / "cluster_profiles.csv")
     print(f"  📄 cluster_profiles.csv  ({len(profiles)} clusters × {len(profiles.columns)} conditions)")
 
@@ -419,7 +420,7 @@ def make_figures(
     groups       = gene_groups or {}
     n_grp        = len(groups)
     grp_names    = list(groups.keys())
-    grp_colors   = _GROUP_PALETTE[:n_grp]
+    grp_colors   = [_GROUP_PALETTE[i % len(_GROUP_PALETTE)] for i in range(n_grp)]
 
     # ── 1. UMAP coloured by Leiden cluster (+ gene-group panels) ────────────
     cluster_palette = (
