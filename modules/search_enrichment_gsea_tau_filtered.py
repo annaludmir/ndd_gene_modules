@@ -269,6 +269,8 @@ def run_gsea_tau_filtered(
                     min_size=2,
                     max_size=2500,
                     seed=6,
+                    verbose=True,
+                    
                 )
             except LookupError:
                 print("  ⚠️ Not enough genes overlap with gene sets — skipping.")

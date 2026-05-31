@@ -147,7 +147,8 @@ def run_gsea(ges_score_path,
                   outdir=str(raw_dir),      # keep GSEApy default raw output
                   min_size=2,
                   max_size=2500,
-                  seed=6
+                  seed=6,
+                  verbose=True
               )
             except LookupError:
               print("Probably not enough relevant genes were found for encrichment.")

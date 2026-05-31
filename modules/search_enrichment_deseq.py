@@ -33,7 +33,8 @@ def run_gsea(gmt_file,conditions,out_folder):
                max_size=2000,
                permutation_type='geneset',
                permutation_num=10000,
-               format='pdf')
+               format='pdf',
+               verbose=True)
             gsea_result.append(gsea.res2d.loc[0,"FDR q-val"])
             num_lead.append(gsea.res2d.loc[0,"Tag %"])
             per_lead.append(gsea.res2d.loc[0,"Gene %"])
