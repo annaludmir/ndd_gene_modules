@@ -62,6 +62,14 @@ import seaborn as sns
 import yaml
 
 
+# Palette used consistently for gene groups across all figures.
+_GROUP_PALETTE = (
+    sns.color_palette("Set1",  9)
+    + sns.color_palette("Set2",  8)
+    + sns.color_palette("tab20", 20)
+)
+
+
 # ---------------------------------------------------------------------------
 # Internal data structure
 # ---------------------------------------------------------------------------
@@ -94,6 +102,31 @@ def _log_to_file(log_path: Path):
             yield
         finally:
             sys.stdout = orig
+
+
+# ---------------------------------------------------------------------------
+# Gene-group loader
+# ---------------------------------------------------------------------------
+
+def load_gene_groups(path: str | Path) -> dict[str, set[str]]:
+    """
+    Load a CSV with columns 'gene' and 'group'.
+    Returns {group_name: set_of_gene_names}.
+    """
+    df = pd.read_csv(path)
+    missing = [c for c in ("gene", "group") if c not in df.columns]
+    if missing:
+        raise ValueError(
+            f"Gene-list CSV '{path}' is missing column(s): {missing}. "
+            "Expected columns: 'gene', 'group'."
+        )
+    groups: dict[str, set[str]] = {}
+    for group_name, sub in df.groupby("group"):
+        groups[str(group_name)] = set(sub["gene"].astype(str))
+    print(f"Gene groups loaded from {Path(path).name}:")
+    for name, genes in groups.items():
+        print(f"  '{name}': {len(genes)} genes")
+    return groups
 
 
 # ---------------------------------------------------------------------------
@@ -333,6 +366,38 @@ def save_results(
 # Figures
 # ---------------------------------------------------------------------------
 
+def _draw_gene_group_panel(
+    ax,
+    umap_xy: np.ndarray,
+    obs_index,          # iterable of gene names matching umap_xy rows
+    gene_set: set[str],
+    group_name: str,
+    color,
+) -> None:
+    """
+    Draw a single gene-group overlay panel:
+      - All genes not in gene_set → light gray, tiny, translucent.
+      - Genes in gene_set found in the UMAP → colored, larger, opaque.
+    """
+    in_group = np.array([g in gene_set for g in obs_index], dtype=bool)
+    n_found  = int(in_group.sum())
+    n_total  = len(gene_set)
+
+    # Gray background
+    ax.scatter(
+        umap_xy[~in_group, 0], umap_xy[~in_group, 1],
+        c="#cccccc", s=1, alpha=0.25, rasterized=True, linewidths=0,
+    )
+    # Coloured highlight
+    if n_found:
+        ax.scatter(
+            umap_xy[in_group, 0], umap_xy[in_group, 1],
+            c=[color], s=18, alpha=0.9, linewidths=0, zorder=2,
+        )
+    ax.set_title(f"{group_name}\n({n_found}/{n_total} in UMAP)", fontsize=7, pad=2)
+    ax.set_xticks([]); ax.set_yticks([])
+    ax.set_frame_on(False)
+
 def make_figures(
     adata: sc.AnnData,
     profiles: pd.DataFrame,
@@ -340,6 +405,7 @@ def make_figures(
     col_meta: pd.DataFrame,
     out_dir: Path,
     title_prefix: str,
+    gene_groups: dict[str, set[str]] | None = None,
 ) -> None:
     fig_dir = out_dir / "figures"
     fig_dir.mkdir(parents=True, exist_ok=True)
@@ -348,49 +414,78 @@ def make_figures(
     umap_xy      = adata.obsm["X_umap"]
     cluster_vals = adata.obs["leiden"].values
     ges_raw      = matrix_raw.reindex(adata.obs.index)
+    obs_index    = list(adata.obs.index)
 
-    # ── 1. UMAP coloured by Leiden cluster ──────────────────────────────────
-    palette = (
+    groups       = gene_groups or {}
+    n_grp        = len(groups)
+    grp_names    = list(groups.keys())
+    grp_colors   = _GROUP_PALETTE[:n_grp]
+
+    # ── 1. UMAP coloured by Leiden cluster (+ gene-group panels) ────────────
+    cluster_palette = (
         sns.color_palette("tab20",  min(20, n_clusters))
         + sns.color_palette("tab20b", max(0, n_clusters - 20))
     )
-    fig, ax = plt.subplots(figsize=(8, 7))
+    total_panels = 1 + n_grp
+    ncols_fig    = min(4, total_panels)
+    nrows_fig    = (total_panels + ncols_fig - 1) // ncols_fig
+    fig, axes    = plt.subplots(
+        nrows_fig, ncols_fig,
+        figsize=(ncols_fig * 3.8, nrows_fig * 3.5),
+        squeeze=False,
+    )
+    axes_flat = axes.flatten()
+
+    ax0 = axes_flat[0]
     for i, cluster in enumerate(sorted(adata.obs["leiden"].unique(), key=int)):
         mask = cluster_vals == cluster
-        ax.scatter(
+        ax0.scatter(
             umap_xy[mask, 0], umap_xy[mask, 1],
-            s=4, alpha=0.7, color=palette[i % len(palette)],
+            s=4, alpha=0.7, color=cluster_palette[i % len(cluster_palette)],
             label=f"{cluster} ({mask.sum():,})",
         )
-    ax.set_xlabel("UMAP 1"); ax.set_ylabel("UMAP 2")
-    ax.set_title(
-        f"Gene modules — {title_prefix}\n"
-        f"({adata.n_obs:,} genes, {n_clusters} Leiden clusters)"
+    ax0.set_title(
+        f"Leiden clusters — {title_prefix}\n({adata.n_obs:,} genes, {n_clusters} clusters)",
+        fontsize=7,
     )
-    ax.legend(
-        markerscale=3, title="Cluster (n genes)",
-        bbox_to_anchor=(1.01, 1), loc="upper left", fontsize=7,
+    ax0.legend(
+        markerscale=2, title="Cluster", title_fontsize=6,
+        loc="upper left", fontsize=5, frameon=False,
     )
-    ax.set_frame_on(False)
+    ax0.set_frame_on(False)
+    ax0.set_xticks([]); ax0.set_yticks([])
+
+    for g_idx, (grp_name, gene_set) in enumerate(groups.items()):
+        _draw_gene_group_panel(
+            axes_flat[1 + g_idx], umap_xy, obs_index,
+            gene_set, grp_name, grp_colors[g_idx],
+        )
+
+    for idx in range(total_panels, len(axes_flat)):
+        axes_flat[idx].set_visible(False)
+
     plt.tight_layout()
     fig.savefig(fig_dir / "umap_clusters.png", dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"  🖼  umap_clusters.png")
 
     # ── 2. All-conditions UMAP grid ──────────────────────────────────────────
-    _make_all_conditions_umap(ges_raw, umap_xy, col_meta, fig_dir, title_prefix)
+    _make_all_conditions_umap(
+        ges_raw, umap_xy, obs_index, col_meta, fig_dir, title_prefix, groups, grp_colors,
+    )
 
     # ── 3. Cluster profile heatmap ───────────────────────────────────────────
     _make_cluster_heatmap(profiles, col_meta, fig_dir, title_prefix)
 
-    # ── 4. Per-column UMAPs ──────────────────────────────────────────────────
+    # ── 4. Per-column UMAPs (+ gene-group panels) ────────────────────────────
     for column in col_meta["column"].unique():
-        cond_cols = col_meta[col_meta["column"] == column].index.tolist()
+        cond_cols  = col_meta[col_meta["column"] == column].index.tolist()
         conditions = col_meta.loc[cond_cols, "condition"].tolist()
 
-        n = len(cond_cols)
-        ncols_plot = min(4, n)
-        nrows_plot = (n + ncols_plot - 1) // ncols_plot
+        n_cond    = len(cond_cols)
+        n_total   = n_cond + n_grp
+        ncols_plot = min(4, n_total)
+        nrows_plot = (n_total + ncols_plot - 1) // ncols_plot
         fig, axes = plt.subplots(
             nrows_plot, ncols_plot,
             figsize=(ncols_plot * 3.5, nrows_plot * 3.2),
@@ -412,7 +507,13 @@ def make_figures(
             ax.set_xticks([]); ax.set_yticks([])
             plt.colorbar(sc_plot, ax=ax, shrink=0.6, label="GES")
 
-        for idx in range(n, len(axes_flat)):
+        for g_idx, (grp_name, gene_set) in enumerate(groups.items()):
+            _draw_gene_group_panel(
+                axes_flat[n_cond + g_idx], umap_xy, obs_index,
+                gene_set, grp_name, grp_colors[g_idx],
+            )
+
+        for idx in range(n_total, len(axes_flat)):
             axes_flat[idx].set_visible(False)
 
         fig.suptitle(f"GES — {column} ({title_prefix})", fontsize=10)
@@ -427,15 +528,21 @@ def make_figures(
 def _make_all_conditions_umap(
     ges_raw: pd.DataFrame,
     umap_xy: np.ndarray,
+    obs_index: list,
     col_meta: pd.DataFrame,
     fig_dir: Path,
     title_prefix: str,
+    gene_groups: dict[str, set[str]],
+    grp_colors: list,
 ) -> None:
-    """Single figure with one subplot per condition, borders coloured by column group."""
+    """Single figure with one subplot per condition + one per gene group."""
     all_cols = col_meta.index.tolist()
-    n = len(all_cols)
-    ncols_plot = min(6, n)
-    nrows_plot = (n + ncols_plot - 1) // ncols_plot
+    n_cond   = len(all_cols)
+    n_grp    = len(gene_groups)
+    n_total  = n_cond + n_grp
+
+    ncols_plot = min(6, n_total)
+    nrows_plot = (n_total + ncols_plot - 1) // ncols_plot
 
     columns_in_meta = col_meta["column"].unique().tolist()
     col_palette     = dict(zip(columns_in_meta, sns.color_palette("tab10", len(columns_in_meta))))
@@ -447,6 +554,7 @@ def _make_all_conditions_umap(
     )
     axes_flat = axes.flatten()
 
+    # Condition panels
     for idx, col_key in enumerate(all_cols):
         ax = axes_flat[idx]
         vals = ges_raw[col_key].values
@@ -459,7 +567,6 @@ def _make_all_conditions_umap(
         ax.set_title(col_meta.loc[col_key, "condition"], fontsize=6.5, pad=2)
         ax.set_xticks([]); ax.set_yticks([])
 
-        # Coloured border by column group
         border_color = col_palette[col_meta.loc[col_key, "column"]]
         for spine in ax.spines.values():
             spine.set_visible(True)
@@ -468,13 +575,26 @@ def _make_all_conditions_umap(
 
         plt.colorbar(sc_plot, ax=ax, shrink=0.55, pad=0.02)
 
-    for idx in range(n, len(axes_flat)):
+    # Gene-group panels
+    for g_idx, (grp_name, gene_set) in enumerate(gene_groups.items()):
+        _draw_gene_group_panel(
+            axes_flat[n_cond + g_idx], umap_xy, obs_index,
+            gene_set, grp_name, grp_colors[g_idx],
+        )
+
+    for idx in range(n_total, len(axes_flat)):
         axes_flat[idx].set_visible(False)
 
     from matplotlib.patches import Patch
-    handles = [Patch(color=c, label=col) for col, c in col_palette.items()]
+    legend_handles = [Patch(color=c, label=col) for col, c in col_palette.items()]
+    if gene_groups:
+        legend_handles += [Patch(facecolor="white", label="")]  # spacer
+        legend_handles += [
+            Patch(color=grp_colors[i], label=name)
+            for i, name in enumerate(gene_groups)
+        ]
     fig.legend(
-        handles=handles, title="Column",
+        handles=legend_handles, title="Column / Gene group",
         loc="lower right", bbox_to_anchor=(1.0, 0.0),
         fontsize=7, frameon=False,
     )
@@ -546,6 +666,7 @@ def _run_one_dataset(
     spec: DatasetSpec,
     params: dict,
     out_dir: Path,
+    gene_groups: dict[str, set[str]] | None = None,
 ) -> None:
     metadata_dir = out_dir / "metadata"
     metadata_dir.mkdir(parents=True, exist_ok=True)
@@ -564,6 +685,8 @@ def _run_one_dataset(
         print(f"• UMAP neighbors:      {params['n_neighbors']}")
         print(f"• UMAP min_dist:       {params['umap_min_dist']}")
         print(f"• Leiden resolution:   {params['leiden_resolution']}")
+        if gene_groups:
+            print(f"• Gene groups:         {list(gene_groups.keys())}")
         print(f"{'='*62}\n")
 
         print("Loading GES scores...")
@@ -586,7 +709,10 @@ def _run_one_dataset(
         _, profiles = save_results(adata, matrix_raw, out_dir)
 
         print("\nGenerating figures...")
-        make_figures(adata, profiles, matrix_raw, col_meta, out_dir, spec.label)
+        make_figures(
+            adata, profiles, matrix_raw, col_meta, out_dir, spec.label,
+            gene_groups=gene_groups,
+        )
 
         print(f"\n✔ {spec.label} complete → {out_dir}")
 
@@ -595,7 +721,10 @@ def _run_one_dataset(
 # Pipeline entry point
 # ---------------------------------------------------------------------------
 
-def run_gene_clustering(config_path: str) -> None:
+def run_gene_clustering(
+    config_path: str,
+    gene_list_path: str | None = None,
+) -> None:
     cfg, specs, multi_dataset = load_config(config_path)
 
     dataset_name = cfg["dataset_name"]
@@ -620,6 +749,12 @@ def run_gene_clustering(config_path: str) -> None:
         "leiden_resolution": float(cfg.get("leiden_resolution", 0.5)),
     }
 
+    # Load optional gene groups (CLI arg takes priority over config key)
+    gene_list_path = gene_list_path or cfg.get("gene_list_path")
+    gene_groups: dict[str, set[str]] | None = None
+    if gene_list_path:
+        gene_groups = load_gene_groups(gene_list_path)
+
     mode_str = "multi-dataset" if multi_dataset else "single-dataset"
     print(f"\n{'='*62}")
     print(f"  Gene Clustering Pipeline — {dataset_name}  ({mode_str})")
@@ -627,11 +762,13 @@ def run_gene_clustering(config_path: str) -> None:
     for s in specs:
         print(f"  · {s.label:<16} {s.ges_folder}")
     print(f"• Output root: {run_dir}")
+    if gene_groups:
+        print(f"• Gene groups: {list(gene_groups.keys())}")
     print(f"{'='*62}\n")
 
     for spec in specs:
         out_dir = run_dir / spec.label if multi_dataset else run_dir
-        _run_one_dataset(spec, params, out_dir)
+        _run_one_dataset(spec, params, out_dir, gene_groups=gene_groups)
 
     print(f"\n🎉 All datasets complete → {run_dir}")
 
@@ -645,5 +782,15 @@ if __name__ == "__main__":
         description="Cluster genes by GES expression profile (UMAP + Leiden)."
     )
     parser.add_argument("config", help="Path to the YAML config file.")
+    parser.add_argument(
+        "--gene-list",
+        default=None,
+        metavar="CSV",
+        help=(
+            "Optional CSV with columns 'gene' and 'group'. "
+            "For each group, a highlighted overlay panel is added to every UMAP figure "
+            "showing those genes in colour against a gray background."
+        ),
+    )
     args = parser.parse_args()
-    run_gene_clustering(args.config)
+    run_gene_clustering(args.config, gene_list_path=args.gene_list)
