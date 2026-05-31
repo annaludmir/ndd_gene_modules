@@ -546,6 +546,28 @@ def _(adata):
 
 @app.cell
 def _():
+    import pandas as pd
+
+    # Read csv
+    df = pd.read_csv("/miridan-data/annaludmir/ndd_gene_modules/results/ges_score_results/ges_score_for_all_layers_without_week_5_v2_20260426/data/ges_spec_CellClass_Neuron.csv")
+
+    # Your genes of interest
+    gene_list = [
+    "BCL11A","CLIP2","CYFIP2","EBF3","EPHB1","GRIP1","KLF7","NLGN2","PCDH10","PCDH9","SLC9A6","SYNJ1","TNRC6C","UNC80","VAMP2","WNK3"
+    ]
+
+    # Keep only relevant genes
+    filtered_df = df[df["gene"].isin(gene_list)]
+
+    # Sort by tau score
+    filtered_df = filtered_df.sort_values("ges_score", ascending=False)
+
+    print(filtered_df[["gene", "ges_score"]])
+    return (pd,)
+
+
+@app.cell
+def _():
     return
 
 
