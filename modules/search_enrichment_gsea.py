@@ -5,9 +5,22 @@ import sys
 import os
 import shutil
 import gseapy as gp
-import statsmodels.stats.multitest as smm 
+import statsmodels.stats.multitest as smm
 import matplotlib.pyplot as plt
 from pathlib import Path
+
+
+_PVAL_COLS = ["NOM p-val", "FDR q-val", "FWER p-val", "FDR q-val (BH corrected)"]
+
+def _fmt_pvals(df: pd.DataFrame) -> pd.DataFrame:
+    """Format p-value/FDR columns as exact scientific notation strings (e.g. 1.23e-08)."""
+    df = df.copy()
+    for col in _PVAL_COLS:
+        if col in df.columns:
+            df[col] = df[col].apply(
+                lambda v: f"{float(v):.6e}" if pd.notna(v) and v != "" else v
+            )
+    return df
 
 
 
@@ -157,7 +170,7 @@ def run_gsea(ges_score_path,
             if gsea_res:
               # Save main results
               out_csv = cond_dir / "gsea_results.csv"
-              gsea_res.res2d.to_csv(out_csv)
+              _fmt_pvals(gsea_res.res2d).to_csv(out_csv)
               print(f"  ✔ Saved GSEA table to {out_csv}")
   
               # Collect summary row (first term only, like old script)
@@ -204,7 +217,7 @@ def run_gsea(ges_score_path,
         final_summary["FDR q-val (BH corrected)"] = pvals_corr
 
         final_summary_path = results_folder / "GSEA_final_summary.csv"
-        final_summary.to_csv(final_summary_path, index=False)
+        _fmt_pvals(final_summary).to_csv(final_summary_path, index=False)
 
         print("\n📄 Final summary file created:")
         print(final_summary_path)

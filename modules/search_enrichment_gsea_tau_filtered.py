@@ -25,6 +25,19 @@ import pandas as pd
 import statsmodels.stats.multitest as smm
 import yaml
 
+
+_PVAL_COLS = ["NOM p-val", "FDR q-val", "FWER p-val", "FDR q-val (BH corrected)"]
+
+def _fmt_pvals(df: pd.DataFrame) -> pd.DataFrame:
+    """Format p-value/FDR columns as exact scientific notation strings (e.g. 1.23e-08)."""
+    df = df.copy()
+    for col in _PVAL_COLS:
+        if col in df.columns:
+            df[col] = df[col].apply(
+                lambda v: f"{float(v):.6e}" if pd.notna(v) and v != "" else v
+            )
+    return df
+
 from search_enrichment_gsea import plot_enhanced_gsea
 
 
@@ -280,7 +293,7 @@ def run_gsea_tau_filtered(
                 continue
 
             out_csv = cond_dir / "gsea_results.csv"
-            gsea_res.res2d.to_csv(out_csv)
+            _fmt_pvals(gsea_res.res2d).to_csv(out_csv)
             print(f"  ✔ Saved results → {out_csv}")
 
             top = gsea_res.res2d.iloc[0]
@@ -343,7 +356,7 @@ def run_gsea_tau_filtered(
     final_summary["FDR q-val (BH corrected)"] = pvals_corr
 
     summary_path = results_folder / "GSEA_tau_filtered_summary.csv"
-    final_summary.to_csv(summary_path, index=False)
+    _fmt_pvals(final_summary).to_csv(summary_path, index=False)
 
     print(f"\n📄 Summary written: {summary_path}")
     print("🎉 Tau-filtered GSEA finished.")
