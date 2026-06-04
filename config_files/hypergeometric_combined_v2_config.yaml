@@ -1,4 +1,5 @@
 dataset_name: "hypergeometric_combined_v2"
+version: "v2"
 ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules/"
 output_folder: "results/hypergeometric/"
 

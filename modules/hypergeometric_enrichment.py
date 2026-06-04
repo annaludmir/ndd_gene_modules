@@ -395,20 +395,20 @@ def _run_dataset(
 def run_hypergeometric_enrichment(config_path: str, gene_list_path: str) -> None:
     cfg, specs = _load_config(config_path)
 
-    dataset_name = cfg["dataset_name"]
-    out_root     = Path(cfg["output_folder"])
-    date_str     = datetime.datetime.now().strftime("%Y%m%d")
-    run_dir      = out_root / f"{dataset_name}_{date_str}"
+    out_root       = Path(cfg["output_folder"])
+    date_str       = datetime.datetime.now().strftime("%Y%m%d")
+    gene_list_name = Path(gene_list_path).stem
+    version        = cfg.get("version", "")
+    folder_name    = f"{gene_list_name}_{version}_{date_str}" if version else f"{gene_list_name}_{date_str}"
+    run_dir        = out_root / folder_name
     run_dir.mkdir(parents=True, exist_ok=True)
 
     meta_dir = run_dir / "metadata"
     meta_dir.mkdir(parents=True, exist_ok=True)
 
-    gene_list_name = Path(gene_list_path).stem
-
     with _log_to_file(meta_dir / "pipeline_output.log"):
         print("=" * 62)
-        print(f"  Hypergeometric Enrichment — {dataset_name}")
+        print(f"  Hypergeometric Enrichment — {gene_list_name}  [{version}]")
         print("=" * 62)
         print(f"  Gene list:   {gene_list_path}")
         print(f"  Output:      {run_dir}")
