@@ -62,6 +62,13 @@ datasets:
         - "PostM"
         - "Non-cycling"
 
+# ── Combined runs ───────────────────────────────────────────────────────────
+# Each entry merges the listed datasets into one joint UMAP+clustering analysis.
+combined_runs:
+  cortex_cell_phase:
+    - cortex
+    - cell_phase
+
 # ── Gene filtering ──────────────────────────────────────────────────────────
 min_conditions_expressed: 2
 ges_score_threshold: null

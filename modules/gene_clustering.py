@@ -166,7 +166,20 @@ def load_config(config_path: str) -> tuple[dict, list[DatasetSpec], bool]:
                 ges_folder=resolve(ds["ges_results_folder"]),
                 column_conditions=ds["column_conditions"],
             ))
-        return cfg, specs, True
+
+        # Parse optional combined_runs: {run_label: [dataset_label, ...]}
+        combined_runs: dict[str, list] = {}
+        if "combined_runs" in cfg:
+            spec_by_label = {s.label: s for s in specs}
+            for run_label, ds_names in cfg["combined_runs"].items():
+                missing = [n for n in ds_names if n not in spec_by_label]
+                if missing:
+                    raise ValueError(
+                        f"combined_runs '{run_label}' references unknown datasets: {missing}"
+                    )
+                combined_runs[run_label] = [spec_by_label[n] for n in ds_names]
+
+        return cfg, specs, True, combined_runs
 
     # Single-dataset (backward compatible)
     if "ges_results_folder" not in cfg or "column_conditions" not in cfg:
@@ -179,12 +192,75 @@ def load_config(config_path: str) -> tuple[dict, list[DatasetSpec], bool]:
         ges_folder=resolve(cfg["ges_results_folder"]),
         column_conditions=cfg["column_conditions"],
     )]
-    return cfg, specs, False
+    return cfg, specs, False, {}
 
 
 # ---------------------------------------------------------------------------
 # Data loading  (always called per-dataset; multi_dataset flag unused here)
 # ---------------------------------------------------------------------------
+
+def load_combined_ges_matrix(
+    specs: list,
+    ges_score_threshold: float | None,
+) -> tuple[pd.DataFrame, pd.Series, pd.DataFrame]:
+    """
+    Load GES CSVs from multiple DatasetSpecs and merge into one gene × condition matrix.
+
+    Column labels: '{dataset}__{column}__{condition}' to avoid clashes across datasets.
+
+    Returns:
+      matrix     — gene × condition DataFrame (NaN filled with 0)
+      n_present  — Series: number of GES files each gene appears in
+      col_meta   — DataFrame with columns [dataset, column, condition]
+                   indexed by col_label
+    """
+    series_list: list[pd.Series] = []
+    col_meta_rows: list[dict] = []
+
+    for spec in specs:
+        ges_dir = spec.ges_folder / "data"
+        for column, conditions in spec.column_conditions.items():
+            for condition in conditions:
+                fname = ges_dir / f"ges_spec_{column}_{condition}.csv"
+                if not fname.exists():
+                    print(f"  ⚠️  Missing: {fname.name} — skipping.")
+                    continue
+                df = pd.read_csv(fname)
+                if "gene" not in df.columns or "ges_score" not in df.columns:
+                    print(f"  ⚠️  Unexpected columns in {fname.name} — skipping.")
+                    continue
+                col_label = f"{spec.label}__{column}__{condition}"
+                s = df.set_index("gene")["ges_score"].rename(col_label)
+                series_list.append(s)
+                col_meta_rows.append({
+                    "col_label": col_label,
+                    "dataset":   spec.label,
+                    "column":    column,
+                    "condition": str(condition),
+                })
+                print(f"  ✔  [{spec.label}] {fname.name}  ({len(s):,} genes)")
+
+    if not series_list:
+        raise ValueError("No GES files found for any of the combined specs.")
+
+    col_meta   = pd.DataFrame(col_meta_rows).set_index("col_label")
+    matrix_raw = pd.concat(series_list, axis=1)
+    n_present  = matrix_raw.notna().sum(axis=1)
+    matrix     = matrix_raw.fillna(0.0)
+
+    print(
+        f"\nCombined matrix: {matrix.shape[0]:,} genes × {matrix.shape[1]} conditions"
+    )
+
+    if ges_score_threshold is not None:
+        before = len(matrix)
+        keep      = (matrix >= ges_score_threshold).any(axis=1)
+        matrix    = matrix[keep]
+        n_present = n_present[keep]
+        print(f"GES threshold (>= {ges_score_threshold}): {before:,} → {len(matrix):,} genes")
+
+    return matrix, n_present, col_meta
+
 
 def load_ges_matrix(
     spec: DatasetSpec,
@@ -719,6 +795,67 @@ def _run_one_dataset(
 
 
 # ---------------------------------------------------------------------------
+# Combined-datasets pipeline (merges multiple specs into one analysis)
+# ---------------------------------------------------------------------------
+
+def _run_combined_datasets(
+    specs: list,
+    label: str,
+    params: dict,
+    out_dir: Path,
+    gene_groups: dict[str, set[str]] | None = None,
+) -> None:
+    """Run the full clustering pipeline on a merged matrix from multiple DatasetSpecs."""
+    metadata_dir = out_dir / "metadata"
+    metadata_dir.mkdir(parents=True, exist_ok=True)
+
+    log_path = metadata_dir / "pipeline_output.log"
+    with _log_to_file(log_path):
+        ges_thr = params["ges_threshold"]
+        print(f"\n{'='*62}")
+        print(f"  Combined dataset run: {label}")
+        print(f"  Datasets: {[s.label for s in specs]}")
+        print(f"• Output:              {out_dir}")
+        print(f"• Scale mode:          {params['scale_mode']}")
+        print(f"• Min conditions:      {params['min_conditions']}")
+        print(f"• GES threshold:       {ges_thr if ges_thr is not None else '(none)'}")
+        print(f"• PCA components:      {params['pca_n_components']}")
+        print(f"• UMAP neighbors:      {params['n_neighbors']}")
+        print(f"• UMAP min_dist:       {params['umap_min_dist']}")
+        print(f"• Leiden resolution:   {params['leiden_resolution']}")
+        if gene_groups:
+            print(f"• Gene groups:         {list(gene_groups.keys())}")
+        print(f"{'='*62}\n")
+
+        print("Loading combined GES scores...")
+        matrix_raw, n_present, col_meta = load_combined_ges_matrix(specs, ges_thr)
+
+        matrix_raw = filter_genes(matrix_raw, n_present, params["min_conditions"])
+
+        print(f"\nScaling (mode='{params['scale_mode']}')...")
+        matrix_scaled = scale_matrix(matrix_raw, params["scale_mode"])
+
+        adata = cluster_genes(
+            matrix_scaled,
+            params["pca_n_components"],
+            params["n_neighbors"],
+            params["umap_min_dist"],
+            params["leiden_resolution"],
+        )
+
+        print("\nSaving results...")
+        _, profiles = save_results(adata, matrix_raw, out_dir)
+
+        print("\nGenerating figures...")
+        make_figures(
+            adata, profiles, matrix_raw, col_meta, out_dir, label,
+            gene_groups=gene_groups,
+        )
+
+        print(f"\n✔ {label} complete → {out_dir}")
+
+
+# ---------------------------------------------------------------------------
 # Pipeline entry point
 # ---------------------------------------------------------------------------
 
@@ -726,7 +863,7 @@ def run_gene_clustering(
     config_path: str,
     gene_list_path: str | None = None,
 ) -> None:
-    cfg, specs, multi_dataset = load_config(config_path)
+    cfg, specs, multi_dataset, combined_runs = load_config(config_path)
 
     dataset_name = cfg["dataset_name"]
     out_root     = cfg["output_folder"]
@@ -762,6 +899,10 @@ def run_gene_clustering(
     print(f"{'='*62}")
     for s in specs:
         print(f"  · {s.label:<16} {s.ges_folder}")
+    if combined_runs:
+        print(f"  Combined runs:")
+        for run_label, cspecs in combined_runs.items():
+            print(f"    · {run_label}: {[s.label for s in cspecs]}")
     print(f"• Output root: {run_dir}")
     if gene_groups:
         print(f"• Gene groups: {list(gene_groups.keys())}")
@@ -770,6 +911,10 @@ def run_gene_clustering(
     for spec in specs:
         out_dir = run_dir / spec.label if multi_dataset else run_dir
         _run_one_dataset(spec, params, out_dir, gene_groups=gene_groups)
+
+    for run_label, cspecs in combined_runs.items():
+        out_dir = run_dir / run_label
+        _run_combined_datasets(cspecs, run_label, params, out_dir, gene_groups=gene_groups)
 
     print(f"\n🎉 All datasets complete → {run_dir}")
 
