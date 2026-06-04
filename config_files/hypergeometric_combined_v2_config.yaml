@@ -1,0 +1,63 @@
+dataset_name: "hypergeometric_combined_v2"
+ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules/"
+output_folder: "results/hypergeometric/"
+
+# ── Datasets (v2 chemistry) ───────────────────────────────────────────────────
+datasets:
+  cortex:
+    ges_results_folder: "results/ges_score_results/ges_score_for_cortex_v2_20251231"
+    column_conditions:
+      CellClass:
+        - "Radial glia"
+        - "Neuronal IPC"
+        - "Neuroblast"
+        - "Neuron"
+        - "Glioblast"
+      NPCs:
+        - True
+        - False
+      Proliferation_CellCycle:
+        - Proliferating_Cycling
+        - Differentiating_Cycling
+        - Proliferating_NonCycling
+        - Differentiating_NonCycling
+
+  all_layers:
+    ges_results_folder: "results/ges_score_results/ges_score_for_all_layers_without_week_5_v2_20260426"
+    column_conditions:
+      Region:
+        - "Forebrain"
+        - "Telencephalon"
+        - "Diencephalon"
+        - "Midbrain"
+        - "Hindbrain"
+        - "Cerebellum"
+        - "Pons"
+        - "Medulla"
+      CellClass:
+        - "Radial glia"
+        - "Neuronal IPC"
+        - "Neuroblast"
+        - "Neuron"
+        - "Fibroblast"
+        - "Glioblast"
+        - "Oligo"
+        - "Neural crest"
+        - "Placode"
+        - "Immune"
+        - "Vascular"
+        - "Erythrocyte"
+      RegionsGeneral:
+        - "Forebrain_General"
+        - "Midbrain_General"
+        - "Hindbrain_General"
+
+  cell_phase:
+    ges_results_folder: "results/ges_score_results/ges_score_for_cortex_cell_cycle_v2_20251231"
+    column_conditions:
+      CellCyclePhase:
+        - "G1"
+        - "S"
+        - "G2M"
+        - "PostM"
+        - "Non-cycling"
