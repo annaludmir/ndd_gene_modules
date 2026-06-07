@@ -46,6 +46,175 @@ def _(mo):
 def _(sc):
     #upload data
     print('uploading data')
+    bts=sc.read_h5ad("/miridan-data/annaludmir/ndd_gene_modules/data/BTS_atlas.h5ad")
+    return (bts,)
+
+
+@app.cell
+def _(bts):
+    bts_ipcs = bts[
+        bts.obs["cluster_original"].isin(['Neuronal IPC'])
+    ].copy()
+    bts_ipcs.obs
+    return (bts_ipcs,)
+
+
+@app.cell
+def _(bts_ipcs):
+    for ipc_col in ["Leiden", "cluster_annotated", "Cell Type"]:
+        print(f"\n=== {ipc_col} ===")
+
+        df = (
+            bts_ipcs.obs[ipc_col]
+            .value_counts(normalize=True)
+            .mul(100)
+            .rename("Percentage")
+            .reset_index()
+            .rename(columns={"index": ipc_col})
+        )
+
+        print(df)
+    return
+
+
+@app.cell
+def _(bts):
+    import matplotlib.pyplot as plt
+    import math
+
+    bts_C37 = bts[
+        bts.obs["Leiden"].isin(['C37'])
+    ].copy()
+
+    datasets = bts_C37.obs["Dataset"].unique()
+
+    ncols = 3
+    nrows = math.ceil(len(datasets) / ncols)
+
+    fig, axes = plt.subplots(
+        nrows,
+        ncols,
+        figsize=(5 * ncols, 5 * nrows)
+    )
+
+    axes = axes.flatten()
+
+    # Main title
+    fig.suptitle(
+        "C37 original annotation per dataset",
+        fontsize=22,
+        fontweight="bold"
+    )
+
+    for ax, dataset in zip(axes, datasets):
+
+        counts = (
+            bts_C37.obs.loc[
+                bts_C37.obs["Dataset"] == dataset,
+                "cluster_original"
+            ]
+            .value_counts()
+        )
+
+        # Remove unused categories
+        counts = counts[counts > 0]
+
+        total = counts.sum()
+
+        def autopct(pct):
+            n = int(round(pct * total / 100.0))
+            if pct >= 20:
+                return f"{pct:.1f}%\n(n={n})"
+            elif pct >= 1:
+                return f"{pct:.1f}%"
+            else:
+                return ""
+
+        ax.pie(
+            counts,
+            labels=counts.index,
+            autopct=autopct,
+            startangle=90
+        )
+
+        # Dataset name
+        ax.set_title(
+            f"{dataset}\n(n={total})",
+            fontsize=16,
+            pad=20
+        )
+
+    # Remove empty panels
+    for ax in axes[len(datasets):]:
+        fig.delaxes(ax)
+
+    plt.tight_layout(rect=[0, 0, 1, 0.95])
+    plt.show()
+    return (bts_C37,)
+
+
+@app.cell
+def _(bts_C37, np, pd):
+    # Extract SOX2 from logcounts layer
+    sox2 = bts_C37[:, "SOX2"].layers["logcounts"]
+
+    # Convert to 1D vector
+    if hasattr(sox2, "toarray"):
+        sox2 = sox2.toarray().ravel()
+    else:
+        sox2 = np.asarray(sox2).ravel()
+
+    # Create dataframe
+    df_sox2 = pd.DataFrame({
+        "Dataset": bts_C37.obs["Dataset"].values,
+        "cluster_original": bts_C37.obs["cluster_original"].values,
+        "SOX2": sox2
+    })
+
+    # Summary by Dataset and original annotation
+    summary_sox2 = (
+        df_sox2
+        .groupby(["Dataset", "cluster_original"], observed=True)
+        .agg(
+            mean_SOX2=("SOX2", "mean"),
+            expressing_cells=("SOX2", lambda x: (x > 0).sum()),
+            total_cells=("SOX2", "size")
+        )
+        .assign(
+            percent_expressing=lambda x: (
+                x["expressing_cells"] / x["total_cells"] * 100
+            ).round(2),
+            mean_SOX2=lambda x: x["mean_SOX2"].round(3)
+        )
+        .sort_values(["Dataset", "mean_SOX2"], ascending=[True, False])
+        .reset_index()
+    )
+
+    summary_sox2
+    return
+
+
+@app.cell
+def _(bts_C37):
+    print(bts_C37.shape)
+    print(bts_C37[:, "SOX2"].shape)
+    return
+
+
+@app.cell
+def _(bts_C37):
+    (
+        bts_C37.obs.loc[bts_C37.obs["Dataset"] == "Braun", "cluster_original"]
+        .value_counts()
+        .reset_index(name="n_cells")
+    )
+    return
+
+
+@app.cell
+def _(sc):
+    #upload data
+    print('uploading data')
     adata=sc.read_h5ad("/miridan-data/annaludmir/ndd_gene_modules/data/human_dev.h5ad")
     return (adata,)
 
