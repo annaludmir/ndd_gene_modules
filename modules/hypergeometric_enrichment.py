@@ -140,16 +140,18 @@ def _load_gene_list(path) -> set:
 
 
 # ---------------------------------------------------------------------------
-# Load genes per condition from GES CSV (score is ignored)
+# Load genes per condition from GES CSV, filtered by a minimum GES score
 # ---------------------------------------------------------------------------
 
-def _condition_genes(ges_folder: Path, column: str, condition) -> set:
+def _condition_genes(ges_folder: Path, column: str, condition, threshold: float) -> set:
     fname = ges_folder / "data" / f"ges_spec_{column}_{condition}.csv"
     if not fname.exists():
         return set()
     df = pd.read_csv(fname)
     if "gene" not in df.columns:
         return set()
+    if "ges_score" in df.columns:
+        df = df[df["ges_score"] >= threshold]
     return set(df["gene"].dropna().astype(str))
 
 
@@ -163,21 +165,22 @@ def _test_column(
     conditions: list,
     ges_folder: Path,
     disease_genes: set,
+    threshold: float,
 ) -> pd.DataFrame | None:
     """
     Run hypergeometric test for every condition in a column.
 
-    Background = union of all genes across all conditions in this column.
+    Background = union of all genes (GES >= threshold) across all conditions in this column.
     Each condition is tested against that shared background.
     BH correction is applied across all conditions in the column.
     """
     cond_genes: dict[str, set] = {}
     for cond in conditions:
-        g = _condition_genes(ges_folder, column, cond)
+        g = _condition_genes(ges_folder, column, cond, threshold)
         if g:
             cond_genes[str(cond)] = g
         else:
-            print(f"    ⚠️  No genes found for {column}/{cond} — skipping.")
+            print(f"    ⚠️  No genes found for {column}/{cond} at threshold {threshold} — skipping.")
 
     if len(cond_genes) < 2:
         print(f"    ⚠️  Fewer than 2 conditions with data in {column} — skipping column.")
@@ -364,13 +367,14 @@ def _run_dataset(
     spec: DatasetSpec,
     disease_genes: set,
     out_dir: Path,
+    threshold: float,
 ) -> list[pd.DataFrame]:
     out_dir.mkdir(parents=True, exist_ok=True)
     all_dfs = []
 
     for column, conditions in spec.column_conditions.items():
         print(f"\n  Column: {column}  ({len(conditions)} conditions)")
-        df = _test_column(spec.label, column, conditions, spec.ges_folder, disease_genes)
+        df = _test_column(spec.label, column, conditions, spec.ges_folder, disease_genes, threshold)
         if df is None:
             continue
 
@@ -417,6 +421,9 @@ def run_hypergeometric_enrichment(config_path: str, gene_list_path: str) -> None
             print(f"    · {s.label:<16} {s.ges_folder}")
         print("=" * 62)
 
+        threshold = float(cfg.get("ges_score_threshold", 1.0))
+        print(f"  GES threshold:   >= {threshold}  (defines specifically expressed genes per condition)")
+
         disease_genes = _load_gene_list(gene_list_path)
         print(f"\n🧬 Disease genes loaded: {len(disease_genes)}")
 
@@ -426,7 +433,7 @@ def run_hypergeometric_enrichment(config_path: str, gene_list_path: str) -> None
             print(f"\n{'─'*50}")
             print(f"  Dataset: {spec.label}")
             print(f"{'─'*50}")
-            dfs = _run_dataset(spec, disease_genes, run_dir / spec.label)
+            dfs = _run_dataset(spec, disease_genes, run_dir / spec.label, threshold)
             all_results.extend(dfs)
 
         if not all_results:
