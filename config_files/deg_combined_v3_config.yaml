@@ -1,0 +1,62 @@
+dataset_name: "deg_combined_v3"
+ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules/"
+output_folder: "results/deg_analysis/"
+
+# ── Significance thresholds ──────────────────────────────────────────────────
+logfc_threshold: 1.0    # minimum |log2 fold change| to call a gene significant
+pval_threshold: 0.05    # maximum BH-adjusted p-value
+
+# ── Datasets (v3 chemistry) ───────────────────────────────────────────────────
+datasets:
+  cortex:
+    h5ad_path: "data/Cortex_EMX1_louvain3_passedQC_PostM_rev1.h5ad"
+    chemistry: "v3"
+    column_conditions:
+      CellClass:
+        - "Radial glia"
+        - "Neuronal IPC"
+        - "Neuroblast"
+        - "Neuron"
+        - "Glioblast"
+
+  all_layers:
+    h5ad_path: "data/human_dev_without_week_5.h5ad"
+    chemistry: "v3"
+    column_conditions:
+      Region:
+        - "Forebrain"
+        - "Telencephalon"
+        - "Diencephalon"
+        - "Midbrain"
+        - "Hindbrain"
+        - "Cerebellum"
+        - "Pons"
+        - "Medulla"
+      CellClass:
+        - "Radial glia"
+        - "Neuronal IPC"
+        - "Neuroblast"
+        - "Neuron"
+        - "Fibroblast"
+        - "Glioblast"
+        - "Oligo"
+        - "Neural crest"
+        - "Placode"
+        - "Immune"
+        - "Vascular"
+        - "Erythrocyte"
+      RegionsGeneral:
+        - "Forebrain_General"
+        - "Midbrain_General"
+        - "Hindbrain_General"
+
+  cell_phase:
+    h5ad_path: "data/Cortex_EMX1_louvain3_passedQC_PostM_rev1.h5ad"
+    chemistry: "v3"
+    column_conditions:
+      CellCyclePhase:
+        - "G1"
+        - "S"
+        - "G2M"
+        - "PostM"
+        - "Non-cycling"
