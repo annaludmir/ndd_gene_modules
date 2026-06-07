@@ -14,17 +14,28 @@
 set -euo pipefail
 
 # Usage:
-#   sbatch python_deg_analysis.sh                        # run v3 + v2 (default)
-#   sbatch python_deg_analysis.sh <config.yaml> ...      # run specific config(s)
+#   sbatch python_deg_analysis.sh <gene_list.csv>
+#   sbatch python_deg_analysis.sh <gene_list.csv> <config.yaml> ...
+#
+# First argument is always the gene list (risk genes).
+# Remaining arguments are optional config files (default: v3 + v2).
 #
 # Results saved in:
-#   results/deg_analysis/{dataset_name}_{YYYYMMDD}/
+#   results/deg_analysis/{dataset_name}_{gene_list_name}_{YYYYMMDD}/
 
 NDD_ROOT="/miridan-data/annaludmir/ndd_gene_modules"
 
 module load mamba/mamba-1.5.8
 mamba activate /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new
 cd "$NDD_ROOT"
+
+if [[ $# -lt 1 ]]; then
+  echo "Usage: sbatch python_deg_analysis.sh <gene_list.csv> [config.yaml ...]"
+  exit 1
+fi
+
+GENE_LIST="$1"
+shift
 
 if [[ $# -gt 0 ]]; then
   CONFIGS=("$@")
@@ -39,9 +50,10 @@ for CONFIG in "${CONFIGS[@]}"; do
   echo ""
   echo "============================================================"
   echo "DEG analysis: $CONFIG"
+  echo "Gene list:    $GENE_LIST"
   echo "============================================================"
   mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new \
-    python -u modules/deg_analysis.py "$CONFIG"
+    python -u modules/deg_analysis.py "$CONFIG" "$GENE_LIST"
 done
 
 rc=$?

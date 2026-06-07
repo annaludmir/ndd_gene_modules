@@ -2,9 +2,9 @@ dataset_name: "deg_combined_v3"
 ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules/"
 output_folder: "results/deg_analysis/"
 
-# ── Significance thresholds ──────────────────────────────────────────────────
-logfc_threshold: 1.0    # minimum |log2 fold change| to call a gene significant
-pval_threshold: 0.05    # maximum BH-adjusted p-value
+# ── DEG thresholds (for defining condition-specific DEG sets) ────────────────
+deg_logfc_threshold: 0.2    # log2 fold change > 0.2 (upregulated, as in doi:10.1038/s12276-024-01328-6)
+deg_pval_threshold: 0.05    # BH-adjusted p-value < 0.05
 
 # ── Datasets (v3 chemistry) ───────────────────────────────────────────────────
 datasets:
