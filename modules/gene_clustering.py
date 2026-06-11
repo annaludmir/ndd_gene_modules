@@ -554,7 +554,11 @@ def make_figures(
     # ── 3. Cluster profile heatmap ───────────────────────────────────────────
     _make_cluster_heatmap(profiles, col_meta, fig_dir, title_prefix)
 
-    # ── 4. Per-column UMAPs (+ gene-group panels) ────────────────────────────
+    # ── 4. PCA biplot ────────────────────────────────────────────────────────
+    _make_pca_biplot(adata, col_meta, fig_dir, title_prefix,
+                     gene_groups=groups, grp_colors=grp_colors)
+
+    # ── 5. Per-column UMAPs (+ gene-group panels) ────────────────────────────
     for column in col_meta["column"].unique():
         cond_cols  = col_meta[col_meta["column"] == column].index.tolist()
         conditions = col_meta.loc[cond_cols, "condition"].tolist()
@@ -680,6 +684,113 @@ def _make_all_conditions_umap(
     fig.savefig(fig_dir / "umap_all_conditions.png", dpi=130, bbox_inches="tight")
     plt.close(fig)
     print(f"  🖼  umap_all_conditions.png")
+
+
+def _make_pca_biplot(
+    adata: sc.AnnData,
+    col_meta: pd.DataFrame,
+    fig_dir: Path,
+    title_prefix: str,
+    gene_groups: dict[str, set[str]] | None = None,
+    grp_colors: list | None = None,
+) -> None:
+    """
+    PC1 × PC2 biplot:
+    - Genes as dots coloured by Leiden cluster.
+    - Condition loading arrows (from PCA rotation matrix).
+    - Optional gene-group overlay panels.
+    """
+    pca_coords = adata.obsm["X_pca"][:, :2]   # (n_genes, 2)
+    loadings   = adata.varm["PCs"][:, :2]      # (n_conditions, 2)
+
+    # Scale loadings to fit within the gene scatter
+    max_coord    = np.abs(pca_coords).max()
+    max_loading  = np.abs(loadings).max()
+    arrow_scale  = max_coord / max_loading * 0.7 if max_loading > 0 else 1.0
+    loadings_sc  = loadings * arrow_scale
+
+    cluster_vals    = adata.obs["leiden"].values
+    unique_clusters = sorted(adata.obs["leiden"].unique(), key=int)
+    n_clusters      = len(unique_clusters)
+    cluster_palette = (
+        list(sns.color_palette("tab20",  min(20, n_clusters)))
+        + list(sns.color_palette("tab20b", max(0, n_clusters - 20)))
+    )
+    color_map = {c: cluster_palette[i % len(cluster_palette)]
+                 for i, c in enumerate(unique_clusters)}
+
+    columns_in_meta = col_meta["column"].unique().tolist()
+    col_palette     = dict(zip(columns_in_meta,
+                               sns.color_palette("Set2", len(columns_in_meta))))
+
+    # Variance explained
+    var_ratio   = adata.uns.get("pca", {}).get("variance_ratio", [0, 0])
+    pc1_pct     = float(var_ratio[0]) * 100 if len(var_ratio) > 0 else 0.0
+    pc2_pct     = float(var_ratio[1]) * 100 if len(var_ratio) > 1 else 0.0
+
+    fig, ax = plt.subplots(figsize=(10, 8))
+
+    # Genes coloured by Leiden cluster
+    for cluster in unique_clusters:
+        mask = cluster_vals == cluster
+        ax.scatter(
+            pca_coords[mask, 0], pca_coords[mask, 1],
+            s=4, alpha=0.55, color=color_map[cluster],
+            label=f"Cluster {cluster} ({mask.sum():,})",
+            linewidths=0,
+        )
+
+    # Loading arrows
+    for i, col_key in enumerate(col_meta.index):
+        column     = col_meta.loc[col_key, "column"]
+        cond_label = col_meta.loc[col_key, "condition"]
+        lx, ly     = float(loadings_sc[i, 0]), float(loadings_sc[i, 1])
+        arrow_color = col_palette[column]
+        ax.annotate(
+            "",
+            xy=(lx, ly), xytext=(0, 0),
+            arrowprops=dict(
+                arrowstyle="-|>",
+                color=arrow_color,
+                lw=1.0,
+            ),
+            zorder=5,
+        )
+        ax.text(
+            lx * 1.1, ly * 1.1, cond_label,
+            fontsize=5, color=arrow_color,
+            ha="center", va="center", zorder=6,
+        )
+
+    ax.axhline(0, color="#cccccc", linewidth=0.5, linestyle="--", zorder=0)
+    ax.axvline(0, color="#cccccc", linewidth=0.5, linestyle="--", zorder=0)
+    ax.set_xlabel(f"PC1  ({pc1_pct:.1f}% variance)", fontsize=9)
+    ax.set_ylabel(f"PC2  ({pc2_pct:.1f}% variance)", fontsize=9)
+    ax.set_title(f"PCA biplot — {title_prefix}", fontsize=10)
+
+    from matplotlib.patches import Patch
+    cluster_handles = [
+        Patch(color=color_map[c], label=f"Cluster {c}")
+        for c in unique_clusters
+    ]
+    col_handles = [
+        Patch(color=col_palette[col], label=col)
+        for col in columns_in_meta
+    ]
+    leg1 = ax.legend(
+        handles=cluster_handles, title="Cluster",
+        loc="upper left", fontsize=5, title_fontsize=6, frameon=False,
+    )
+    ax.add_artist(leg1)
+    ax.legend(
+        handles=col_handles, title="Category (arrows)",
+        loc="lower left", fontsize=6, title_fontsize=6, frameon=False,
+    )
+
+    plt.tight_layout()
+    fig.savefig(fig_dir / "pca_biplot.png", dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  🖼  pca_biplot.png")
 
 
 def _make_cluster_heatmap(

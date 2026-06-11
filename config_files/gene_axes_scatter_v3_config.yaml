@@ -1,0 +1,46 @@
+dataset_name: "gene_axes_scatter_v3"
+ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules/"
+output_folder: "results/gene_axes_scatter/"
+
+title: "Differentiation vs Cell Cycle Gene Axes"
+
+# ── X-axis: Differentiation score ────────────────────────────────────────────
+# Positive X → gene is more specifically expressed in differentiated neurons/neuroblasts
+# Negative X → gene is more specifically expressed in progenitors (Radial glia, NPC)
+x_axis:
+  ges_results_folder: "results/ges_score_results/ges_score_for_cortex_20251221"
+  column: "CellClass"
+  numerator_conditions:     # more expression here → high score (differentiated)
+    - "Neuron"
+    - "Neuroblast"
+  denominator_conditions:   # more expression here → low score (progenitor)
+    - "Radial glia"
+    - "Neuronal IPC"
+  label: "Differentiation score  (Neuron/Neuroblast − Radial glia/NPC)"
+
+# ── Y-axis: Cell cycle score ──────────────────────────────────────────────────
+# Positive Y → gene is more specifically expressed in cycling cells
+# Negative Y → gene is more specifically expressed in non-cycling cells
+y_axis:
+  ges_results_folder: "results/ges_score_results/ges_score_for_cortex_cell_cycle_20251221"
+  column: "CellCyclePhase"
+  numerator_conditions:     # S, G2M, PostM = actively cycling
+    - "S"
+    - "G2M"
+    - "PostM"
+  denominator_conditions:   # quiescent
+    - "Non-cycling"
+  label: "Cell cycle score  (S/G2M/PostM − Non-cycling)"
+
+# ── Annotation ────────────────────────────────────────────────────────────────
+# Number of genes to label per quadrant (ranked by distance from origin).
+top_genes_per_quadrant: 10
+
+# ── Optional colouring ───────────────────────────────────────────────────────
+# Provide a gene_clusters.csv from the gene_clustering pipeline to colour dots
+# by Leiden cluster:
+# gene_clusters_csv: "results/gene_clusters/combined_v3_20260101/cortex/data/gene_clusters.csv"
+
+# Provide a gene list CSV with 'gene','group' columns to colour by gene group
+# (takes priority over gene_clusters_csv):
+# gene_list_path: "gene_lists/my_genes.csv"
