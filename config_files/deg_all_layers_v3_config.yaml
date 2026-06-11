@@ -1,0 +1,40 @@
+dataset_name: "deg_all_layers_v3"
+ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules/"
+output_folder: "results/deg_analysis/"
+
+# ── DEG thresholds ───────────────────────────────────────────────────────────
+deg_logfc_threshold: 0.2
+deg_pval_threshold: 0.05
+
+# ── Dataset ──────────────────────────────────────────────────────────────────
+datasets:
+  all_layers:
+    h5ad_path: "data/human_dev_without_week_5.h5ad"
+    chemistry: "v3"
+    column_conditions:
+      Region:
+        - "Forebrain"
+        - "Telencephalon"
+        - "Diencephalon"
+        - "Midbrain"
+        - "Hindbrain"
+        - "Cerebellum"
+        - "Pons"
+        - "Medulla"
+      CellClass:
+        - "Radial glia"
+        - "Neuronal IPC"
+        - "Neuroblast"
+        - "Neuron"
+        - "Fibroblast"
+        - "Glioblast"
+        - "Oligo"
+        - "Neural crest"
+        - "Placode"
+        - "Immune"
+        - "Vascular"
+        - "Erythrocyte"
+      RegionsGeneral:
+        - "Forebrain_General"
+        - "Midbrain_General"
+        - "Hindbrain_General"
