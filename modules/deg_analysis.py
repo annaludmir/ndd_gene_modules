@@ -40,10 +40,11 @@ Output
 import argparse
 import contextlib
 import datetime
+import re
 import sys
 import warnings
 from pathlib import Path
-from typing import NamedTuple
+from typing import Any, Dict, List, NamedTuple
 
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
@@ -53,6 +54,15 @@ import scanpy as sc
 import statsmodels.stats.multitest as smm
 import yaml
 from scipy.stats import hypergeom
+
+# Optional: mygene for Ensembl → symbol conversion (same as GES pipeline)
+try:
+    from mygene import MyGeneInfo
+    _HAS_MYGENE = True
+    _mg = MyGeneInfo()
+except Exception:
+    _HAS_MYGENE = False
+    _mg = None
 
 
 # ---------------------------------------------------------------------------
@@ -151,6 +161,68 @@ def _load_gene_list(path) -> set:
 
 
 # ---------------------------------------------------------------------------
+# Gene name helpers — identical logic to GES pipeline
+# (all_layers stores Ensembl IDs in var_names; symbols are in a var column)
+# ---------------------------------------------------------------------------
+
+def _looks_like_ensembl(x: str) -> bool:
+    return bool(re.match(r"^ENS[A-Z]*G\d+(\.\d+)?$", str(x)))
+
+
+def _make_unique_symbols(symbols: List[str]) -> List[str]:
+    seen: Dict[str, int] = {}
+    out: List[str] = []
+    for s in symbols:
+        if s not in seen:
+            seen[s] = 0
+            out.append(s)
+        else:
+            seen[s] += 1
+            out.append(f"{s}_dup{seen[s]}")
+    return out
+
+
+def _convert_ensembl_to_symbol(gene_list: List[str], species: str = "human") -> List[str]:
+    if not _HAS_MYGENE:
+        return gene_list
+    ensembls = [g for g in gene_list if _looks_like_ensembl(g)]
+    if not ensembls:
+        return gene_list
+    res = _mg.querymany(
+        ensembls, scopes="ensembl.gene", fields="symbol",
+        species=species, as_dataframe=True,
+    )
+    if "symbol" not in res.columns:
+        return gene_list
+    if "query" in res.columns:
+        mapping = dict(zip(res["query"], res["symbol"].fillna(res["query"])))
+    else:
+        mapping = res["symbol"].fillna(res.index.to_series()).to_dict()
+    converted = [mapping.get(g, g) for g in gene_list]
+    return _make_unique_symbols([str(x) for x in converted])
+
+
+def _get_gene_names(adata: sc.AnnData, species: str = "human") -> List[str]:
+    """
+    Extract gene symbols from AnnData — same logic as GES pipeline.
+    Checks var columns first (gene_symbol, Gene, …), then var_names.
+    Converts Ensembl IDs to symbols when detected.
+    """
+    for col in ("gene_symbol", "gene_symbols", "Gene", "gene", "name", "names"):
+        if col in adata.var.columns:
+            genes = adata.var[col].astype(str).tolist()
+            break
+    else:
+        genes = adata.var_names.astype(str).tolist()
+
+    if any(_looks_like_ensembl(g) for g in genes):
+        print("  Detected Ensembl IDs — converting to gene symbols (mygene)...")
+        genes = _convert_ensembl_to_symbol(genes, species=species)
+
+    return genes
+
+
+# ---------------------------------------------------------------------------
 # Preprocessing — identical to GES pipeline
 # ---------------------------------------------------------------------------
 
@@ -166,6 +238,13 @@ def _load_and_preprocess(spec: DatasetSpec) -> sc.AnnData:
 
     sc.pp.filter_cells(adata, min_genes=200)
     sc.pp.filter_genes(adata, min_cells=3)
+
+    # Resolve gene names before normalization so var_names are symbols
+    # (all_layers uses Ensembl IDs in var_names; symbols live in a var column)
+    gene_names = _get_gene_names(adata)
+    adata.var_names = pd.Index(gene_names)
+    print(f"  Gene names resolved (e.g. {gene_names[:3]})")
+
     sc.pp.normalize_total(adata)
     sc.pp.log1p(adata)
     print(f"  After QC + normalization: {adata.n_obs:,} cells × {adata.n_vars:,} genes")
