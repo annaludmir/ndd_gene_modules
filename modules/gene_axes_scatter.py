@@ -277,24 +277,19 @@ def _make_scatter_by_clusters(scores_df, x_label, y_label, title, fig_dir,
 
 
 def _make_scatter_by_groups(scores_df, x_label, y_label, title, fig_dir,
-                             gene_groups, top_n):
+                             gene_groups, grp_colors, top_n):
+    """Combined scatter: all genes in background, each group overlaid in its colour."""
     x = scores_df["x_score"].values
     y = scores_df["y_score"].values
     gene_names = np.array(scores_df.index.tolist())
 
-    grp_names  = list(gene_groups.keys())
-    grp_colors = [_GROUP_PALETTE[i % len(_GROUP_PALETTE)] for i in range(len(grp_names))]
-
-    # Assign each gene the color of its first matching group; ungrouped = gray
-    gene_color = np.array(["#cccccc"] * len(gene_names), dtype=object)
-    for i, (grp_name, gene_set) in reversed(list(enumerate(gene_groups.items()))):
-        mask = np.array([g in gene_set for g in gene_names], dtype=bool)
-        gene_color[mask] = str(grp_colors[i])
-
     fig, ax = plt.subplots(figsize=(9, 7))
 
-    # Gray background
-    gray_mask = gene_color == "#cccccc"
+    # Gray background (ungrouped genes)
+    all_set_genes: set[str] = set()
+    for gs in gene_groups.values():
+        all_set_genes.update(gs)
+    gray_mask = np.array([g not in all_set_genes for g in gene_names], dtype=bool)
     if gray_mask.any():
         _scatter_base(ax, x[gray_mask], y[gray_mask], "#cccccc", s=3, alpha=0.25)
 
@@ -319,6 +314,121 @@ def _make_scatter_by_groups(scores_df, x_label, y_label, title, fig_dir,
     fig.savefig(fig_dir / "gene_axes_scatter.png", dpi=150, bbox_inches="tight")
     plt.close(fig)
     print("  Saved: gene_axes_scatter.png")
+
+
+def _make_per_group_panels(scores_df, x_label, y_label, title, fig_dir,
+                            gene_groups, grp_colors, top_n):
+    """
+    One subplot per gene group.
+    Each panel: all background genes in gray, that group's genes in colour with labels.
+    """
+    n_grp  = len(gene_groups)
+    ncols  = min(3, n_grp)
+    nrows  = (n_grp + ncols - 1) // ncols
+
+    x_all  = scores_df["x_score"].values
+    y_all  = scores_df["y_score"].values
+    names_all = np.array(scores_df.index.tolist())
+
+    fig, axes = plt.subplots(nrows, ncols,
+                              figsize=(ncols * 5.0, nrows * 4.5),
+                              squeeze=False)
+    axes_flat = axes.flatten()
+
+    for g_idx, (grp_name, gene_set) in enumerate(gene_groups.items()):
+        ax = axes_flat[g_idx]
+        in_grp  = np.array([g in gene_set for g in names_all], dtype=bool)
+        n_found = int(in_grp.sum())
+        n_total = len(gene_set)
+
+        # Gray background
+        ax.scatter(x_all[~in_grp], y_all[~in_grp],
+                   c="#cccccc", s=2, alpha=0.2, linewidths=0)
+        # Group genes
+        if n_found:
+            ax.scatter(x_all[in_grp], y_all[in_grp],
+                       c=[grp_colors[g_idx]], s=20, alpha=0.85,
+                       linewidths=0, zorder=2)
+            _annotate_top_genes(ax,
+                                x_all[in_grp], y_all[in_grp],
+                                names_all[in_grp], top_n)
+
+        _add_quadrant_lines(ax)
+        ax.set_title(f"{grp_name}\n({n_found}/{n_total} in scatter)", fontsize=8)
+        ax.set_xlabel(x_label, fontsize=7)
+        ax.set_ylabel(y_label, fontsize=7)
+
+    for idx in range(n_grp, len(axes_flat)):
+        axes_flat[idx].set_visible(False)
+
+    fig.suptitle(title, fontsize=11, y=1.01)
+    plt.tight_layout()
+    fig.savefig(fig_dir / "gene_axes_scatter_per_group.png", dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print("  Saved: gene_axes_scatter_per_group.png")
+
+
+def _make_gene_set_only_panels(scores_df, x_label, y_label, title, fig_dir,
+                                gene_groups, grp_colors, top_n):
+    """
+    One subplot per gene group, showing only gene-set genes (no background).
+    Each panel: other gene-set genes in light gray, that group's genes in colour with labels.
+    """
+    all_set_genes: set[str] = set()
+    for gs in gene_groups.values():
+        all_set_genes.update(gs)
+
+    set_gene_names = np.array([g for g in scores_df.index if g in all_set_genes])
+    if len(set_gene_names) == 0:
+        print("  Warning: none of the gene-set genes found in scatter data — "
+              "skipping gene_axes_scatter_gene_set_only.png")
+        return
+
+    scores_set = scores_df.loc[set_gene_names]
+    x_set  = scores_set["x_score"].values
+    y_set  = scores_set["y_score"].values
+
+    n_grp  = len(gene_groups)
+    ncols  = min(3, n_grp)
+    nrows  = (n_grp + ncols - 1) // ncols
+
+    fig, axes = plt.subplots(nrows, ncols,
+                              figsize=(ncols * 5.0, nrows * 4.5),
+                              squeeze=False)
+    axes_flat = axes.flatten()
+
+    for g_idx, (grp_name, gene_set) in enumerate(gene_groups.items()):
+        ax = axes_flat[g_idx]
+        in_grp  = np.array([g in gene_set for g in set_gene_names], dtype=bool)
+        n_found = int(in_grp.sum())
+        n_total = len(gene_set)
+
+        # Other gene-set genes → light gray
+        if (~in_grp).any():
+            ax.scatter(x_set[~in_grp], y_set[~in_grp],
+                       c="#cccccc", s=10, alpha=0.4, linewidths=0)
+        # This group → coloured
+        if n_found:
+            ax.scatter(x_set[in_grp], y_set[in_grp],
+                       c=[grp_colors[g_idx]], s=25, alpha=0.9,
+                       linewidths=0, zorder=2)
+            _annotate_top_genes(ax,
+                                x_set[in_grp], y_set[in_grp],
+                                set_gene_names[in_grp], top_n)
+
+        _add_quadrant_lines(ax)
+        ax.set_title(f"{grp_name}\n({n_found}/{n_total} in scatter)", fontsize=8)
+        ax.set_xlabel(x_label, fontsize=7)
+        ax.set_ylabel(y_label, fontsize=7)
+
+    for idx in range(n_grp, len(axes_flat)):
+        axes_flat[idx].set_visible(False)
+
+    fig.suptitle(f"{title} — gene set only", fontsize=11, y=1.01)
+    plt.tight_layout()
+    fig.savefig(fig_dir / "gene_axes_scatter_gene_set_only.png", dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print("  Saved: gene_axes_scatter_gene_set_only.png")
 
 
 # ---------------------------------------------------------------------------
@@ -393,10 +503,19 @@ def run_gene_axes_scatter(
     title   = cfg.get("title", dataset_name)
     top_n   = int(cfg.get("top_genes_per_quadrant", 10))
 
-    print("\nGenerating scatter plot...")
+    print("\nGenerating scatter plots...")
     if gene_groups:
+        grp_colors = [_GROUP_PALETTE[i % len(_GROUP_PALETTE)]
+                      for i in range(len(gene_groups))]
+        # 1. Combined: all genes + all groups overlaid
         _make_scatter_by_groups(scores_df, x_label, y_label, title, fig_dir,
-                                gene_groups, top_n)
+                                gene_groups, grp_colors, top_n)
+        # 2. Per-group panels: background genes in gray + one group highlighted per panel
+        _make_per_group_panels(scores_df, x_label, y_label, title, fig_dir,
+                               gene_groups, grp_colors, top_n)
+        # 3. Gene-set-only panels: only gene-set genes shown, one group highlighted per panel
+        _make_gene_set_only_panels(scores_df, x_label, y_label, title, fig_dir,
+                                   gene_groups, grp_colors, top_n)
     elif gene_cluster_series is not None:
         _make_scatter_by_clusters(scores_df, x_label, y_label, title, fig_dir,
                                   gene_cluster_series, top_n)
