@@ -26,7 +26,7 @@ module load mamba/mamba-1.5.8
 mamba activate /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new
 cd /miridan-data/annaludmir/ndd_gene_modules/modules
 
-mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new python -u enrichment_pipeline_for_gene_list.py /miridan-data/annaludmir/ndd_gene_modules/config_files/enrichment_all_layers_config_autism_no_ges_treshold.yaml
+mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new python -u enrichment_pipeline_for_gene_list.py /miridan-data/annaludmir/ndd_gene_modules/config_files/enrichment_all_layers_config_autism_strong_no_ges_treshold.yaml
 
 echo "Python exit code: $rc"
 exit $rc

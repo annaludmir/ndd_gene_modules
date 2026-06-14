@@ -1,0 +1,50 @@
+run_name: "autism_genes_no_ges_threshold"
+ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules/"
+
+output_folder: "results/enrichment_results/"
+ges_results_folder: "results/ges_score_results/ges_score_for_all_layers_without_week_5_20260322"
+
+gene_list_path: "data/genes/autism_genes.csv"
+gmt_folder: "data/genes/"
+
+analysis_mode: "gsea"     # or "deseq" or "both"
+
+gsea:
+  min_ges_score_threshold: 0
+  
+deseq:
+  pseudobulk_folder: "data/.../psb/"
+  gene_names: "data/.../genes_100cells.txt"
+
+column_conditions_for_gsea:
+  Region:
+    - "Forebrain"
+    - "Telencephalon"
+    - "Diencephalon"
+    - "Midbrain"
+    - "Hindbrain"
+    - "Cerebellum"
+    - "Pons"
+    - "Medulla"
+
+  CellClass:
+    - "Radial glia"
+    - "Neuronal IPC"
+    - "Neuroblast"
+    - "Neuron"
+    - "Fibroblast"
+    - "Glioblast"
+    - "Oligo"
+    - "Neural crest"
+    - "Placode"
+    - "Immune"
+    - "Vascular"
+    - "Erythrocyte"
+
+  RegionsGeneral:
+    - "Forebrain_General"
+    - "Midbrain_General"
+    - "Hindbrain_General"
+
+keep_only_significant: false
+nes_keep_threshold: 1.5
