@@ -1,0 +1,71 @@
+dataset_name: "gsea_es_slope_combined_v3"
+ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules/"
+output_folder: "results/gsea_es_slope/"
+
+# ── GSEA settings ─────────────────────────────────────────────────────────────
+permutation_num: 1000        # permutations for NES (gseapy) and slope p-value
+min_gene_set_size: 5         # skip conditions with fewer hits than this
+
+# Filter the ranked list before running GSEA (null = use all genes)
+# Set to e.g. 0 to keep only positively-scored genes
+ges_score_threshold: null
+
+# ── Datasets ──────────────────────────────────────────────────────────────────
+datasets:
+  cortex:
+    ges_results_folder: "results/ges_score_results/ges_score_for_cortex_20251221"
+    column_conditions:
+      CellClass:
+        - "Radial glia"
+        - "Neuronal IPC"
+        - "Neuroblast"
+        - "Neuron"
+        - "Glioblast"
+      NPCs:
+        - True
+        - False
+      Proliferation_CellCycle:
+        - Proliferating_Cycling
+        - Differentiating_Cycling
+        - Proliferating_NonCycling
+        - Differentiating_NonCycling
+
+  all_layers:
+    ges_results_folder: "results/ges_score_results/ges_score_for_all_layers_without_week_5_20260322"
+    column_conditions:
+      Region:
+        - "Forebrain"
+        - "Telencephalon"
+        - "Diencephalon"
+        - "Midbrain"
+        - "Hindbrain"
+        - "Cerebellum"
+        - "Pons"
+        - "Medulla"
+      CellClass:
+        - "Radial glia"
+        - "Neuronal IPC"
+        - "Neuroblast"
+        - "Neuron"
+        - "Fibroblast"
+        - "Glioblast"
+        - "Oligo"
+        - "Neural crest"
+        - "Placode"
+        - "Immune"
+        - "Vascular"
+        - "Erythrocyte"
+      RegionsGeneral:
+        - "Forebrain_General"
+        - "Midbrain_General"
+        - "Hindbrain_General"
+
+  cell_phase:
+    ges_results_folder: "results/ges_score_results/ges_score_for_cortex_cell_cycle_20251221"
+    column_conditions:
+      CellCyclePhase:
+        - "G1"
+        - "S"
+        - "G2M"
+        - "PostM"
+        - "Non-cycling"
