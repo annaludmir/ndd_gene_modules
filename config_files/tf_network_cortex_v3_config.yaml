@@ -28,6 +28,7 @@ seacells:
 # Requires: pip install arboreto
 scenic:
   n_workers: 8
+  n_estimators: 500    # trees per target gene model (reduce to 100–200 for faster runs)
 
   # TF list — download from pySCENIC resources:
   # https://resources.aertslab.org/cistarget/tf_lists/allTFs_hg38.txt

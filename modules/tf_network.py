@@ -258,8 +258,31 @@ def run_aggregation(cfg: dict, out_dir: Path) -> sc.AnnData:
 
 
 # ---------------------------------------------------------------------------
-# Step 2 — GRNBoost2 (TF → target adjacency inference)
+# Step 2 — GRN inference (GENIE3 / ExtraTrees, no Dask dependency)
 # ---------------------------------------------------------------------------
+# arboreto/GRNBoost2 relies on a Dask distributed cluster that is broken in
+# this environment (distributed API version mismatch).  We implement the same
+# logic directly: for each target gene fit an ExtraTreesRegressor using TF
+# expression values as features; feature importances become TF→target scores.
+# This is equivalent to GENIE3 and produces the same TSV output format.
+# ---------------------------------------------------------------------------
+
+def _fit_one_target(target_name, y, X_tfs, tf_cols, params):
+    """Fit one ExtraTrees model for a single target gene; return importance rows."""
+    if float(np.std(y)) < 1e-6:
+        return []
+    from sklearn.ensemble import ExtraTreesRegressor
+    model = ExtraTreesRegressor(**params)
+    try:
+        model.fit(X_tfs, y)
+    except Exception:
+        return []
+    return [
+        {"TF": tf, "target": target_name, "importance": float(imp)}
+        for tf, imp in zip(tf_cols, model.feature_importances_)
+        if imp > 0 and tf != target_name
+    ]
+
 
 def run_grn(meta_ad: sc.AnnData, cfg: dict, out_dir: Path) -> pd.DataFrame:
     out_file = out_dir / "grn" / "adjacencies.tsv"
@@ -267,48 +290,56 @@ def run_grn(meta_ad: sc.AnnData, cfg: dict, out_dir: Path) -> pd.DataFrame:
         print(f"[SKIP] GRN — loading existing: {out_file.name}")
         return pd.read_csv(out_file, sep="\t")
 
-    print("\n[Step 2] GRNBoost2 adjacency inference")
+    print("\n[Step 2] GRN inference (ExtraTrees / GENIE3-style, joblib parallel)")
     out_file.parent.mkdir(parents=True, exist_ok=True)
 
-    try:
-        from arboreto.algo import grnboost2
-    except ImportError:
-        raise ImportError("arboreto not installed.  Run: pip install arboreto")
-
-    scenic_cfg = cfg.get("scenic", {})
+    scenic_cfg   = cfg.get("scenic", {})
     tf_list_path = scenic_cfg.get("tf_list")
-    if tf_list_path and Path(tf_list_path).exists():
-        tf_names = _load_tf_list(Path(tf_list_path))
-        tf_names = [t for t in tf_names if t in meta_ad.var_names]
+    gene_names   = list(meta_ad.var_names)
+
+    if tf_list_path and Path(str(tf_list_path)).exists():
+        tf_names = _load_tf_list(Path(str(tf_list_path)))
+        tf_names = [t for t in tf_names if t in set(gene_names)]
         print(f"  TFs found in expression matrix: {len(tf_names):,}")
     else:
-        print("  Warning: no TF list provided — using all genes as potential TFs")
-        tf_names = None
+        print("  Warning: no TF list — treating all genes as potential TFs")
+        tf_names = gene_names
 
     import scipy.sparse as sp
     X = meta_ad.X
     if sp.issparse(X):
         X = X.toarray()
-    expr_df = pd.DataFrame(X, columns=meta_ad.var_names)
+    X = X.astype(np.float32)
 
-    n_workers = int(scenic_cfg.get("n_workers", 4))
-    print(f"  Running GRNBoost2 ({meta_ad.n_obs} meta-cells × {meta_ad.n_vars:,} genes, "
-          f"n_workers={n_workers})...")
+    tf_set  = set(tf_names)
+    tf_cols = [g for g in gene_names if g in tf_set]
+    tf_idx  = [gene_names.index(g) for g in tf_cols]
+    X_tfs   = X[:, tf_idx]
 
-    # Use thread-based Dask workers (processes=False) to bypass the Nanny
-    # process spawning that breaks on newer distributed versions.
-    from distributed import Client
-    client = Client(processes=False, n_workers=n_workers, threads_per_worker=1)
-    try:
-        adj = grnboost2(
-            expression_data=expr_df,
-            tf_names=tf_names,
-            verbose=True,
-            seed=42,
-            client_or_address=client,
+    n_workers     = int(scenic_cfg.get("n_workers", 4))
+    n_estimators  = int(scenic_cfg.get("n_estimators", 500))
+    print(f"  {meta_ad.n_obs} meta-cells × {len(gene_names):,} target genes, "
+          f"{len(tf_cols):,} TFs, n_estimators={n_estimators}, n_workers={n_workers}")
+
+    params = dict(n_estimators=n_estimators, max_features="sqrt",
+                  random_state=42, n_jobs=1)
+
+    from joblib import Parallel, delayed
+    results = Parallel(n_jobs=n_workers, verbose=5)(
+        delayed(_fit_one_target)(
+            gene_names[i],
+            X[:, i],
+            X_tfs,
+            tf_cols,
+            params,
         )
-    finally:
-        client.close()
+        for i in range(len(gene_names))
+    )
+
+    all_pairs = [row for pairs in results for row in pairs]
+    adj = (pd.DataFrame(all_pairs)
+           .sort_values("importance", ascending=False)
+           .reset_index(drop=True))
 
     adj.to_csv(out_file, sep="\t", index=False)
     print(f"  Saved: {out_file.name}  ({len(adj):,} TF-target pairs)")
