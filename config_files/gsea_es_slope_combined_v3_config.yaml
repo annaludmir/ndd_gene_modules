@@ -8,7 +8,7 @@ min_gene_set_size: 5         # skip conditions with fewer hits than this
 
 # Filter the ranked list before running GSEA (null = use all genes)
 # Set to e.g. 0 to keep only positively-scored genes
-ges_score_threshold: null
+ges_score_threshold: 1
 
 # ── Datasets ──────────────────────────────────────────────────────────────────
 datasets:
