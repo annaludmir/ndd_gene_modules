@@ -2,18 +2,18 @@
 #SBATCH --mail-user=annaludmir@mail.tau.ac.il
 #SBATCH --mail-type=END,FAIL
 #SBATCH --job-name=tf_network
-#SBATCH --mem=200G
+#SBATCH --mem=500G
 #SBATCH --account=miridan-users_v2
 #SBATCH --output=/miridan-data/annaludmir/jobs_output/%j.out
 #SBATCH --error=/miridan-data/annaludmir/jobs_output/%j.err
 #SBATCH --time=1-00:00:00
-# #SBATCH --partition=power-general-public-pool
+#SBATCH --partition=power-general-public-pool
 #SBATCH --qos=public
 #SBATCH --cpus-per-task=8
 # # miris partition
-# #SBATCH --partition=gpu-miridan-pool
-# #SBATCH --qos=owner
-# #SBATCH --gres=gpu:0
+##SBATCH --partition=gpu-miridan-pool
+##SBATCH --qos=owner
+##SBATCH --gres=gpu:0
 
 set -euo pipefail
 
