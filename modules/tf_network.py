@@ -272,7 +272,6 @@ def run_grn(meta_ad: sc.AnnData, cfg: dict, out_dir: Path) -> pd.DataFrame:
 
     try:
         from arboreto.algo import grnboost2
-        from arboreto.utils import load_tf_names
     except ImportError:
         raise ImportError("arboreto not installed.  Run: pip install arboreto")
 
@@ -296,12 +295,22 @@ def run_grn(meta_ad: sc.AnnData, cfg: dict, out_dir: Path) -> pd.DataFrame:
     print(f"  Running GRNBoost2 ({meta_ad.n_obs} meta-cells × {meta_ad.n_vars:,} genes, "
           f"n_workers={n_workers})...")
 
-    adj = grnboost2(
-        expression_data=expr_df,
-        tf_names=tf_names,
-        verbose=True,
-        seed=42,
-    )
+    # Create Dask client manually to avoid arboreto's use of the deprecated
+    # diagnostics_port argument (incompatible with newer distributed versions).
+    from distributed import Client, LocalCluster
+    cluster = LocalCluster(n_workers=n_workers, threads_per_worker=1)
+    client  = Client(cluster)
+    try:
+        adj = grnboost2(
+            expression_data=expr_df,
+            tf_names=tf_names,
+            verbose=True,
+            seed=42,
+            client_or_address=client,
+        )
+    finally:
+        client.close()
+        cluster.close()
 
     adj.to_csv(out_file, sep="\t", index=False)
     print(f"  Saved: {out_file.name}  ({len(adj):,} TF-target pairs)")
