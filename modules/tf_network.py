@@ -295,11 +295,10 @@ def run_grn(meta_ad: sc.AnnData, cfg: dict, out_dir: Path) -> pd.DataFrame:
     print(f"  Running GRNBoost2 ({meta_ad.n_obs} meta-cells × {meta_ad.n_vars:,} genes, "
           f"n_workers={n_workers})...")
 
-    # Create Dask client manually to avoid arboreto's use of the deprecated
-    # diagnostics_port argument (incompatible with newer distributed versions).
-    from distributed import Client, LocalCluster
-    cluster = LocalCluster(n_workers=n_workers, threads_per_worker=1)
-    client  = Client(cluster)
+    # Use thread-based Dask workers (processes=False) to bypass the Nanny
+    # process spawning that breaks on newer distributed versions.
+    from distributed import Client
+    client = Client(processes=False, n_workers=n_workers, threads_per_worker=1)
     try:
         adj = grnboost2(
             expression_data=expr_df,
@@ -310,7 +309,6 @@ def run_grn(meta_ad: sc.AnnData, cfg: dict, out_dir: Path) -> pd.DataFrame:
         )
     finally:
         client.close()
-        cluster.close()
 
     adj.to_csv(out_file, sep="\t", index=False)
     print(f"  Saved: {out_file.name}  ({len(adj):,} TF-target pairs)")
