@@ -693,6 +693,140 @@ def plot_tf_network(
 
 
 # ---------------------------------------------------------------------------
+# Connected-network visualization (shared targets appear once)
+# ---------------------------------------------------------------------------
+
+def plot_tf_network_connected(
+    query_df: pd.DataFrame,
+    fig_path: Path,
+    cfg: dict,
+    title: str = "TF Regulatory Networks",
+) -> None:
+    """
+    Single connected graph where targets shared by multiple TFs appear once.
+    Requires: pip install networkx (usually already present via scanpy).
+
+    plot_style: "connected"  in config query section to enable.
+    """
+    try:
+        import networkx as nx
+    except ImportError:
+        raise ImportError("networkx required: pip install networkx")
+
+    if query_df.empty:
+        print("  No data to plot.")
+        return
+
+    q_cfg = cfg.get("query", {})
+    top_n = int(q_cfg.get("top_n_tfs", 8))
+
+    tf_stats = (
+        query_df.groupby("tf")
+        .agg(n_targets=("target", "count"), mean_score=("normalized_score", "mean"))
+        .sort_values(["n_targets", "mean_score"], ascending=False)
+        .head(top_n)
+    )
+    top_tfs = tf_stats.index.tolist()
+    plot_df = query_df[query_df["tf"].isin(top_tfs)].copy()
+
+    # Build directed graph; for targets shared by multiple TFs use max score
+    G = nx.DiGraph()
+    for tf in top_tfs:
+        G.add_node(tf, node_type="tf")
+
+    target_max_score: dict[str, float] = {}
+    for _, row in plot_df.iterrows():
+        tgt   = row["target"]
+        score = float(row["normalized_score"])
+        if tgt not in target_max_score or score > target_max_score[tgt]:
+            target_max_score[tgt] = score
+        if tgt not in G:
+            G.add_node(tgt, node_type="gene")
+        G.add_edge(row["tf"], tgt, weight=score)
+
+    # Spring layout — increase k so nodes are well-separated
+    pos = nx.spring_layout(G, seed=42, k=3.0, iterations=150)
+
+    fig, ax = plt.subplots(figsize=(14, 11))
+    ax.set_aspect("equal")
+    ax.axis("off")
+
+    tf_nodes   = [n for n in G.nodes if G.nodes[n]["node_type"] == "tf"]
+    gene_nodes = [n for n in G.nodes if G.nodes[n]["node_type"] == "gene"]
+
+    # Node radii (spring layout coords are roughly in [-1, 1])
+    tf_r   = 0.07
+    gene_r = 0.035
+
+    # ── Edges ────────────────────────────────────────────────────────────────
+    for u, v in G.edges():
+        pu = np.array(pos[u])
+        pv = np.array(pos[v])
+        d  = pv - pu
+        dist = np.linalg.norm(d)
+        if dist < 1e-6:
+            continue
+        unit  = d / dist
+        r_u   = tf_r   if G.nodes[u]["node_type"] == "tf"   else gene_r
+        r_v   = tf_r   if G.nodes[v]["node_type"] == "tf"   else gene_r
+        start = pu + unit * r_u
+        end   = pv - unit * r_v
+        ax.annotate(
+            "",
+            xy=end, xytext=start,
+            arrowprops=dict(arrowstyle="-|>", color="#888888", lw=0.8, mutation_scale=9),
+            zorder=2,
+        )
+
+    # ── Gene (target) nodes ──────────────────────────────────────────────────
+    for gene in gene_nodes:
+        p     = np.array(pos[gene])
+        score = target_max_score.get(gene, 0.0)
+        color = _TF_CMAP(score)
+        ax.add_patch(plt.Circle(p, gene_r, color=color, ec="none", zorder=3))
+
+        # Push label away from the TF centroid
+        tf_preds = [u for u in G.predecessors(gene) if G.nodes[u]["node_type"] == "tf"]
+        if tf_preds:
+            centroid  = np.mean([pos[t] for t in tf_preds], axis=0)
+            push      = p - centroid
+            push_norm = np.linalg.norm(push)
+            push_dir  = push / push_norm if push_norm > 1e-6 else np.array([1.0, 0.0])
+        else:
+            push_dir = np.array([1.0, 0.0])
+
+        lp = p + push_dir * (gene_r + 0.028)
+        ha = "left" if push_dir[0] >= 0 else "right"
+        ax.text(lp[0], lp[1], gene, ha=ha, va="center",
+                fontsize=7, fontweight="bold", color="#222222", zorder=5)
+
+    # ── TF hub nodes ─────────────────────────────────────────────────────────
+    for tf in tf_nodes:
+        p = np.array(pos[tf])
+        ax.add_patch(plt.Circle(p, tf_r, color="white", ec="#333333", lw=2.0, zorder=4))
+        ax.text(p[0], p[1], tf, ha="center", va="center",
+                fontsize=9, fontweight="bold", color="#111111", zorder=6)
+
+    # ── Colorbar ─────────────────────────────────────────────────────────────
+    sm = plt.cm.ScalarMappable(cmap=_TF_CMAP, norm=plt.Normalize(0, 1))
+    sm.set_array([])
+    cbar = fig.colorbar(sm, ax=ax, shrink=0.28, pad=0.02, aspect=18, anchor=(1.0, 0.5))
+    cbar.set_label("Normalized\nPrediction score", fontsize=9)
+    cbar.set_ticks([0, 0.5, 1])
+
+    all_pos = np.array(list(pos.values()))
+    margin  = 0.30
+    ax.set_xlim(all_pos[:, 0].min() - margin, all_pos[:, 0].max() + margin)
+    ax.set_ylim(all_pos[:, 1].min() - margin, all_pos[:, 1].max() + margin)
+
+    fig.suptitle(title, fontsize=12)
+    plt.tight_layout()
+    fig.savefig(fig_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  Saved: {fig_path.name}")
+
+
+# ---------------------------------------------------------------------------
 # Pipeline orchestration
 # ---------------------------------------------------------------------------
 
@@ -756,8 +890,12 @@ def run_tf_network(
 
                 fig_dir = run_dir / "figures"
                 fig_dir.mkdir(exist_ok=True)
-                fig_path = fig_dir / f"tf_network_{gene_list_stem}.png"
-                plot_tf_network(
+                plot_style = cfg.get("query", {}).get("plot_style", "hub_spoke")
+                fig_path   = fig_dir / f"tf_network_{gene_list_stem}.png"
+                plot_fn    = (plot_tf_network_connected
+                              if plot_style == "connected"
+                              else plot_tf_network)
+                plot_fn(
                     query_df,
                     fig_path,
                     cfg,

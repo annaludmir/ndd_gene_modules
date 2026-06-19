@@ -56,3 +56,6 @@ aucell:
 query:
   min_targets: 3      # minimum gene-set targets per TF to include in the plot
   top_n_tfs: 8        # top N TFs to show (ranked by number of targets in gene set)
+  # plot_style: "hub_spoke"   — separate subplot per TF (default)
+  # plot_style: "connected"   — single connected graph; shared targets appear once
+  plot_style: "connected"
