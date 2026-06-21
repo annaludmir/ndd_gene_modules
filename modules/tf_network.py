@@ -373,14 +373,21 @@ def run_ctx(adj: pd.DataFrame, meta_ad: sc.AnnData, cfg: dict, out_dir: Path) ->
     print("\n[Step 3] cisTarget regulon prediction")
     out_file.parent.mkdir(parents=True, exist_ok=True)
 
+    # pyscenic uses removed NumPy aliases (np.object, np.bool, etc.) — restore them
+    # before importing so the module loads correctly on NumPy >= 1.24
+    import numpy as _np
+    for _alias, _builtin in [("object", object), ("bool", bool), ("int", int),
+                              ("float", float), ("complex", complex), ("str", str)]:
+        if not hasattr(_np, _alias):
+            setattr(_np, _alias, _builtin)
+
     try:
         from ctxcore.rnkdb import FeatherRankingDatabase as RankingDatabase
         from pyscenic.utils import modules_from_adjacencies
         from pyscenic.prune import prune2df, df2regulons
     except ImportError:
-        raise ImportError(
-            "pyscenic / ctxcore not installed.  Run: pip install pyscenic"
-        )
+        print("\n[Skip] cisTarget — pyscenic / ctxcore not installed (pip install pyscenic).")
+        return None
 
     import scipy.sparse as sp
     X = meta_ad.X
