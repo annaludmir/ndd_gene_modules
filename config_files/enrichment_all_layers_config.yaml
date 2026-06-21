@@ -10,7 +10,7 @@ gmt_folder: "data/genes/"
 analysis_mode: "gsea"     # or "deseq" or "both"
 
 gsea:
-  min_ges_score_threshold: 1
+  min_ges_score_threshold: 0
   
 deseq:
   pseudobulk_folder: "data/.../psb/"
