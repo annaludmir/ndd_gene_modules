@@ -373,14 +373,6 @@ def run_ctx(adj: pd.DataFrame, meta_ad: sc.AnnData, cfg: dict, out_dir: Path) ->
     print("\n[Step 3] cisTarget regulon prediction")
     out_file.parent.mkdir(parents=True, exist_ok=True)
 
-    # pyscenic uses removed NumPy aliases (np.object, np.bool, etc.) — restore them
-    # before importing so the module loads correctly on NumPy >= 1.24
-    import numpy as _np
-    for _alias, _builtin in [("object", object), ("bool", bool), ("int", int),
-                              ("float", float), ("complex", complex), ("str", str)]:
-        if not hasattr(_np, _alias):
-            setattr(_np, _alias, _builtin)
-
     try:
         from ctxcore.rnkdb import FeatherRankingDatabase as RankingDatabase
         from pyscenic.utils import modules_from_adjacencies
@@ -401,25 +393,10 @@ def run_ctx(adj: pd.DataFrame, meta_ad: sc.AnnData, cfg: dict, out_dir: Path) ->
     modules = list(modules_from_adjacencies(adj, ex_mtx))
     print(f"  Modules from adjacencies: {len(modules)}")
 
-    # Newer dask requires a list (with len()), but pyscenic passes a generator.
-    # Patch from_delayed on both dask.dataframe and pyscenic.prune's local binding.
-    import dask.dataframe as _dask_df
-    import pyscenic.prune as _pyscenic_prune
-    _orig_from_delayed = _dask_df.from_delayed
-    def _compat_from_delayed(dfs, *args, **kwargs):
-        if not hasattr(dfs, "__len__"):
-            dfs = list(dfs)
-        return _orig_from_delayed(dfs, *args, **kwargs)
-    _dask_df.from_delayed = _compat_from_delayed
-    if hasattr(_pyscenic_prune, "from_delayed"):
-        _pyscenic_prune.from_delayed = _compat_from_delayed
-
     df = prune2df(
         dbs, modules, str(motif_file),
         num_workers=int(scenic_cfg.get("n_workers", 4)),
     )
-
-    _dask_df.from_delayed = _orig_from_delayed  # restore after use
     regulons = df2regulons(df)
     print(f"  Regulons (motif-supported): {len(regulons)}")
 
