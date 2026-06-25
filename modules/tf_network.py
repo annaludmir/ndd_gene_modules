@@ -400,8 +400,20 @@ def run_ctx(adj: pd.DataFrame, meta_ad: sc.AnnData, cfg: dict, out_dir: Path) ->
     regulons = df2regulons(df)
     print(f"  Regulons (motif-supported): {len(regulons)}")
 
+    def _regulon_genes(r) -> list[str]:
+        # ctxcore GeneSignature stores genes in gene2weight dict
+        if hasattr(r, "gene2weight") and isinstance(r.gene2weight, dict):
+            return sorted(r.gene2weight.keys())
+        # Older API: .genes is a frozenset of strings
+        genes = getattr(r, "genes", None)
+        if genes is None:
+            return []
+        if isinstance(genes, str):
+            return sorted(g.strip() for g in genes.replace(",", ";").split(";") if g.strip())
+        return sorted(str(g) for g in genes)
+
     # Save as CSV: TF, targets (semicolon-separated), n_targets
-    rows = [{"TF": r.name, "targets": ";".join(sorted(r.genes)), "n_targets": len(r.genes)}
+    rows = [{"TF": r.name, "targets": ";".join(_regulon_genes(r)), "n_targets": len(_regulon_genes(r))}
             for r in regulons]
     reg_df = pd.DataFrame(rows)
     reg_df.to_csv(out_file, index=False)
