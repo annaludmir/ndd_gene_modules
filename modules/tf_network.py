@@ -427,17 +427,30 @@ def run_ctx(adj: pd.DataFrame, meta_ad: sc.AnnData, cfg: dict, out_dir: Path) ->
 
     def _genes_from_value(val) -> set[str]:
         """Convert whatever pyscenic stores as target genes to a plain set of strings."""
-        if isinstance(val, (set, frozenset)):
-            return {str(g) for g in val}
-        if isinstance(val, (list, tuple)):
-            return {str(g) for g in val}
+        import ast, re as _re
+        # Native containers: tuples/lists of (gene, weight) pairs or bare gene strings
+        if isinstance(val, (set, frozenset, list, tuple)):
+            genes = set()
+            for g in val:
+                if isinstance(g, tuple) and len(g) >= 1 and isinstance(g[0], str):
+                    genes.add(g[0])
+                elif isinstance(g, str) and len(g) > 1:
+                    genes.add(g)
+            return genes
         if isinstance(val, str):
-            import ast
+            # Strip np.float64(...) / np.float32(...) so ast.literal_eval can parse
+            cleaned = _re.sub(r'np\.float\d*\(([^)]+)\)', r'\1', val)
             try:
-                parsed = ast.literal_eval(val)
+                parsed = ast.literal_eval(cleaned)
                 return _genes_from_value(parsed)
             except Exception:
-                return {g.strip() for g in val.replace(";", ",").split(",") if g.strip()}
+                pass
+            # Fallback: pull out gene names from patterns like ('GENE_NAME', ...)
+            gene_names = set(_re.findall(r"\('([A-Za-z0-9_\-\.]+)'", val))
+            if gene_names:
+                return gene_names
+            # Last resort: comma/semicolon split (old format)
+            return {g.strip() for g in val.replace(";", ",").split(",") if g.strip() and len(g.strip()) > 1}
         return set()
 
     target_col = _find_target_col(df)
