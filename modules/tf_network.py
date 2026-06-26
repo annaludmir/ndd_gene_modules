@@ -397,42 +397,76 @@ def run_ctx(adj: pd.DataFrame, meta_ad: sc.AnnData, cfg: dict, out_dir: Path) ->
         dbs, modules, str(motif_file),
         num_workers=int(scenic_cfg.get("n_workers", 4)),
     )
-    regulons = df2regulons(df)
-    print(f"  Regulons (motif-supported): {len(regulons)}")
 
-    # Diagnostic: print the internal structure of the first regulon so we can
-    # verify the correct attribute to use for gene extraction.
-    if regulons:
-        r0 = regulons[0]
-        gw = getattr(r0, "gene2weight", "MISSING")
-        gs = getattr(r0, "genes",       "MISSING")
-        print(f"  [regulon debug] type={type(r0).__name__}")
-        print(f"  [regulon debug] gene2weight type={type(gw).__name__}  "
-              f"sample={list(gw.keys())[:3] if hasattr(gw, 'keys') else repr(gw)[:120]}")
-        print(f"  [regulon debug] genes type={type(gs).__name__}  "
-              f"sample={list(gs)[:3] if hasattr(gs, '__iter__') and not isinstance(gs, str) else repr(gs)[:120]}")
+    # Print df structure once so we can verify the correct column for target genes.
+    print(f"  [df debug] shape={df.shape}  index.names={df.index.names}")
+    _sample_cols = list(df.columns[:6])
+    print(f"  [df debug] first 6 columns={_sample_cols}")
+    if len(df) > 0:
+        for _c in _sample_cols:
+            _v = df.iloc[0][_c]
+            print(f"  [df debug]   {_c!r}  type={type(_v).__name__}  val={repr(_v)[:120]}")
 
-    def _regulon_genes(r) -> list[str]:
-        # Use any Mapping-like gene2weight (accepts dict, FrozenDict, MappingProxyType, …)
-        gw = getattr(r, "gene2weight", None)
-        if gw is not None and hasattr(gw, "keys"):
-            return sorted(str(g) for g in gw.keys())
-        # Fallback: .genes attribute (frozenset in older ctxcore)
-        genes = getattr(r, "genes", None)
-        if genes is None:
-            return []
-        if isinstance(genes, (str, bytes)):
-            s = genes if isinstance(genes, str) else genes.decode()
-            for sep in [";", ",", "\t", " "]:
-                parts = [g.strip() for g in s.split(sep) if g.strip()]
-                if len(parts) > 1:
-                    return sorted(parts)
-            return [s] if s else []
-        return sorted(str(g) for g in genes)
+    # ── Extract regulons directly from df, bypassing df2regulons ──────────────
+    # df2regulons in this environment reconstructs gene2weight from a string
+    # repr (character-by-character), producing single-char keys.
+    # We instead read the TargetGenes column directly from the pruned DataFrame.
 
-    # Save as CSV: TF, targets (semicolon-separated), n_targets
-    rows = [{"TF": r.name, "targets": ";".join(_regulon_genes(r)), "n_targets": len(_regulon_genes(r))}
-            for r in regulons]
+    def _find_target_col(df):
+        """Return the column (label) whose values look like gene sets."""
+        for col in df.columns:
+            col_str = str(col).lower()
+            if "targetgene" in col_str or "target_gene" in col_str:
+                return col
+        # Fallback: find first column that contains frozenset / set / list values
+        for col in df.columns:
+            sample = df[col].dropna().iloc[0] if not df[col].dropna().empty else None
+            if isinstance(sample, (set, frozenset, list)):
+                return col
+        return None
+
+    def _genes_from_value(val) -> set[str]:
+        """Convert whatever pyscenic stores as target genes to a plain set of strings."""
+        if isinstance(val, (set, frozenset)):
+            return {str(g) for g in val}
+        if isinstance(val, (list, tuple)):
+            return {str(g) for g in val}
+        if isinstance(val, str):
+            import ast
+            try:
+                parsed = ast.literal_eval(val)
+                return _genes_from_value(parsed)
+            except Exception:
+                return {g.strip() for g in val.replace(";", ",").split(",") if g.strip()}
+        return set()
+
+    target_col = _find_target_col(df)
+    print(f"  [df debug] using target column: {target_col!r}")
+
+    tf_level = 0  # first index level is the TF name
+    if isinstance(df.index, pd.MultiIndex):
+        tf_names = df.index.get_level_values(tf_level).unique()
+    else:
+        tf_names = df.index.unique()
+
+    rows = []
+    for tf in tf_names:
+        try:
+            sub = df.xs(tf, level=tf_level) if isinstance(df.index, pd.MultiIndex) else df.loc[[tf]]
+        except Exception:
+            continue
+        all_targets: set[str] = set()
+        if target_col is not None:
+            for val in sub[target_col].dropna():
+                all_targets |= _genes_from_value(val)
+        if all_targets:
+            rows.append({
+                "TF": str(tf),
+                "targets": ";".join(sorted(all_targets)),
+                "n_targets": len(all_targets),
+            })
+
+    print(f"  Regulons (motif-supported): {len(rows)}")
     reg_df = pd.DataFrame(rows)
     reg_df.to_csv(out_file, index=False)
     print(f"  Saved: {out_file.name}")
