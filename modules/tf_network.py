@@ -935,6 +935,12 @@ def run_tf_network(
     cache_dir    = out_root / "all_genes_networks" / cache_subdir
     cache_dir.mkdir(parents=True, exist_ok=True)
 
+    # Preserve the config that built the cache (only on first build, so we
+    # don't overwrite the record if params drift on a later re-run).
+    cache_cfg_copy = cache_dir / Path(config_path).name
+    if not cache_cfg_copy.exists():
+        shutil.copy2(cfg["_config_path"], cache_cfg_copy)
+
     # Per-invocation dir — only created when a gene list is being queried.
     run_dir = None
     if gene_list_path:
