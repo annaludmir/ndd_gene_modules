@@ -10,13 +10,14 @@ Pipeline (each step saves its output and is skipped on re-runs if the file exist
   4. AUCell        — compute per-cell regulon activity AUC scores
   5. Query / Plot  — filter network for a gene set, produce hub-and-spoke figure
 
-Steps 1–4 depend only on the input h5ad and are cached under
-`all_genes_networks/{h5ad_stem}/`, shared across every run of the same dataset.
-The per-invocation, gene-list-specific outputs (Step 5) go to a dated run dir.
+Steps 1–4 depend only on the input h5ad (and chemistry filter), so they are
+cached under `all_genes_networks/{h5ad_stem}_{chemistry}/` and shared across
+every run of the same dataset. The per-invocation, gene-list-specific outputs
+(Step 5) go to a dated run dir.
 
 Output structure:
   results/tf_network/
-    all_genes_networks/{h5ad_stem}/      ← reusable cache (steps 1–4)
+    all_genes_networks/{h5ad_stem}_{chemistry}/   ← reusable cache (steps 1–4)
       seacells/seacells_aggregated.h5ad
       grn/adjacencies.tsv
       ctx/regulons.csv
@@ -925,10 +926,13 @@ def run_tf_network(
     date_str     = datetime.datetime.now().strftime("%Y%m%d")
     out_root     = cfg["output_folder"]
 
-    # Steps 1–4 depend only on the input h5ad → cache them per h5ad stem so
-    # subsequent runs (different dates, different gene lists) reuse them.
-    h5ad_stem = Path(cfg["h5ad_path"]).stem
-    cache_dir = out_root / "all_genes_networks" / h5ad_stem
+    # Steps 1–4 depend only on the input h5ad (and chemistry filter) → cache
+    # them per (h5ad stem, chemistry) so subsequent runs (different dates,
+    # different gene lists) reuse them. v2 and v3 must not share a cache dir.
+    h5ad_stem    = Path(cfg["h5ad_path"]).stem
+    chemistry    = cfg.get("chemistry")
+    cache_subdir = f"{h5ad_stem}_{chemistry}" if chemistry else h5ad_stem
+    cache_dir    = out_root / "all_genes_networks" / cache_subdir
     cache_dir.mkdir(parents=True, exist_ok=True)
 
     # Per-invocation dir — only created when a gene list is being queried.
