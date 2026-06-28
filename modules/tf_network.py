@@ -10,15 +10,23 @@ Pipeline (each step saves its output and is skipped on re-runs if the file exist
   4. AUCell        — compute per-cell regulon activity AUC scores
   5. Query / Plot  — filter network for a gene set, produce hub-and-spoke figure
 
+Steps 1–4 depend only on the input h5ad and are cached under
+`all_genes_networks/{h5ad_stem}/`, shared across every run of the same dataset.
+The per-invocation, gene-list-specific outputs (Step 5) go to a dated run dir.
+
 Output structure:
-  results/tf_network/{dataset_name}_{YYYYMMDD}/
-    seacells/seacells_aggregated.h5ad
-    grn/adjacencies.tsv
-    ctx/regulons.csv
-    aucell/auc_matrix.csv
-    data/tf_targets_{gene_list_stem}.csv
-    figures/tf_network_{gene_list_stem}.png
-    metadata/pipeline_output.log
+  results/tf_network/
+    all_genes_networks/{h5ad_stem}/      ← reusable cache (steps 1–4)
+      seacells/seacells_aggregated.h5ad
+      grn/adjacencies.tsv
+      ctx/regulons.csv
+      aucell/auc_matrix.csv
+      metadata/pipeline_output.log
+    {dataset_name}_{YYYYMMDD}/           ← created only when --gene-list is given
+      data/tf_targets_{gene_list_stem}.csv
+      figures/tf_network_{gene_list_stem}.png
+      metadata/pipeline_output.log
+      {config}.yaml
 
 Usage:
   # Run full pipeline:
@@ -916,30 +924,42 @@ def run_tf_network(
     dataset_name = cfg["dataset_name"]
     date_str     = datetime.datetime.now().strftime("%Y%m%d")
     out_root     = cfg["output_folder"]
-    run_dir      = out_root / f"{dataset_name}_{date_str}"
-    run_dir.mkdir(parents=True, exist_ok=True)
 
-    shutil.copy2(cfg["_config_path"], run_dir / Path(config_path).name)
+    # Steps 1–4 depend only on the input h5ad → cache them per h5ad stem so
+    # subsequent runs (different dates, different gene lists) reuse them.
+    h5ad_stem = Path(cfg["h5ad_path"]).stem
+    cache_dir = out_root / "all_genes_networks" / h5ad_stem
+    cache_dir.mkdir(parents=True, exist_ok=True)
 
-    meta_dir = run_dir / "metadata"
-    meta_dir.mkdir(exist_ok=True)
+    # Per-invocation dir — only created when a gene list is being queried.
+    run_dir = None
+    if gene_list_path:
+        run_dir = out_root / f"{dataset_name}_{date_str}"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(cfg["_config_path"], run_dir / Path(config_path).name)
+
+    log_root = run_dir if run_dir else cache_dir
+    meta_dir = log_root / "metadata"
+    meta_dir.mkdir(parents=True, exist_ok=True)
 
     with _log_to_file(meta_dir / "pipeline_output.log"):
         print(f"\n{'='*62}")
         print(f"  TF Network — {dataset_name}")
-        print(f"  Output: {run_dir}")
+        print(f"  Cache:  {cache_dir}")
+        if run_dir:
+            print(f"  Run:    {run_dir}")
         print(f"{'='*62}\n")
 
-        # ── Pipeline steps ───────────────────────────────────────────────────
+        # ── Pipeline steps (cached, keyed by h5ad) ───────────────────────────
         if not query_only:
-            meta_ad      = run_aggregation(cfg, run_dir)
-            adj          = run_grn(meta_ad, cfg, run_dir)
-            regulons_csv = run_ctx(adj, meta_ad, cfg, run_dir)
-            run_aucell(meta_ad, regulons_csv, adj, cfg, run_dir)
+            meta_ad      = run_aggregation(cfg, cache_dir)
+            adj          = run_grn(meta_ad, cfg, cache_dir)
+            regulons_csv = run_ctx(adj, meta_ad, cfg, cache_dir)
+            run_aucell(meta_ad, regulons_csv, adj, cfg, cache_dir)
         else:
             # Load existing results
-            adj_path = run_dir / "grn" / "adjacencies.tsv"
-            reg_path = run_dir / "ctx" / "regulons.csv"
+            adj_path = cache_dir / "grn" / "adjacencies.tsv"
+            reg_path = cache_dir / "ctx" / "regulons.csv"
             if not adj_path.exists():
                 raise FileNotFoundError(
                     f"adjacencies.tsv not found at {adj_path}.\n"
@@ -949,7 +969,7 @@ def run_tf_network(
             adj          = pd.read_csv(adj_path, sep="\t")
             regulons_csv = pd.read_csv(reg_path) if reg_path.exists() else None
 
-        # ── Gene set query + plot ────────────────────────────────────────────
+        # ── Gene set query + plot (per-invocation, dated) ────────────────────
         if gene_list_path:
             gene_set      = load_gene_set(gene_list_path)
             gene_list_stem = Path(gene_list_path).stem
@@ -978,7 +998,11 @@ def run_tf_network(
                     title=f"TF Regulatory Networks — {gene_list_stem}",
                 )
 
-        print(f"\nDone → {run_dir}")
+        if run_dir:
+            print(f"\nDone → {run_dir}")
+        else:
+            print(f"\nDone → cache built/refreshed at {cache_dir}")
+            print("  Provide --gene-list <CSV> on the next run to query this cache.")
 
 
 # ---------------------------------------------------------------------------
