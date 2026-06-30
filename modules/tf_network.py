@@ -222,6 +222,43 @@ def _aggregate_leiden(adata: sc.AnnData, cfg: dict) -> sc.AnnData:
     return meta_ad
 
 
+def _ensure_gene_symbols(adata: sc.AnnData) -> sc.AnnData:
+    """
+    Make sure adata.var_names are HGNC gene symbols (not Ensembl IDs).
+    First checks for an existing symbol column in adata.var; falls back to
+    mygene lookup if var_names still look like Ensembl IDs. Required for
+    downstream TF matching against allTFs_hg38.txt (HGNC symbols).
+    """
+    import sys as _sys
+    _sys.path.insert(0, str(Path(__file__).parent))
+    from specificity_score_calculations import (
+        looks_like_ensembl,
+        convert_ensembl_to_symbol,
+        make_unique_gene_symbols,
+    )
+
+    # Strategy A: a var column already holds symbols
+    for col in ("gene_symbol", "gene_symbols", "Gene", "gene", "name", "names"):
+        if col in adata.var.columns:
+            symbols = adata.var[col].astype(str).tolist()
+            if any(s and not looks_like_ensembl(s) for s in symbols):
+                print(f"  Using gene symbols from adata.var['{col}']")
+                adata.var_names = pd.Index(make_unique_gene_symbols(symbols))
+                return adata
+
+    # Strategy B: var_names look like Ensembl IDs → convert via mygene
+    current = adata.var_names.astype(str).tolist()
+    if any(looks_like_ensembl(g) for g in current):
+        print("  Detected Ensembl IDs in var_names — converting to gene symbols (mygene)...")
+        symbols   = convert_ensembl_to_symbol(current)
+        n_changed = sum(1 for a, b in zip(current, symbols) if a != b)
+        adata.var_names = pd.Index(symbols)
+        print(f"  Converted: {n_changed:,} IDs → symbols  "
+              f"(total var_names: {len(symbols):,})")
+
+    return adata
+
+
 def run_aggregation(cfg: dict, out_dir: Path) -> sc.AnnData:
     out_file = out_dir / "seacells" / "seacells_aggregated.h5ad"
     if out_file.exists():
@@ -238,6 +275,10 @@ def run_aggregation(cfg: dict, out_dir: Path) -> sc.AnnData:
     if chemistry and "Chemistry" in adata.obs.columns:
         adata = adata[adata.obs["Chemistry"] == chemistry].copy()
         print(f"  Filtered to chemistry={chemistry}: {adata.n_obs:,} cells")
+
+    # Convert Ensembl IDs → HGNC symbols if needed (must happen before the
+    # protein-coding filter and the TF-matching step downstream).
+    adata = _ensure_gene_symbols(adata)
 
     # Normalise if not already done (check if max value looks raw)
     import scipy.sparse as sp
@@ -325,6 +366,20 @@ def run_grn(meta_ad: sc.AnnData, cfg: dict, out_dir: Path) -> pd.DataFrame:
     tf_idx  = [gene_names.index(g) for g in tf_cols]
     X_tfs   = X[:, tf_idx]
 
+    if len(tf_cols) == 0:
+        sample_genes = list(gene_names[:5])
+        sample_tfs   = (_load_tf_list(Path(str(tf_list_path)))[:5]
+                        if tf_list_path and Path(str(tf_list_path)).exists()
+                        else [])
+        raise RuntimeError(
+            "No TFs from the TF list match the gene names in the expression matrix.\n"
+            f"  Gene symbols in matrix (first 5): {sample_genes}\n"
+            f"  TFs in list       (first 5): {sample_tfs}\n"
+            "  Likely cause: different gene-symbol convention (e.g. Ensembl IDs vs HGNC symbols).\n"
+            f"  TF list path: {tf_list_path}\n"
+            f"  h5ad path:    {cfg['h5ad_path']}"
+        )
+
     n_workers     = int(scenic_cfg.get("n_workers", 4))
     n_estimators  = int(scenic_cfg.get("n_estimators", 500))
     print(f"  {meta_ad.n_obs} meta-cells × {len(gene_names):,} target genes, "
@@ -346,6 +401,19 @@ def run_grn(meta_ad: sc.AnnData, cfg: dict, out_dir: Path) -> pd.DataFrame:
     )
 
     all_pairs = [row for pairs in results for row in pairs]
+    if not all_pairs:
+        n_constant = sum(1 for i in range(len(gene_names))
+                         if float(np.std(X[:, i])) < 1e-6)
+        raise RuntimeError(
+            "GRN inference produced 0 TF-target pairs.\n"
+            f"  meta-cells:        {meta_ad.n_obs}\n"
+            f"  target genes:      {len(gene_names)}\n"
+            f"  constant targets:  {n_constant}  (std < 1e-6, skipped by GENIE3)\n"
+            f"  TFs:               {len(tf_cols)}\n"
+            "  If meta-cells is very small (≤ 3), aggregation collapsed your data — check\n"
+            "  the aggregation method/Leiden column. If most targets are 'constant', the\n"
+            "  expression matrix is likely already z-scored or otherwise pre-processed."
+        )
     adj = (pd.DataFrame(all_pairs)
            .sort_values("importance", ascending=False)
            .reset_index(drop=True))
