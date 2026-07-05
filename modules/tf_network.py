@@ -73,7 +73,7 @@ _TF_CMAP = LinearSegmentedColormap.from_list(
 # ---------------------------------------------------------------------------
 
 @contextlib.contextmanager
-def _log_to_file(log_path: Path):
+def _log_to_file(*log_paths: Path):
     class _Tee:
         def __init__(self, *streams): self._streams = streams
         def write(self, s):
@@ -82,13 +82,15 @@ def _log_to_file(log_path: Path):
             for st in self._streams: st.flush()
         @property
         def encoding(self): return getattr(self._streams[0], "encoding", "utf-8")
-    orig = sys.stdout
-    with open(log_path, "w", encoding="utf-8") as fh:
-        sys.stdout = _Tee(orig, fh)
-        try:
-            yield
-        finally:
-            sys.stdout = orig
+    orig    = sys.stdout
+    handles = [open(p, "w", encoding="utf-8") for p in log_paths]
+    try:
+        sys.stdout = _Tee(orig, *handles)
+        yield
+    finally:
+        sys.stdout = orig
+        for fh in handles:
+            fh.close()
 
 
 # ---------------------------------------------------------------------------
@@ -235,6 +237,7 @@ def _ensure_gene_symbols(adata: sc.AnnData) -> sc.AnnData:
         looks_like_ensembl,
         convert_ensembl_to_symbol,
         make_unique_gene_symbols,
+        _HAS_MYGENE,
     )
 
     # Strategy A: a var column already holds symbols
@@ -248,14 +251,28 @@ def _ensure_gene_symbols(adata: sc.AnnData) -> sc.AnnData:
 
     # Strategy B: var_names look like Ensembl IDs → convert via mygene
     current = adata.var_names.astype(str).tolist()
-    if any(looks_like_ensembl(g) for g in current):
-        print("  Detected Ensembl IDs in var_names — converting to gene symbols (mygene)...")
-        symbols   = convert_ensembl_to_symbol(current)
-        n_changed = sum(1 for a, b in zip(current, symbols) if a != b)
-        adata.var_names = pd.Index(symbols)
-        print(f"  Converted: {n_changed:,} IDs → symbols  "
-              f"(total var_names: {len(symbols):,})")
+    if not any(looks_like_ensembl(g) for g in current):
+        return adata  # already symbols (or some other format we leave alone)
 
+    if not _HAS_MYGENE:
+        raise RuntimeError(
+            "var_names contain Ensembl IDs but the `mygene` package is not installed.\n"
+            "Install it in the cluster's conda env:\n"
+            "  pip install mygene\n"
+            "Or add an HGNC 'gene_symbol' column to adata.var before running."
+        )
+
+    print("  Detected Ensembl IDs in var_names — converting to gene symbols (mygene)...")
+    symbols   = convert_ensembl_to_symbol(current)
+    n_changed = sum(1 for a, b in zip(current, symbols) if a != b)
+    if n_changed == 0:
+        raise RuntimeError(
+            "mygene conversion returned no symbol changes. "
+            "Network lookup may have failed — check connectivity from the worker node."
+        )
+    adata.var_names = pd.Index(symbols)
+    print(f"  Converted: {n_changed:,} IDs → symbols  "
+          f"(total var_names: {len(symbols):,})")
     return adata
 
 
@@ -263,7 +280,13 @@ def run_aggregation(cfg: dict, out_dir: Path) -> sc.AnnData:
     out_file = out_dir / "seacells" / "seacells_aggregated.h5ad"
     if out_file.exists():
         print(f"[SKIP] Aggregation — loading existing: {out_file.name}")
-        return sc.read_h5ad(out_file)
+        meta_ad      = sc.read_h5ad(out_file)
+        before_names = list(meta_ad.var_names)
+        meta_ad      = _ensure_gene_symbols(meta_ad)
+        if list(meta_ad.var_names) != before_names:
+            print("  Cached var_names converted to gene symbols — overwriting cache.")
+            meta_ad.write_h5ad(out_file)
+        return meta_ad
 
     print("\n[Step 1] Aggregation")
     out_file.parent.mkdir(parents=True, exist_ok=True)
@@ -1020,7 +1043,21 @@ def run_tf_network(
     meta_dir = log_root / "metadata"
     meta_dir.mkdir(parents=True, exist_ok=True)
 
-    with _log_to_file(meta_dir / "pipeline_output.log"):
+    # Timestamped filename so re-runs don't overwrite earlier logs.
+    ts_str    = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_paths = [meta_dir / f"pipeline_output_{ts_str}.log"]
+
+    # First-time-only mirror to cache_dir: if we're logging to run_dir (a gene
+    # list was provided) AND no cache log exists yet, tee the very first run's
+    # output into the cache so the record of how it was built is preserved.
+    if run_dir is not None:
+        cache_log = cache_dir / "metadata" / "pipeline_output.log"
+        if not cache_log.exists():
+            cache_log.parent.mkdir(parents=True, exist_ok=True)
+            log_paths.append(cache_log)
+            print(f"(first run on this data — mirroring log to {cache_log})")
+
+    with _log_to_file(*log_paths):
         print(f"\n{'='*62}")
         print(f"  TF Network — {dataset_name}")
         print(f"  Cache:  {cache_dir}")
