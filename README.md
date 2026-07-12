@@ -35,6 +35,20 @@ Core analysis scripts.
 - `tau_pipeline.py`: computes global Tau specificity scores for every gene across all groups in each condition column. Accepts the same YAML config as the GES pipeline. Saves one `tau_scores_{column}.csv` per column. Run this before `search_enrichment_gsea_tau_filtered.py`.
 - `search_enrichment_gsea_tau_filtered.py`: drop-in replacement for `run_gsea()` that first filters genes to those in the top 10% of Tau (configurable), then applies the GES threshold, and runs prerank GSEA. Results are written to `GSEA_tau_filtered/` so they coexist with standard GSEA outputs.
 
+**TF regulatory network pipeline**
+
+- `tf_network.py`: infers a transcription-factor → target regulatory network from an `.h5ad` dataset (aggregation → GRN inference → cisTarget → AUCell), then filters it against a gene list of interest and produces a hub-and-spoke or connected-graph figure. The four heavy steps are cached per h5ad so subsequent gene-list queries are cheap.
+
+**Alternative enrichment / gene-module pipelines**
+
+Standalone pipelines that don't depend on the GES → GSEA flow (or use it in a different way):
+
+- `deg_analysis.py`: two-step pipeline that computes per-condition DEGs (Wilcoxon, condition vs rest, FDR < 0.05 and log2FC > 0.2), then tests whether an input gene list is enriched in each condition's upregulated DEG set via a hypergeometric test. Independent of GES, tau, and GSEA.
+- `hypergeometric_enrichment.py`: pure hypergeometric enrichment — for each dataset × column × condition, tests whether the input gene list overlaps significantly with the genes expressed in that condition, against a background of all genes expressed across conditions in the column. BH-corrected within each column.
+- `gsea_es_slope.py`: runs `gseapy.prerank` on genes ranked by GES score and additionally computes an ES-slope metric (steepness of the enrichment curve up to its peak) with a permutation p-value. Useful for distinguishing enrichments concentrated at the very top of the ranking from more spread-out signals.
+- `gene_clustering.py`: discovers gene modules by clustering genes on their GES-score profile across conditions (PCA → neighbor graph → UMAP → Leiden). Supports single-dataset configs and multi-dataset "combined" configs that run several scopes in one invocation and save to sibling subfolders.
+- `gene_axes_scatter.py`: 2-D scatter of genes on two user-defined "axis scores" derived from GES (e.g. `X = mean_GES(Neuron, Neuroblast) − mean_GES(Radial glia, NPC)`; `Y = mean_GES(S, G2M, PostM) − GES(Non-cycling)`). Genes can be colored by group (from a gene-list CSV) or by Leiden cluster (from the `gene_clustering.py` output).
+
 **Downstream term extraction**
 
 - `go_terms_pipeline.py`: runs Enrichr ORA (via `gseapy`) on leading genes extracted from a `GSEA_final_summary.csv`. Queries GO Biological Process, GO Molecular Function, GO Cellular Component, KEGG, and WikiPathways by default. Saves significant-hit tables per condition.
@@ -65,6 +79,13 @@ YAML configs for both steps of the pipeline:
   - scope: `cortex`, `cortex_cell_phase`, `all_layers`
   - chemistry: plain (v3) and `_v2` suffix
   - tau filtering: plain and `_tau_filtered` suffix (six tau-filtered configs exist, covering both chemistries and all three scopes)
+  - GES threshold: `_no_ges_treshold` suffix for the current recommended flow (see "Current recommended enrichment config" below)
+- `deg_*.yaml`: configs for the standalone DEG-based enrichment pipeline (`deg_analysis.py`). Independent of GES / tau / GSEA — computes per-condition Wilcoxon DEGs and tests a gene list against each condition's upregulated set via a hypergeometric test.
+- `hypergeometric_*.yaml`: configs for pure hypergeometric enrichment (`hypergeometric_enrichment.py`) — no DEGs, no GES, no GSEA. Tests whether a gene list overlaps significantly with genes expressed in each condition, using all expressed genes as the background.
+- `gsea_es_slope_*.yaml`: configs for the GSEA + slope-metric pipeline (`gsea_es_slope.py`). Runs `gseapy.prerank` and additionally computes an ES-slope metric (how sharply the enrichment peak forms at the top of the ranked list) with a permutation p-value.
+- `gene_clusters_*.yaml`: configs for the gene-clustering pipeline (`gene_clustering.py`) — Leiden clustering of genes by their GES profile across all conditions. Supports single-dataset configs and multi-dataset "combined" configs that run several scopes in one invocation.
+- `gene_axes_scatter_*.yaml`: configs for the 2-D gene-axes scatter plot (`gene_axes_scatter.py`), where each gene is positioned along two user-defined axis scores derived from GES (e.g. differentiation vs cell-cycle).
+- `tf_network_*.yaml`: configs for the TF regulatory network pipeline. One per dataset variant (e.g. `tf_network_cortex_v3_config.yaml`).
 
 ### `notebooks/`
 
@@ -79,6 +100,12 @@ Cluster-oriented SLURM launchers for common runs.
 - `python_gsea_enrichment_folder_all_configs.sh`: run every `*.csv` gene list in a chosen folder across the main enrichment configs.
 - `python_gsea_tau_filtered.sh`: run tau-filtered GSEA for one gene list across all three scope configs (cortex, cell_phase, all_layers).
 - `python_gsea_tau_comparison.sh`: run the full 12-variant batch comparison (v2/v3 × tau/no-tau × all scopes) for every gene list in a folder, producing one summary CSV per gene list.
+- `python_tf_network.sh`: run the TF regulatory network pipeline. Accepts `--config`, `--gene-list`, and `--query-only`.
+- `python_deg_analysis.sh`: run the DEG + hypergeometric enrichment pipeline for one gene list.
+- `python_hypergeometric.sh`: run standalone hypergeometric enrichment for one gene list.
+- `python_gsea_es_slope.sh`: run the GSEA + slope-metric pipeline for one gene list.
+- `python_gene_clusters.sh`: run the GES-profile gene clustering pipeline.
+- `python_gene_axes_scatter.sh`: run the 2-D gene-axes scatter plot generator.
 - `python_go_terms.sh`: run GO/pathway Enrichr ORA on leading genes from a GSEA summary CSV.
 - `python_omim.sh`: run OMIM disease Enrichr ORA on leading genes from a GSEA summary CSV.
 - `python_gene_expression_summary.sh`, `python_dataset_analysis_helper.sh`, `python_early_late.sh`, `python_pseudotime.sh`, `python_correlation_matrix.sh`: cluster launchers for the matching analysis helper modules.
@@ -144,6 +171,51 @@ Important fields:
 - `analysis_mode`: `gsea`, `deseq`, or `both`
 - `gsea.min_ges_score_threshold`: filter applied before GSEA
 - `column_conditions_for_gsea`: which GES result files to use
+
+### Current recommended enrichment config
+
+After iterating on several variants (with/without Tau, with/without a GES cutoff) we settled on the following defaults for new enrichment runs. Two earlier options are **not** recommended anymore:
+
+- **No Tau filtering.** The Tau-filtered variants produced results that were not consistently interpretable across scopes and chemistries, so we no longer run them for new work. The Tau pipeline itself and the `_tau_filtered` configs are kept in the repo for historical comparison but are not part of the standard flow.
+- **No GES threshold at prerank time.** We used to drop genes with `ges_score` below a cutoff before running GSEA. That risks throwing away signal, so the current recommendation is to pass **every gene** to `gseapy.prerank` and let the ranked GES score do the work.
+
+What GES is used for now:
+
+- **Ranking metric for GSEA prerank.** GES is still the per-condition score that ranks genes for `gseapy.prerank`.
+- **Post-hoc sanity check on leading genes only.** After GSEA finishes, if `ges_score_threshold` is `None` and every leading gene in a term has `ges_score < 1`, the enrichment plot is marked with diagonal stripes and a `"All leading genes GES < 1"` label so a weak-signal hit is visible at a glance (see `plot_enhanced_gsea` in `search_enrichment_gsea.py`).
+
+The concrete config change is a single line — set `min_ges_score_threshold: 0` (or omit / set to `null`) in the `gsea:` block:
+
+```yaml
+run_name: "microcephaly_no_ges_threshold"
+ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules/"
+
+output_folder: "results/enrichment_results/"
+ges_results_folder: "results/ges_score_results/ges_score_for_cortex_YYYYMMDD"
+
+gene_list_path: "data/genes/microcephaly_genes.csv"
+gmt_folder: "data/genes/"
+
+analysis_mode: "gsea"
+
+gsea:
+  min_ges_score_threshold: 0   # no pre-filter — GES is only the ranking metric
+
+column_conditions_for_gsea:
+  Region:
+    - "Forebrain"
+    - "Midbrain"
+    - "Hindbrain"
+  CellClass:
+    - "Radial glia"
+    - "Neuron"
+    - "Glioblast"
+
+keep_only_significant: false
+nes_keep_threshold: 1.5
+```
+
+For examples committed to the repo, look at any `enrichment_*_no_ges_treshold.yaml` file — those follow this template. Avoid the `_tau_filtered` configs for new analyses unless you are specifically reproducing an older result.
 
 ## Full GES → GSEA workflow
 
@@ -323,6 +395,163 @@ run_gsea_tau_filtered(
 ```
 
 Results are written to `GSEA_tau_filtered/` under the enrichment output folder, so they coexist with standard `GSEA/` outputs. The summary CSV includes a `tau_percentile_cutoff` column for traceability.
+
+## TF regulatory network workflow
+
+The `tf_network.py` module builds a transcription-factor → target regulatory network from a single-cell dataset and then filters it against a gene list of interest.
+
+### Pipeline overview
+
+1. **Aggregation** — pseudo-bulk by Leiden cluster (default) or SEACells meta-cells
+2. **GRN inference** — one `ExtraTreesRegressor` per target gene (GENIE3-style), with TFs from `allTFs_hg38.txt` as features
+3. **cisTarget** — pySCENIC motif-based pruning of TF → target edges (uses `.feather` ranking databases from https://resources.aertslab.org/cistarget/)
+4. **AUCell** — per-cell regulon activity scores
+5. **Query + plot** — filter the network to a gene set of interest, produce a hub-and-spoke (`hub_spoke`) or connected-graph (`connected`) figure
+
+Steps 1–4 depend only on the input h5ad (and chemistry filter), so they are **cached** under `results/tf_network/all_genes_networks/{h5ad_stem}_{chemistry}/`. Every subsequent run against the same dataset reuses that cache — you never wait for GRN inference twice, no matter how many gene lists you query.
+
+### Output structure
+
+```text
+results/tf_network/
+  all_genes_networks/{h5ad_stem}_{chemistry}/     ← shared cache (steps 1–4)
+    seacells/seacells_aggregated.h5ad
+    grn/adjacencies.tsv
+    ctx/regulons.csv
+    aucell/auc_matrix.csv
+    metadata/pipeline_output.log                  ← from the very first build only
+    {config}.yaml
+  {dataset_name}_{YYYYMMDD}/                      ← per-invocation, only when --gene-list
+    data/tf_targets_{gene_list_stem}.csv
+    figures/tf_network_{gene_list_stem}.png
+    metadata/pipeline_output_{YYYYMMDD_HHMMSS}.log
+    {config}.yaml
+```
+
+### Running it
+
+```bash
+# Full pipeline, no query — just builds/refreshes the cache:
+sbatch running_scripts/python_tf_network.sh
+
+# Full pipeline + query a gene set (reuses cache if present):
+sbatch running_scripts/python_tf_network.sh --gene-list data/genes/my_genes.csv
+
+# Query-only against the existing cache:
+sbatch running_scripts/python_tf_network.sh --gene-list data/genes/my_genes.csv --query-only
+
+# Pick a different config:
+sbatch running_scripts/python_tf_network.sh \
+  --config config_files/tf_network_cortex_v3_config.yaml \
+  --gene-list data/genes/my_genes.csv
+```
+
+Or run it locally with:
+
+```bash
+python modules/tf_network.py config_files/tf_network_cortex_v3_config.yaml \
+  --gene-list data/genes/my_genes.csv
+```
+
+### Config: important fields
+
+Example: `config_files/tf_network_cortex_v3_config.yaml`.
+
+- `dataset_name`: base name for the dated per-query output folder
+- `h5ad_path`: input h5ad (cache is keyed on its stem plus `chemistry`)
+- `chemistry`: optional `Chemistry` filter (`v3`, `v2`, or omit for no filter). **v2 and v3 get separate caches.**
+- `aggregation.method`: `leiden` (fast, uses precomputed clusters) or `seacells` (needs `pip install SEACells`, ideally a GPU)
+- `aggregation.leiden_column`: obs column to pseudo-bulk on (only for `method: leiden`)
+- `seacells.cells_per_metacell`: target cells per meta-cell (only for `method: seacells` — ignored by the Leiden path)
+- `scenic.tf_list`: HGNC TF list (e.g. `allTFs_hg38.txt`)
+- `scenic.rankings_db`, `scenic.motif_annotations`: cisTarget feather databases + motif annotation table
+- `query.min_targets`: minimum gene-set targets per TF to include in the plot
+- `query.top_n_tfs`: how many TFs to show
+- `query.plot_style`: `hub_spoke` (separate subplot per TF) or `connected` (single graph where shared targets appear once)
+
+### Ensembl → HGNC symbol conversion
+
+If your h5ad uses Ensembl IDs in `var_names`, `_ensure_gene_symbols()` (in `tf_network.py`) auto-converts them to HGNC symbols during aggregation. It:
+
+1. First looks for an existing symbol column in `adata.var` (`gene_symbol`, `Gene`, `name`, …) and uses that if present.
+2. Falls back to `mygene` for online lookup (requires `pip install mygene` and network access from the worker node).
+3. Raises a clear error if Ensembl IDs are detected but `mygene` isn't available.
+
+The conversion runs both when the cache is being built and when an old cache is loaded, and rewrites the cached file if it converted anything — so you can inherit a stale cache from before this fix without re-running the pipeline.
+
+## Running on a different dataset
+
+Every pipeline (GES, GSEA, tau, TF network, downstream helpers) reads an `.h5ad` and looks up specific `obs` columns, gene naming conventions, and optional filters. When you switch to a new dataset the same checklist applies to all of them.
+
+### 1. Inspect the h5ad first
+
+```python
+import scanpy as sc
+adata = sc.read_h5ad("data/your_new.h5ad")
+print(adata)
+print(adata.obs.columns.tolist())
+print(adata.var_names[:5])
+print(adata.obs["Chemistry"].value_counts() if "Chemistry" in adata.obs else "no Chemistry col")
+```
+
+You want to know: which obs columns are available, whether `var_names` are HGNC symbols or Ensembl IDs, and whether a chemistry filter is applicable.
+
+### 2. Point the config at the new file
+
+- **GES / Tau configs**: `data_path`
+- **TF network configs**: `h5ad_path`
+- **Enrichment configs**: `ges_results_folder` (indirectly, once GES has run on the new h5ad)
+
+Update the `chemistry` field too — set it to a value that appears in the new `obs["Chemistry"]`, or set it to `null` / omit it entirely if the dataset has no chemistry split.
+
+### 3. Match obs column names
+
+Different datasets use different names for the same concept. Adjust where they're referenced:
+
+- **GES `column_conditions`**: every key must exist as a column in `adata.obs`, and every value in the list must appear in that column.
+- **TF network `aggregation.leiden_column`**: if your h5ad stores clusters under `leiden_res1` (or anything other than `leiden`), set it here.
+- **Gene expression summary**: obs columns come in via CLI flags (`--region-column`, `--wilcoxon-region`).
+- **Early/Mid/Late heatmap** and **pseudotime heatmap**: expect a numeric `Age` column; check its dtype.
+
+### 4. Handle Ensembl vs HGNC gene symbols
+
+Several pipelines expect HGNC symbols (TF list matching, GMT lookup, mygene queries). Both `specificity_score_calculations.py` and `tf_network.py` auto-convert Ensembl IDs when needed, but the conversion goes online via `mygene`:
+
+- Install once in the cluster env: `pip install mygene`
+- Prefer to store symbols in a `gene_symbol` (or `Gene`, `name`, …) column in `adata.var` — that avoids the network call.
+
+If neither is available, the pipelines will fail with a clear error rather than silently mismatching.
+
+### 5. Adjust cell-count-dependent parameters
+
+- **SEACells `cells_per_metacell`** (TF network): implicitly sets meta-cell count as `n_cells // cells_per_metacell`. Tune if your dataset is much larger or smaller than the reference.
+- **Leiden resolution**: `_aggregate_leiden` uses whatever clusters exist in the obs column — the *number of clusters becomes the number of meta-cells*. A dataset with 40 pre-computed Leiden clusters gives 40 meta-cells regardless of cell count. Precompute a finer clustering (e.g. `resolution=3.0`) before running if you want more granularity.
+- **GES `expression_threshold`**: a per-cell-type fraction filter. On small datasets a threshold that removed few genes on the big dataset may drop most of them.
+
+### 6. Cache invalidation
+
+- **TF network cache** is keyed by `Path(h5ad_path).stem + "_" + chemistry`. If you overwrite the h5ad in place while keeping the same filename, delete the matching cache folder before re-running:
+
+  ```bash
+  rm -rf results/tf_network/all_genes_networks/your_new_v3/
+  ```
+
+- **GES / enrichment output folders** are date-stamped, not content-hashed. Same-day re-runs with different config values overwrite the earlier folder — either wait a day or rename the config's `name_of_run` / `run_name`.
+
+### 7. Create a matching config
+
+Rather than editing an existing config in place, copy the closest one and rename it after the new dataset. For example, for a TF network run on a new dataset:
+
+```bash
+cp config_files/tf_network_cortex_v3_config.yaml \
+   config_files/tf_network_your_new_v3_config.yaml
+# edit dataset_name, h5ad_path, chemistry, aggregation.leiden_column, …
+sbatch running_scripts/python_tf_network.sh \
+  --config config_files/tf_network_your_new_v3_config.yaml \
+  --gene-list data/genes/my_genes.csv
+```
+
+That way both dataset variants stay reproducible and you don't lose the config that built the previous cache.
 
 ## Cross-variant batch comparison (v2 / v3 × tau / no-tau)
 
