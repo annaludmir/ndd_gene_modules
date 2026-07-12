@@ -553,61 +553,6 @@ sbatch running_scripts/python_tf_network.sh \
 
 That way both dataset variants stay reproducible and you don't lose the config that built the previous cache.
 
-## Cross-variant batch comparison (v2 / v3 × tau / no-tau)
-
-To compare enrichment results across chemistries and tau-filtering for a folder of gene lists, use the `enrichment_cal_lists_loop_tau_comparison.py` pipeline.
-
-### What it runs
-
-For each gene-list CSV in the input folder, it executes 12 enrichment variants:
-
-| Scope       | Chemistry | Tau filtered |
-|-------------|-----------|--------------|
-| cortex      | v3        | no           |
-| cortex      | v2        | no           |
-| cortex      | v3        | yes          |
-| cortex      | v2        | yes          |
-| cell_phase  | v3        | no           |
-| cell_phase  | v2        | no           |
-| cell_phase  | v3        | yes          |
-| cell_phase  | v2        | yes          |
-| all_layers  | v3        | no           |
-| all_layers  | v2        | no           |
-| all_layers  | v3        | yes          |
-| all_layers  | v2        | yes          |
-
-Each variant creates its own dated result folder under `results/enrichment_results/`.
-
-### Batch summary output
-
-One CSV is written per gene list:
-
-```text
-results/enrichment_results/{gene_list_stem}_batch_summary_tau_vs_v2_v3_{YYYYMMDD}.csv
-```
-
-The CSV has the same columns as the standard `batch_summary_{date}.csv` produced by `enrichment_cal_lists_loop.py`, plus three extra columns that identify the variant:
-
-| Column        | Values                               |
-|---------------|--------------------------------------|
-| `scope`       | `cortex`, `cell_phase`, `all_layers` |
-| `chemistry`   | `v2`, `v3`                           |
-| `tau_filtered`| `True`, `False`                      |
-
-### Running on the cluster
-
-```bash
-# single gene list
-sbatch running_scripts/python_gsea_tau_comparison.sh data/genes/my_gene_list.csv
-
-# whole folder of gene lists
-sbatch running_scripts/python_gsea_tau_comparison.sh data/genes/my_gene_lists_folder
-```
-
-### Note on v2 tau scores
-
-The v2 tau-filtered configs currently point to the same `tau_scores_dir` as their v3 counterparts. Update the `tau_scores_dir` field in the three `*_tau_filtered_v2.yaml` config files once v2-specific tau scores have been computed with `tau_pipeline.py` on the v2 dataset.
-
 ## GO term and OMIM extraction
 
 Both modules read a `GSEA_final_summary.csv` produced by either GSEA workflow, extract leading genes per condition, and run Enrichr ORA via `gseapy`.
