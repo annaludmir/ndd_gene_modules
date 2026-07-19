@@ -898,6 +898,185 @@ def create_significant_gene_boxplots(
     }
 
 
+def parse_region_pairs(pair_strings):
+    """Parse ["A:B", "C:D"] CLI values into [("A","B"), ("C","D")] tuples."""
+    parsed = []
+    for s in pair_strings:
+        if ":" not in s:
+            raise ValueError(
+                f"--region-pairs entry '{s}' must be in the form REGION_A:REGION_B "
+                f"(e.g. Telencephalon:Diencephalon)."
+            )
+        a, b = s.split(":", 1)
+        a, b = a.strip(), b.strip()
+        if not a or not b:
+            raise ValueError(f"--region-pairs entry '{s}' has an empty region name.")
+        parsed.append((a, b))
+    return parsed
+
+
+def build_raw_region_expression_dataframe(adata, genes, region_col, sym_col="Gene"):
+    """Return a per-cell expression table for `genes` plus raw region labels
+    (no meta-region collapse)."""
+    import scipy.sparse as sp
+
+    if sym_col not in adata.var.columns:
+        raise KeyError(f"Column '{sym_col}' not found in adata.var")
+    if region_col not in adata.obs.columns:
+        raise KeyError(f"Column '{region_col}' not found in adata.obs")
+
+    sym2var = (
+        pd.Series(adata.var_names.values, index=adata.var[sym_col].astype(str))
+        .dropna()
+        .to_dict()
+    )
+    found_genes = [gene for gene in genes if gene in sym2var]
+    if not found_genes:
+        raise ValueError("None of the requested genes were found in adata.var[sym_col].")
+
+    varnames = [sym2var[gene] for gene in found_genes]
+    X = adata[:, varnames].X
+    if sp.issparse(X):
+        X = X.toarray()
+
+    expr_df = pd.DataFrame(X, columns=found_genes)
+    expr_df["raw_region"] = adata.obs[region_col].astype(str).to_numpy()
+    return expr_df, found_genes
+
+
+def create_custom_region_pair_outputs(
+    adata,
+    genes,
+    region_pairs,
+    output_dir,
+    region_col="Region",
+    sym_col="Gene",
+    cell_filter_col="CellClass",
+    cell_filter_val=None,
+    normalize=True,
+):
+    """For each (A, B) pair of raw region names, save one boxplot per leading gene
+    (A vs B, expressing cells only) plus a descriptive per-gene CSV. Skips the
+    meta-region collapse entirely — regions are read from `adata.obs[region_col]`.
+    """
+    if cell_filter_val is not None:
+        print(f"Filtering cells: {cell_filter_col} == '{cell_filter_val}'")
+        adata_f = adata[adata.obs[cell_filter_col].astype(str) == str(cell_filter_val)].copy()
+        if adata_f.n_obs == 0:
+            raise ValueError(
+                f"No cells found for condition '{cell_filter_val}' in adata.obs['{cell_filter_col}']."
+            )
+    else:
+        print("No cell-type filter applied — using all cells.")
+        adata_f = adata.copy()
+
+    if normalize:
+        print("Normalizing...")
+        import scanpy as sc
+        sc.pp.normalize_total(adata_f)
+        sc.pp.log1p(adata_f)
+
+    expr_df, found_genes = build_raw_region_expression_dataframe(
+        adata_f, genes, region_col=region_col, sym_col=sym_col
+    )
+    total_cells_by_region = expr_df["raw_region"].value_counts()
+
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    palette = ["#ff5a52", "#4c78a8"]
+    n_saved_plots = 0
+    written_csvs = []
+    all_rows = []
+
+    available_regions = set(expr_df["raw_region"].unique())
+
+    for region_a, region_b in region_pairs:
+        missing = [r for r in (region_a, region_b) if r not in available_regions]
+        if missing:
+            print(f"[skip] Region(s) not in adata.obs['{region_col}']: {missing}")
+            continue
+
+        pair_label = f"{sanitize_name(region_a)}_vs_{sanitize_name(region_b)}"
+        pair_dir   = output_dir / pair_label
+        pair_dir.mkdir(parents=True, exist_ok=True)
+        colors = {region_a: palette[0], region_b: palette[1]}
+
+        n_total_a = int(total_cells_by_region.get(region_a, 0))
+        n_total_b = int(total_cells_by_region.get(region_b, 0))
+
+        pair_rows = []
+        for gene in sorted(found_genes):
+            values_a = expr_df.loc[
+                (expr_df["raw_region"] == region_a) & (expr_df[gene] > 0), gene,
+            ].astype(float).to_numpy()
+            values_b = expr_df.loc[
+                (expr_df["raw_region"] == region_b) & (expr_df[gene] > 0), gene,
+            ].astype(float).to_numpy()
+
+            pair_rows.append({
+                "gene": gene,
+                "region_a": region_a,
+                "region_b": region_b,
+                "n_expressing_cells_a": int(len(values_a)),
+                "n_expressing_cells_b": int(len(values_b)),
+                "n_total_cells_a": n_total_a,
+                "n_total_cells_b": n_total_b,
+                "mean_expr_a":   float(values_a.mean())     if len(values_a) else np.nan,
+                "mean_expr_b":   float(values_b.mean())     if len(values_b) else np.nan,
+                "median_expr_a": float(np.median(values_a)) if len(values_a) else np.nan,
+                "median_expr_b": float(np.median(values_b)) if len(values_b) else np.nan,
+            })
+
+            if len(values_a) == 0 or len(values_b) == 0:
+                continue
+
+            fig, ax = plt.subplots(figsize=(4.5, 4.5))
+            box = ax.boxplot(
+                [values_a, values_b],
+                patch_artist=True,
+                labels=[region_a, region_b],
+                widths=0.55,
+            )
+            for patch, region_name in zip(box["boxes"], [region_a, region_b]):
+                patch.set_facecolor(colors[region_name])
+                patch.set_alpha(0.75)
+            for median in box["medians"]:
+                median.set_color("#222222")
+                median.set_linewidth(1.5)
+
+            subtitle = (
+                "log-normalized, expressing cells only | "
+                f"{region_a} n={len(values_a)}/{n_total_a} | "
+                f"{region_b} n={len(values_b)}/{n_total_b}"
+            )
+            ax.set_title(gene, fontsize=12, pad=12)
+            ax.set_ylabel("log-normalized expression (expressing cells only)", fontsize=10)
+            ax.set_xlabel(region_col, fontsize=10)
+            ax.grid(axis="y", alpha=0.3)
+            ax.set_axisbelow(True)
+            ax.text(0.5, 0.98, subtitle, transform=ax.transAxes,
+                    ha="center", va="top", fontsize=8)
+
+            fig.tight_layout()
+            fig.savefig(pair_dir / f"{sanitize_name(gene)}.png", dpi=300, bbox_inches="tight")
+            plt.close(fig)
+            n_saved_plots += 1
+
+        pair_summary   = pd.DataFrame(pair_rows)
+        pair_csv_path  = pair_dir / "expression_summary.csv"
+        pair_summary.to_csv(pair_csv_path, index=False)
+        written_csvs.append(str(pair_csv_path))
+        all_rows.extend(pair_rows)
+
+    return {
+        "custom_region_pair_boxplots_dir":    str(output_dir),
+        "n_custom_region_pair_boxplots":      int(n_saved_plots),
+        "custom_region_pair_summary_csvs":    written_csvs,
+        "n_custom_region_pair_summary_rows":  len(all_rows),
+    }
+
+
 def summarize_gene_expression_top_region(
     adata,
     genes,
@@ -1055,8 +1234,14 @@ def create_gene_expression_summary(
     export_significant_gene_boxplots=False,
     chemistry=DEFAULT_CHEMISTRY,
     chemistry_col=DEFAULT_CHEMISTRY_COL,
+    region_pairs=None,
 ):
-    """Create long and final gene-expression summaries for a GSEA leading-gene set."""
+    """Create long and final gene-expression summaries for a GSEA leading-gene set.
+
+    If `region_pairs` is provided (list of "A:B" strings), skip the standard
+    meta-region + Wilcoxon flow entirely and instead produce per-gene 2-region
+    boxplots + descriptive CSVs for each requested raw-region pair.
+    """
     summary_info = load_summary_row(gsea_summary_file, condition)
 
     output_dir = Path(output_dir)
@@ -1065,17 +1250,6 @@ def create_gene_expression_summary(
     else:
         output_dir = output_dir / sanitize_name(condition)
     output_dir.mkdir(parents=True, exist_ok=True)
-
-    leading_gene_flags = None
-    if leading_gene_summary_file is not None:
-        condition_gene_sets = load_condition_leading_gene_sets(
-            leading_gene_summary_file,
-            conditions=leading_gene_conditions,
-        )
-        leading_gene_flags = build_leading_gene_flag_columns(
-            summary_info["leading_genes"],
-            condition_gene_sets,
-        )
 
     print("Loading AnnData...")
     import scanpy as sc
@@ -1086,6 +1260,47 @@ def create_gene_expression_summary(
         chemistry=chemistry,
         chemistry_col=chemistry_col,
     )
+
+    # ── Custom raw-region pair flow (replaces the meta-region pipeline) ──────
+    if region_pairs:
+        parsed_pairs = parse_region_pairs(region_pairs)
+        print(
+            f"Custom region-pair mode: {len(parsed_pairs)} pair(s) "
+            f"(skipping Forebrain/Midbrain/Hindbrain summary + Wilcoxon flow)"
+        )
+        custom_result = create_custom_region_pair_outputs(
+            adata,
+            summary_info["leading_genes"],
+            region_pairs=parsed_pairs,
+            output_dir=output_dir / "custom_region_pair_boxplots",
+            region_col=region_col,
+            sym_col=sym_col,
+            cell_filter_col=cell_filter_col,
+            cell_filter_val=cell_filter_val,
+        )
+        return {
+            "output_dir": str(output_dir),
+            "gsea_summary_file": str(Path(gsea_summary_file)),
+            "condition": summary_info["condition"],
+            "condition_column": summary_info["column"],
+            "chemistry": chemistry,
+            "chemistry_column": chemistry_col,
+            "n_input_leading_genes": len(summary_info["leading_genes"]),
+            "region_pairs": [f"{a}:{b}" for a, b in parsed_pairs],
+            **custom_result,
+        }
+
+    # ── Standard meta-region flow ────────────────────────────────────────────
+    leading_gene_flags = None
+    if leading_gene_summary_file is not None:
+        condition_gene_sets = load_condition_leading_gene_sets(
+            leading_gene_summary_file,
+            conditions=leading_gene_conditions,
+        )
+        leading_gene_flags = build_leading_gene_flag_columns(
+            summary_info["leading_genes"],
+            condition_gene_sets,
+        )
 
     long_summary, final_summary, wilcoxon_result = summarize_gene_expression_top_region(
         adata,
@@ -1298,6 +1513,20 @@ def build_arg_parser():
         default=DEFAULT_CHEMISTRY_COL,
         help="Column in adata.obs containing chemistry labels.",
     )
+    parser.add_argument(
+        "--region-pairs",
+        nargs="+",
+        default=None,
+        metavar="REGION_A:REGION_B",
+        help=(
+            "One or more raw-region pairs to compare directly. Bypasses the "
+            "Forebrain/Midbrain/Hindbrain meta-region collapse and the Wilcoxon "
+            "pipeline entirely; instead writes one 2-region boxplot per leading "
+            "gene per pair plus a descriptive CSV. "
+            "Format: RegionA:RegionB [RegionC:RegionD ...]. "
+            "Example: --region-pairs Telencephalon:Diencephalon"
+        ),
+    )
     return parser
 
 
@@ -1321,6 +1550,7 @@ if __name__ == "__main__":
         export_significant_gene_boxplots=args.export_significant_gene_boxplots,
         chemistry=None if args.chemistry == "None" else args.chemistry,
         chemistry_col=args.chemistry_col,
+        region_pairs=args.region_pairs,
     )
 
     print("Saved gene expression summary results:")
