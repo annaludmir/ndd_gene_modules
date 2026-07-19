@@ -26,20 +26,25 @@ module load mamba/mamba-1.5.8
 mamba activate /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new
 cd /miridan-data/annaludmir/ndd_gene_modules
 
-GSEA_SUMMARY_FILE="/miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/Microcephaly All Data (Without Week 5)_threshold_1_20260323/data/enrichment_results/GSEA/GSEA_final_summary.csv"
-LEADING_GENE_SUMMARY_FILE="/miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/microcephaly/Microcephaly Cell Phase_threshold_1_20260222/data/enrichment_results/GSEA/GSEA_final_summary.csv"
+GSEA_SUMMARY_FILE="/miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/autism_strong_no_ges_threshold_threshold_0_20260614/data/enrichment_results/GSEA/GSEA_final_summary.csv"
+# LEADING_GENE_SUMMARY_FILE="/miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/microcephaly/Microcephaly Cell Phase_threshold_1_20260222/data/enrichment_results/GSEA/GSEA_final_summary.csv"
 
+# Custom raw-region pair mode: use Telencephalon leading genes, compare
+# Telencephalon vs Diencephalon expression per gene (boxplots + descriptive CSV).
+# The Wilcoxon / meta-region pipeline is skipped in this mode, so the flags
+# below are commented out.
 mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new python modules/gene_expression_summary.py \
   --h5ad-path data/human_dev.h5ad \
   --gsea-summary-file "$GSEA_SUMMARY_FILE" \
-  --condition Forebrain \
-  --leading-gene-summary-file "$LEADING_GENE_SUMMARY_FILE" \
-  --leading-gene-conditions S G2M G1 PostM Non-cycling \
-  --wilcoxon-region Forebrain \
-  --wilcoxon-compare-all-region-pairs \
-  --export-significant-gene-boxplots \
+  --condition Telencephalon \
+  --region-pairs Telencephalon:Diencephalon \
   --chemistry v3 \
-  --subfolder-name forebrain_gene_expression_summary
+  --subfolder-name autism_strong_telencephalon_gene_expression_summary \
+#  --leading-gene-summary-file "$LEADING_GENE_SUMMARY_FILE" \
+#  --leading-gene-conditions S G2M G1 PostM Non-cycling \
+#  --wilcoxon-region Forebrain \
+#  --wilcoxon-compare-all-region-pairs \
+#  --export-significant-gene-boxplots \
 
 rc=$?
 echo "Python exit code: $rc"
