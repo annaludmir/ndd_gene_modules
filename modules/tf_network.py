@@ -636,6 +636,84 @@ def run_aucell(meta_ad: sc.AnnData, regulons_csv: pd.DataFrame | None,
 
 
 # ---------------------------------------------------------------------------
+# TF → target summary (long-format join of GRN + cisTarget)
+# ---------------------------------------------------------------------------
+
+def run_tf_target_summary(
+    adj: pd.DataFrame,
+    regulons_csv: pd.DataFrame | None,
+    out_dir: Path,
+) -> Path | None:
+    """Long-format TF → target summary joining GRN importance with cisTarget
+    motif support. One row per (TF, target) pair from adjacencies.tsv.
+
+    Columns:
+      TF, target, importance, normalized_importance (0–1 within TF),
+      importance_rank_within_tf (1 = top target for this TF),
+      motif_supported (True if the pair survived cisTarget pruning),
+      confidence: "high"   = motif-supported,
+                  "medium" = not motif-supported but top-decile importance for the TF,
+                  "low"    = everything else.
+    """
+    out_file = out_dir / "tf_target_summary.csv"
+    if out_file.exists():
+        print(f"[SKIP] TF-target summary — using existing: {out_file.name}")
+        return out_file
+
+    if adj is None or adj.empty:
+        print("\n[Skip] TF-target summary — no adjacencies available.")
+        return None
+
+    print("\n[Step 4b] TF-target summary")
+
+    summary = adj.copy()
+    summary["importance"] = summary["importance"].astype(float)
+
+    summary["importance_rank_within_tf"] = (
+        summary.groupby("TF")["importance"]
+        .rank(method="min", ascending=False)
+        .astype(int)
+    )
+    summary["normalized_importance"] = summary.groupby("TF")["importance"].transform(
+        lambda x: (x - x.min()) / (x.max() - x.min() + 1e-12)
+    )
+
+    motif_pairs: set[tuple[str, str]] = set()
+    if regulons_csv is not None and not regulons_csv.empty:
+        for _, row in regulons_csv.iterrows():
+            tf = str(row["TF"])
+            for target in str(row.get("targets", "")).split(";"):
+                target = target.strip()
+                if target:
+                    motif_pairs.add((tf, target))
+    summary["motif_supported"] = [
+        (str(t), str(g)) in motif_pairs
+        for t, g in zip(summary["TF"], summary["target"])
+    ]
+
+    def _label(row):
+        if row["motif_supported"]:
+            return "high"
+        if row["normalized_importance"] >= 0.9:
+            return "medium"
+        return "low"
+    summary["confidence"] = summary.apply(_label, axis=1)
+
+    summary = summary[[
+        "TF", "target", "importance", "normalized_importance",
+        "importance_rank_within_tf", "motif_supported", "confidence",
+    ]].sort_values(["TF", "importance_rank_within_tf"])
+
+    summary.to_csv(out_file, index=False)
+    n_high = int((summary["confidence"] == "high").sum())
+    n_med  = int((summary["confidence"] == "medium").sum())
+    n_low  = int((summary["confidence"] == "low").sum())
+    print(f"  Saved: {out_file.name}  ({len(summary):,} pairs; "
+          f"high={n_high:,}, medium={n_med:,}, low={n_low:,})")
+    return out_file
+
+
+# ---------------------------------------------------------------------------
 # Step 5 — Gene set query
 # ---------------------------------------------------------------------------
 
@@ -1083,6 +1161,10 @@ def run_tf_network(
             print("[query-only] Loading precomputed adjacencies...")
             adj          = pd.read_csv(adj_path, sep="\t")
             regulons_csv = pd.read_csv(reg_path) if reg_path.exists() else None
+
+        # ── TF-target summary (long-format join of GRN + cisTarget) ──────────
+        # Written to cache_dir so it's shared across all future queries.
+        run_tf_target_summary(adj, regulons_csv, cache_dir)
 
         # ── Gene set query + plot (per-invocation, dated) ────────────────────
         if gene_list_path:
