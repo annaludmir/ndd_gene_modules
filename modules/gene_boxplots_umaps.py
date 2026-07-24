@@ -213,7 +213,7 @@ def export_umaps(adata, genes, sym_col, comparison_columns, out_dir):
             continue
         sc.pl.umap(
             adata, color=var, title=gene, s=5, frameon=False,
-            vmax="p99", show=False,
+            vmin=0, vmax="p99", show=False,
         )
         fig = plt.gcf()
         fig.savefig(gene_dir / f"{sanitize_name(gene)}.png", dpi=300, bbox_inches="tight")
