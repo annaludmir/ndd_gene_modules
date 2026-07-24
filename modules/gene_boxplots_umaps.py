@@ -194,6 +194,50 @@ def export_boxplots(
     return n_saved
 
 
+def _plot_gene_expression_umap(adata, var, gene, out_path):
+    """Direct matplotlib scatter — full control over the colorbar range.
+    Clips negatives to 0 in case the h5ad was mean-centered/scaled upstream.
+    """
+    import scipy.sparse as sp
+
+    umap = adata.obsm["X_umap"]
+    expr = adata[:, var].X
+    if sp.issparse(expr):
+        expr = expr.toarray().reshape(-1)
+    else:
+        expr = np.asarray(expr).reshape(-1)
+
+    n_neg = int((expr < 0).sum())
+    if n_neg:
+        print(f"    [note] {gene}: clipping {n_neg:,} negative values to 0")
+    expr = np.clip(expr, 0, None)
+
+    vmax = float(np.percentile(expr, 99)) if expr.size else 1.0
+    if vmax <= 0:
+        vmax = float(expr.max()) if expr.max() > 0 else 1.0
+
+    # Draw non-expressing (0) cells first so expressing cells sit on top.
+    order  = np.argsort(expr, kind="stable")
+    xs, ys = umap[order, 0], umap[order, 1]
+    cs     = expr[order]
+
+    fig, ax = plt.subplots(figsize=(6, 5))
+    scatter = ax.scatter(
+        xs, ys, c=cs, cmap="viridis",
+        s=5, edgecolors="none",
+        vmin=0, vmax=vmax,
+    )
+    ax.set_title(gene, fontsize=12)
+    ax.set_xticks([]); ax.set_yticks([])
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+
+    plt.colorbar(scatter, ax=ax, shrink=0.75, pad=0.02)
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=300, bbox_inches="tight")
+    plt.close(fig)
+
+
 def export_umaps(adata, genes, sym_col, comparison_columns, out_dir):
     """Per-gene expression UMAP + one UMAP per comparison column."""
     import scanpy as sc
@@ -211,13 +255,7 @@ def export_umaps(adata, genes, sym_col, comparison_columns, out_dir):
         var = sym2var.get(gene)
         if var is None:
             continue
-        sc.pl.umap(
-            adata, color=var, title=gene, s=5, frameon=False,
-            vmin=0, vmax="p99", show=False,
-        )
-        fig = plt.gcf()
-        fig.savefig(gene_dir / f"{sanitize_name(gene)}.png", dpi=300, bbox_inches="tight")
-        plt.close(fig)
+        _plot_gene_expression_umap(adata, var, gene, gene_dir / f"{sanitize_name(gene)}.png")
         n_saved += 1
 
     if comparison_columns:
