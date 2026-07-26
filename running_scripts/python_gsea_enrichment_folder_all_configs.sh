@@ -39,7 +39,11 @@ if [[ ! -d "$GENE_LIST_DIR" ]]; then
 fi
 
 TMP_CONFIG_DIR="$(mktemp -d)"
-trap 'rm -rf "$TMP_CONFIG_DIR"' EXIT
+MANIFEST_FILE="$(mktemp)"
+trap 'rm -rf "$TMP_CONFIG_DIR" "$MANIFEST_FILE"' EXIT
+
+TODAY="$(date +%Y%m%d)"
+OUTPUT_ROOT="results/enrichment_results"
 
 create_temp_config() {
   local source_config="$1"
@@ -78,6 +82,15 @@ run_config() {
 
   mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new \
     python -u "$PIPELINE_SCRIPT" "$temp_config"
+
+  # Record every run dir the pipeline just created (name follows the pattern
+  #   "{run_name}_threshold_{min_ges_score_threshold}_{YYYYMMDD}")
+  # so build_batch_summary.py can find them at the end.
+  shopt -s nullglob
+  for d in "$OUTPUT_ROOT/${run_name}_threshold_"*_"${TODAY}"; do
+    [[ -d "$d" ]] && printf '%s\n' "$d" >> "$MANIFEST_FILE"
+  done
+  shopt -u nullglob
 }
 
 shopt -s nullglob
@@ -107,3 +120,27 @@ done
 
 echo
 echo "Completed all enrichment runs for directory: $GENE_LIST_DIR"
+
+# --- Batch summary CSV ----------------------------------------------------
+if [[ -s "$MANIFEST_FILE" ]]; then
+  input_dir_stem="$(basename "$GENE_LIST_DIR")"
+  if [[ -n "$RUN_NAME_PREFIX" ]]; then
+    suffix="${RUN_NAME_PREFIX// /_}"
+  else
+    suffix="$input_dir_stem"
+  fi
+  SUMMARY_CSV="${OUTPUT_ROOT}/batch_summary_${TODAY}_${suffix}.csv"
+
+  mapfile -t run_dirs < "$MANIFEST_FILE"
+  echo
+  echo "Building batch summary CSV → $SUMMARY_CSV"
+  echo "  (${#run_dirs[@]} run dirs collected)"
+
+  mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new \
+    python -u modules/build_batch_summary.py \
+      --run-dirs "${run_dirs[@]}" \
+      --output-csv "$SUMMARY_CSV"
+else
+  echo
+  echo "[warn] No run dirs were recorded — skipping batch summary."
+fi
