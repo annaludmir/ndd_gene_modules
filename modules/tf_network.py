@@ -765,6 +765,15 @@ def query_gene_set(
         lambda x: (x - x.min()) / (x.max() - x.min() + 1e-9)
     )
 
+    # Prediction-score filter: drop weak pairs before the min-targets check so a
+    # TF isn't retained just because it has many low-confidence targets.
+    min_score = float(q_cfg.get("min_prediction_score", 0.0) or 0.0)
+    if min_score > 0.0:
+        n_before = len(result)
+        result   = result[result["normalized_score"] >= min_score]
+        print(f"  Prediction-score filter (≥ {min_score}): "
+              f"{n_before:,} → {len(result):,} pairs")
+
     # Filter by minimum targets in gene set
     min_targets = int(q_cfg.get("min_targets", 3))
     counts = result.groupby("tf")["target"].count()
