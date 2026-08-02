@@ -1,0 +1,62 @@
+dataset_name: "tf_network_cortex_v2"
+ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules/"
+output_folder: "results/tf_network/"
+
+# ── Input ─────────────────────────────────────────────────────────────────────
+h5ad_path: "data/Cortex_EMX1_louvain3_passedQC_PostM_rev1.h5ad"
+chemistry: "v2"
+
+# Optional: restrict to protein-coding genes (one gene name per line, no header)
+# Download from: https://www.genenames.org/download/statistics-and-files/
+protein_coding_genes: "data/scenic/protein_coding_genes.txt"
+
+# ── Step 1: Aggregation ───────────────────────────────────────────────────────
+aggregation:
+  # method: "seacells"  — requires: pip install SEACells (GPU recommended)
+  # method: "leiden"    — pseudo-bulk by Leiden cluster (fast, no extra install)
+  method: "seacells"
+  leiden_column: "Clusters"   # obs column to aggregate by (leiden method only)
+
+seacells:
+  cells_per_metacell: 75     # ~1 meta-cell per 75 cells (paper default)
+  n_eigs: 10
+  min_iter: 10
+  max_iter: 100
+  convergence_threshold: 0.01125
+
+# ── Step 2: GRNBoost2 ─────────────────────────────────────────────────────────
+# Requires: pip install arboreto
+scenic:
+  n_workers: 8
+  n_estimators: 500    # trees per target gene model (reduce to 100–200 for faster runs)
+
+  # TF list — download from pySCENIC resources:
+  # https://resources.aertslab.org/cistarget/tf_lists/allTFs_hg38.txt
+  tf_list: "data/scenic/allTFs_hg38.txt"
+
+  # ── Step 3: cisTarget (optional) ─────────────────────────────────────────────
+  # Requires: pip install pyscenic
+  # Download motif annotations + ranking databases from:
+  # https://resources.aertslab.org/cistarget/
+  #
+  # Motif → TF annotations table (~50 MB):
+  motif_annotations: "data/scenic/motifs-v9-nr.hgnc-m0.001-o0.0.tbl"
+  #
+  # Ranking databases (~2 GB each):
+  rankings_db:
+    - "data/scenic/hg38_500bp_up_100bp_down_full_tx_v10_clust.genes_vs_motifs.rankings.feather"
+  # - "data/scenic/hg38_10kbp_up_10kbp_down_full_tx_v10_clust.genes_vs_motifs.rankings.feather"
+
+# ── Step 4: AUCell ─────────────────────────────────────────────────────────────
+aucell:
+  auc_threshold: 0.05
+  num_workers: 4
+
+# ── Gene set query ─────────────────────────────────────────────────────────────
+query:
+  min_targets: 3            # minimum gene-set targets per TF to include in the plot
+  top_n_tfs: 8              # top N TFs to show (ranked by number of targets in gene set)
+  min_prediction_score: 0.5 # drop TF-target pairs with normalized_score < this (0.0 disables)
+  # plot_style: "hub_spoke"   — separate subplot per TF (default)
+  # plot_style: "connected"   — single connected graph; shared targets appear once
+  plot_style: "connected"
