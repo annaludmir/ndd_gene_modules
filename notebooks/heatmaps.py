@@ -132,7 +132,7 @@ def _():
 
 @app.cell
 def _(make_fdr_heatmap):
-    mat = make_fdr_heatmap("/miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/batch_summary_20260212.csv", 'All Layers')
+    mat = make_fdr_heatmap("/miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/batch_summary_20260726_ID_SYNDD.csv", 'All Layers')
     return
 
 
@@ -320,7 +320,6 @@ def _(
     def _clean_label(s: str) -> str:
         return str(s).replace("_", " ").strip()
 
-
     def _wrap_labels(labels, width=18):
         return ['\n'.join(textwrap.wrap(str(l), width=width)) for l in labels]
 
@@ -334,19 +333,19 @@ def _(
         value_col: str = "column_condition_value",
         nes_col: str = "NES",
         fdr_col: str = "FDR_qval_BH",
-        agg_nes: str = "mean",        # or "mean"/"median" depending on duplicates
-        agg_fdr: str = "min",         # best (most significant) in case of duplicates
-        fdr_text_cutoff: float = 0.1, # annotate only if FDR < cutoff
-        cmap: str = "RdBu_r",         # red -> yellow -> green
+        agg_nes: str = "mean",         # or "mean"/"median" depending on duplicates
+        agg_fdr: str = "min",          # best (most significant) in case of duplicates
+        fdr_text_cutoff: float = 0.1,  # annotate only if FDR < cutoff
+        cmap: str = "RdBu_r",          # red -> yellow -> green
         wrap_x: bool = True,
         wrap_width: int = 18,
         rotate_x: int = 45,
         x_fontsize: int = 9,
         y_fontsize: int = 10,
         figsize=None,
-        clip_nes: float = 2.5,        # clip color scale to [-clip_nes, clip_nes]
-        separate_titles: bool = True, # 1 heatmap per column_condition_title
-        id_subset_runs=None,          # optionally pass set/list of run_trunc names to plot separately
+        clip_nes: float = 2.5,         # clip color scale to [-clip_nes, clip_nes]
+        separate_titles: bool = True,  # 1 heatmap per column_condition_title
+        id_subset_runs=None,           # optionally pass set/list of run_trunc names to plot separately
     ):
         """
         NES shown as a continuous diverging heatmap (red negative -> green positive).
@@ -359,17 +358,30 @@ def _(
 
         df = pd.read_csv(summary_csv)
 
+        # -------------------------------------------------------------------------
+        # FILTER: Keep only rows where data_type matches the value in "run_name"
+        # -------------------------------------------------------------------------
+        # Option A: Exact string match
+        # df = df[df["run_name"].astype(str) == str(data_type)]
+
+        # (Optional) Option B: If data_type is a substring inside "run_name", use this instead:
+        df = df[df["run_name"].astype(str).str.contains(str(data_type), na=False)]
+
+        if df.empty:
+            print(f"Warning: No rows found matching run_name == '{data_type}'. Returning empty result.")
+            return {"nes": {}, "fdr": {}, "nes_subset": {}, "fdr_subset": {}}
+
         # labels
         df["run_trunc"] = (
-        df[run_col]
-        .apply(truncate_run_name)
-        .map(_clean_label)
-        # remove ONLY lowercase "intellectual disability"
-        .str.replace("intellectual disability", "", regex=False)
-        # cleanup spacing (multiple spaces created by removal)
-        .str.replace(r"\s+", " ", regex=True)
-        .str.strip()
-    )
+            df[run_col]
+            .apply(truncate_run_name)
+            .map(_clean_label)
+            # remove ONLY lowercase "intellectual disability"
+            .str.replace("intellectual disability", "", regex=False)
+            # cleanup spacing (multiple spaces created by removal)
+            .str.replace(r"\s+", " ", regex=True)
+            .str.strip()
+        )
         df["colcond"] = (df[value_col].astype(str)).map(_clean_label)
 
         # numeric
@@ -402,7 +414,7 @@ def _(
             if title_clean.lower() == "cellclass":
                 mat_nes = reorder_rows(mat_nes, cellclass_y_order)
                 mat_fdr = reorder_rows(mat_fdr, cellclass_y_order)
-        
+
             if title_clean.lower() == "region":
                 mat_nes = reorder_rows(mat_nes, region_y_order)
                 mat_fdr = reorder_rows(mat_fdr, region_y_order)
@@ -426,7 +438,7 @@ def _(
 
                 # symmetric linear norm around 0
                 norm = Normalize(vmin=-clip_nes, vmax=clip_nes)
-            
+
                 im = plt.imshow(
                     vals,
                     aspect="auto",
@@ -434,32 +446,15 @@ def _(
                     cmap=make_red_white_purple(),   # or any diverging cmap you like
                     norm=norm
                 )
-            
+
                 cbar = plt.colorbar(im, shrink=0.85)
                 cbar.set_label("NES")
-            
+
                 # symmetric, evenly spaced ticks
                 ticks = [-2, -1, 0, 1, 2]
                 ticks = [t for t in ticks if -clip_nes <= t <= clip_nes]  # keep only ticks in range
                 cbar.set_ticks(ticks)
                 cbar.set_ticklabels([str(t) for t in ticks])
-
-                # vals = np.clip(mat_nes_plot.values.astype(float), -clip_nes, clip_nes)
-
-                # cmap_manual, norm_manual, bounds = make_manual_nes_cmap_and_norm_red_white_purple(clip_nes=clip_nes)
-
-                # im = plt.imshow(
-                #     vals,
-                #     aspect="auto",
-                #     interpolation="nearest",
-                #     cmap=cmap_manual,
-                #     norm=norm_manual
-                # )
-
-                # # Colorbar: show bin edges
-                # cbar = plt.colorbar(im, shrink=0.85)
-                # cbar.set_label("NES")
-                # cbar.set_ticks(bounds)
 
                 # ticks
                 plt.yticks(range(len(mat_nes_plot.index)), mat_nes_plot.index, fontsize=y_fontsize)
@@ -506,9 +501,9 @@ def _(
 
                     cols_present = [c for c in desired_order if c in mat_nes.columns]
                     cols_rest = [c for c in mat_nes.columns if c not in cols_present]
-                
+
                     new_order = cols_present + cols_rest  # keeps anything unexpected at the end
-                
+
                     mat_nes = mat_nes[new_order]
                     mat_fdr = mat_fdr[new_order]
 
@@ -519,7 +514,6 @@ def _(
                 else:
                     out["nes_subset"][title_clean] = pd.DataFrame()
                     out["fdr_subset"][title_clean] = pd.DataFrame()
-        
 
         return out
     return (make_nes_heatmaps_with_fdr_text,)
@@ -539,8 +533,8 @@ def _(make_nes_heatmaps_with_fdr_text):
 
 
     res = make_nes_heatmaps_with_fdr_text(
-        summary_csv="ndd_gene_modules/results/enrichment_results/batch_summary_20260212_all_layers.csv",
-        data_type="All Data",
+        summary_csv="/miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/batch_summary_20260726_ID_SYNDD.csv",
+        data_type="All Layers",
         separate_titles=True,
         id_subset_runs=id_subset_runs,
         fdr_text_cutoff=0.1,
