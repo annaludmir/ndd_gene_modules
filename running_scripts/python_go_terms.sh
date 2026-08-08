@@ -24,7 +24,7 @@ module load mamba/mamba-1.5.8
 mamba activate /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new
 cd /miridan-data/annaludmir/ndd_gene_modules
 
-SUMMARY_CSV="/miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/Kim_et_al_2024_v3/Kim et al. 2024 PD Cortex_threshold_1_20260419/data/enrichment_results/GSEA/GSEA_final_summary.csv"
+SUMMARY_CSV="/miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/no_ges_score_threshold/autism_strong_no_ges_threshold_threshold_0_20260614/data/enrichment_results/GSEA/GSEA_final_summary.csv"
 # Output directory is derived automatically from the run name in SUMMARY_CSV.
 # Override with --outdir <path> if needed.
 # To restrict to specific column conditions, add e.g.: --column-conditions CellCyclePhase Region
@@ -32,7 +32,7 @@ SUMMARY_CSV="/miridan-data/annaludmir/ndd_gene_modules/results/enrichment_result
 mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new \
   python -u modules/go_terms_pipeline.py \
   --summary-csv "$SUMMARY_CSV"
-  --column-conditions CellClass
+  --column-conditions Region
 
 rc=$?
 echo "Python exit code: $rc"

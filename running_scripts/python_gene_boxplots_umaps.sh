@@ -21,10 +21,10 @@ mamba activate /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new
 cd /miridan-data/annaludmir/ndd_gene_modules
 
 # Edit these before submitting.
-GENE_LIST="data/genes_for_analyses/autism_MEF2C_GRIN2B.txt"
+GENE_LIST="data/genes_for_analyses/ANX_only_no_autism.txt"
 H5AD_PATH="data/Cortex_EMX1_louvain3_passedQC_PostM_rev1.h5ad"
 COMPARISON_COLUMNS=(CellCyclePhase)
-SUBFOLDER_NAME="autism_MEF2C_GRIN2B"
+SUBFOLDER_NAME="ANX TFs only (not autism)"
 CHEMISTRY="v3"
 
 # Optional toggles — set to 1 to enable.

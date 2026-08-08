@@ -1,10 +1,10 @@
-dataset_name: "tf_network_cortex_v2"
+dataset_name: "tf_network_cortex_v3"
 ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules/"
 output_folder: "results/tf_network/"
 
 # ── Input ─────────────────────────────────────────────────────────────────────
 h5ad_path: "data/Cortex_EMX1_louvain3_passedQC_PostM_rev1.h5ad"
-chemistry: "v2"
+chemistry: "v3"
 
 # Optional: restrict to protein-coding genes (one gene name per line, no header)
 # Download from: https://www.genenames.org/download/statistics-and-files/

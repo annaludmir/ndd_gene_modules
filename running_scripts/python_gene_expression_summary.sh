@@ -26,7 +26,7 @@ module load mamba/mamba-1.5.8
 mamba activate /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new
 cd /miridan-data/annaludmir/ndd_gene_modules
 
-GSEA_SUMMARY_FILE="/miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/autism_strong_no_ges_threshold_threshold_0_20260614/data/enrichment_results/GSEA/GSEA_final_summary.csv"
+GSEA_SUMMARY_FILE="/miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/no_ges_score_threshold/autism_strong_no_ges_threshold_threshold_0_20260614/data/enrichment_results/GSEA/GSEA_final_summary.csv"
 # LEADING_GENE_SUMMARY_FILE="/miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/microcephaly/Microcephaly Cell Phase_threshold_1_20260222/data/enrichment_results/GSEA/GSEA_final_summary.csv"
 
 # Custom raw-region pair mode: use Telencephalon leading genes, compare
@@ -37,7 +37,7 @@ mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new python modul
   --h5ad-path data/human_dev.h5ad \
   --gsea-summary-file "$GSEA_SUMMARY_FILE" \
   --condition Telencephalon \
-  --region-pairs Telencephalon:Diencephalon \
+  --region-pairs Telencephalon:Midbrain \
   --chemistry v3 \
   --subfolder-name autism_strong_telencephalon_gene_expression_summary \
 #  --leading-gene-summary-file "$LEADING_GENE_SUMMARY_FILE" \
