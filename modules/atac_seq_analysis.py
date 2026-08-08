@@ -170,6 +170,17 @@ def load_tf_network_targets(
 _PEAK_RE = re.compile(r"^([A-Za-z0-9_.-]+)[:_-](\d+)[-_](\d+)$")
 
 
+def _normalize_chrom(name: str) -> str:
+    """Ensure UCSC-style ('chr1', 'chrX', 'chrM') naming to match GENCODE FASTA.
+    Ensembl uses '1', 'X', 'MT' — we prepend 'chr' and rename 'MT' → 'chrM'."""
+    s = str(name)
+    if s.startswith("chr"):
+        return s
+    if s in ("MT", "Mt", "mt"):
+        return "chrM"
+    return f"chr{s}"
+
+
 _CHROM_ALIASES = ["Chromosome", "chromosome", "chrom", "chr", "seqnames"]
 _START_ALIASES = ["Start", "start", "peak_start", "chromStart"]
 _END_ALIASES   = ["End",   "end",   "peak_end",   "chromEnd"]
@@ -200,7 +211,7 @@ def peaks_to_dataframe(adata, peak_columns: dict | None = None) -> pd.DataFrame:
             start_c = peak_columns["start"]
             end_c   = peak_columns["end"]
             df = pd.DataFrame({
-                "Chromosome": var[chrom_c].astype(str).values,
+                "Chromosome": [_normalize_chrom(c) for c in var[chrom_c].astype(str).values],
                 "Start":      var[start_c].astype(int).values,
                 "End":        var[end_c].astype(int).values,
                 "peak_id":    adata.var_names.astype(str).values,
@@ -216,7 +227,7 @@ def peaks_to_dataframe(adata, peak_columns: dict | None = None) -> pd.DataFrame:
     end_c   = _pick_col(var, _END_ALIASES)
     if chrom_c and start_c and end_c:
         df = pd.DataFrame({
-            "Chromosome": var[chrom_c].astype(str).values,
+            "Chromosome": [_normalize_chrom(c) for c in var[chrom_c].astype(str).values],
             "Start":      var[start_c].astype(int).values,
             "End":        var[end_c].astype(int).values,
             "peak_id":    adata.var_names.astype(str).values,
@@ -231,7 +242,10 @@ def peaks_to_dataframe(adata, peak_columns: dict | None = None) -> pd.DataFrame:
         if not m:
             continue
         chrom, start, end = m.group(1), int(m.group(2)), int(m.group(3))
-        rows.append({"Chromosome": chrom, "Start": start, "End": end, "peak_id": name})
+        rows.append({
+            "Chromosome": _normalize_chrom(chrom),
+            "Start": start, "End": end, "peak_id": name,
+        })
     if rows:
         print(f"  [peaks] parsed from var_names ({len(rows):,} peaks)")
         return pd.DataFrame(rows)
@@ -286,6 +300,7 @@ def load_tss_annotation(gtf_path: Path | None, genome: str) -> pd.DataFrame:
               "strand": "Strand", "gene_name": "gene_name"}
     df = df.rename(columns={k: v for k, v in rename.items() if k in df.columns})
     df["TSS"] = np.where(df["Strand"] == "+", df["Start"], df["End"])
+    df["Chromosome"] = df["Chromosome"].map(_normalize_chrom)
     return df[["Chromosome", "TSS", "Strand", "gene_name"]]
 
 
@@ -305,8 +320,10 @@ def _tss_from_gtf(gtf_path: Path) -> pd.DataFrame:
             if not m:
                 continue
             tss = start if strand == "+" else end
-            rows.append({"Chromosome": chrom, "TSS": tss, "Strand": strand,
-                         "gene_name": m.group(1)})
+            rows.append({
+                "Chromosome": _normalize_chrom(chrom),
+                "TSS": tss, "Strand": strand, "gene_name": m.group(1),
+            })
     return pd.DataFrame(rows)
 
 
