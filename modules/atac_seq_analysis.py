@@ -400,7 +400,13 @@ def task_motif_enrichment(
     peak_ids  = peak_df["peak_id"].tolist()
     peak_idx  = {pid: i for i, pid in enumerate(peak_ids)}
 
-    per_type_top_peaks: dict[str, pd.DataFrame] = {}
+    # snapatac2's motif_enrichment expects regions as "chr:start-end" strings.
+    peak_region_strs = [
+        f"{c}:{s}-{e}"
+        for c, s, e in zip(peak_df["Chromosome"], peak_df["Start"], peak_df["End"])
+    ]
+
+    per_type_top_peaks: dict[str, list[str]] = {}
     for ct in cell_types:
         mask = (adata.obs[cell_type_col].astype(str) == str(ct)).to_numpy()
         n_ct = int(mask.sum())
@@ -410,8 +416,7 @@ def task_motif_enrichment(
         ct_mean = np.asarray(X[mask, :].mean(axis=0)).ravel()
         n_top   = max(1, int(len(peak_ids) * top_peaks_pct))
         top_ix  = np.argsort(ct_mean)[::-1][:n_top]
-        selected = peak_df.iloc[top_ix].reset_index(drop=True)
-        per_type_top_peaks[str(ct)] = selected
+        per_type_top_peaks[str(ct)] = [peak_region_strs[i] for i in top_ix]
         print(f"    {ct}: {n_ct:,} cells → top {n_top:,} peaks")
 
     if not per_type_top_peaks:
@@ -433,9 +438,9 @@ def task_motif_enrichment(
         print(f"  [warn] snap.tl.motif_enrichment signature mismatch: {e}")
         print("         Falling back to per-cell-type calls (older API).")
         result = {}
-        for ct, peaks in per_type_top_peaks.items():
+        for ct, region_strs in per_type_top_peaks.items():
             result[ct] = snap.tl.motif_enrichment(
-                motifs=motifs, regions=peaks, genome_fasta=genome_obj,
+                motifs=motifs, regions=region_strs, genome_fasta=genome_obj,
             )
 
     # Flatten result into a long DataFrame regardless of exact return shape.
@@ -675,12 +680,16 @@ def task_motif_target_validation(
         # whole peak set as background. Any TF whose motif has adj_p < cutoff
         # in the promoter set is treated as "validated". We also record per-
         # gene motif counts if snapatac2 returns them.
+        promoter_region_strs = [
+            f"{c}:{s}-{e}"
+            for c, s, e in zip(promoter_df["Chromosome"],
+                               promoter_df["Start"],
+                               promoter_df["End"])
+        ]
         try:
             per_promoter_hits = snap.tl.motif_enrichment(
                 motifs=tf_motifs,
-                regions={"promoters": promoter_df.rename(
-                    columns={"gene_name": "name"}
-                )},
+                regions={"promoters": promoter_region_strs},
                 genome_fasta=genome_obj,
             )
         except Exception as e:
