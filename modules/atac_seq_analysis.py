@@ -46,6 +46,11 @@ import numpy as np
 import pandas as pd
 import yaml
 
+# NumPy 2.0 removed `np.asfarray`; snapatac2 still uses it in its internal
+# BH-correction helper. Restore a compat shim before snapatac2 is imported.
+if not hasattr(np, "asfarray"):
+    np.asfarray = lambda a, dtype=np.float64: np.asarray(a, dtype=dtype)
+
 
 # =============================================================================
 # Logging
