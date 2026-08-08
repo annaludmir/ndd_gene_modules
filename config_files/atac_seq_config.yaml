@@ -24,6 +24,15 @@ atac:
   # gene annotations are used.
   gtf_path: null
 
+  # Optional: explicit peak coordinate columns in adata.var. Only needed if
+  # the parser can't auto-detect them. First-run log will list adata.var
+  # columns and print a helpful diagnostic if it can't find coordinates.
+  # Example (uncomment + adjust names to match your h5ad):
+  # peak_columns:
+  #   chrom: "chr"
+  #   start: "start"
+  #   end:   "end"
+
 # ── TF network integration ────────────────────────────────────────────────────
 tf_network:
   cache_dir: "results/tf_network/all_genes_networks/Cortex_EMX1_louvain3_passedQC_PostM_rev1_v3"

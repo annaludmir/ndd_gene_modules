@@ -170,22 +170,86 @@ def load_tf_network_targets(
 _PEAK_RE = re.compile(r"^([A-Za-z0-9_.-]+)[:_-](\d+)[-_](\d+)$")
 
 
-def peaks_to_dataframe(var_names: list[str]) -> pd.DataFrame:
-    """Parse peak identifiers (e.g. 'chr1:12345-13456' or 'chr1_12345_13456')
-    into a DataFrame with columns Chromosome / Start / End / peak_id."""
+_CHROM_ALIASES = ["Chromosome", "chromosome", "chrom", "chr", "seqnames"]
+_START_ALIASES = ["Start", "start", "peak_start", "chromStart"]
+_END_ALIASES   = ["End",   "end",   "peak_end",   "chromEnd"]
+
+
+def _pick_col(df: pd.DataFrame, aliases: list[str]) -> str | None:
+    for a in aliases:
+        if a in df.columns:
+            return a
+    return None
+
+
+def peaks_to_dataframe(adata, peak_columns: dict | None = None) -> pd.DataFrame:
+    """Return a DataFrame with columns Chromosome / Start / End / peak_id.
+
+    Tries, in order:
+      1. Explicit `peak_columns` mapping from the config, e.g.
+         {"chrom": "chr", "start": "start", "end": "end"}.
+      2. Auto-detect chrom/start/end columns in adata.var.
+      3. Parse adata.var_names as 'chr:start-end' or 'chr_start_end'.
+    """
+    var = adata.var
+
+    # 1. explicit config
+    if peak_columns:
+        try:
+            chrom_c = peak_columns["chrom"]
+            start_c = peak_columns["start"]
+            end_c   = peak_columns["end"]
+            df = pd.DataFrame({
+                "Chromosome": var[chrom_c].astype(str).values,
+                "Start":      var[start_c].astype(int).values,
+                "End":        var[end_c].astype(int).values,
+                "peak_id":    adata.var_names.astype(str).values,
+            })
+            print(f"  [peaks] using explicit var columns: {chrom_c}/{start_c}/{end_c}")
+            return df
+        except KeyError as e:
+            print(f"  [warn] peak_columns entry {e} missing in adata.var — falling back.")
+
+    # 2. auto-detect coordinate columns in var
+    chrom_c = _pick_col(var, _CHROM_ALIASES)
+    start_c = _pick_col(var, _START_ALIASES)
+    end_c   = _pick_col(var, _END_ALIASES)
+    if chrom_c and start_c and end_c:
+        df = pd.DataFrame({
+            "Chromosome": var[chrom_c].astype(str).values,
+            "Start":      var[start_c].astype(int).values,
+            "End":        var[end_c].astype(int).values,
+            "peak_id":    adata.var_names.astype(str).values,
+        })
+        print(f"  [peaks] auto-detected var columns: {chrom_c}/{start_c}/{end_c}")
+        return df
+
+    # 3. parse var_names
     rows = []
-    for name in var_names:
-        m = _PEAK_RE.match(str(name))
+    for name in adata.var_names.astype(str):
+        m = _PEAK_RE.match(name)
         if not m:
             continue
         chrom, start, end = m.group(1), int(m.group(2)), int(m.group(3))
-        rows.append({"Chromosome": chrom, "Start": start, "End": end, "peak_id": str(name)})
-    if not rows:
-        raise ValueError(
-            "None of the h5ad var_names look like peak coordinates "
-            "(expected 'chr:start-end' or 'chr_start_end')."
-        )
-    return pd.DataFrame(rows)
+        rows.append({"Chromosome": chrom, "Start": start, "End": end, "peak_id": name})
+    if rows:
+        print(f"  [peaks] parsed from var_names ({len(rows):,} peaks)")
+        return pd.DataFrame(rows)
+
+    # 4. nothing worked — print a helpful diagnostic
+    sample_names = list(adata.var_names[:5].astype(str))
+    var_head     = var.head(3).to_dict("list") if not var.empty else {}
+    raise ValueError(
+        "Could not locate peak coordinates in this h5ad.\n"
+        f"  var_names sample (first 5): {sample_names}\n"
+        f"  var.columns: {list(var.columns)}\n"
+        f"  var head: {var_head}\n"
+        "Fix: add to your config under atac:\n"
+        "  peak_columns:\n"
+        "    chrom: <name of chrom column in var>\n"
+        "    start: <name of start column in var>\n"
+        "    end:   <name of end column in var>"
+    )
 
 
 def load_tss_annotation(gtf_path: Path | None, genome: str) -> pd.DataFrame:
@@ -332,7 +396,7 @@ def task_motif_enrichment(
     if sp.issparse(X):
         X = X.tocsr()
 
-    peak_df   = peaks_to_dataframe(list(adata.var_names))
+    peak_df   = peaks_to_dataframe(adata, cfg["atac"].get("peak_columns"))
     peak_ids  = peak_df["peak_id"].tolist()
     peak_idx  = {pid: i for i, pid in enumerate(peak_ids)}
 
@@ -472,7 +536,7 @@ def task_promoter_accessibility(
         return None
     print(f"  TSS windows built: {len(promoter_df):,}")
 
-    peaks_df    = peaks_to_dataframe(list(adata.var_names))
+    peaks_df    = peaks_to_dataframe(adata, cfg["atac"].get("peak_columns"))
     peak_to_ix  = {pid: i for i, pid in enumerate(peaks_df["peak_id"])}
 
     overlap_df  = peaks_overlapping_promoters(peaks_df, promoter_df)
