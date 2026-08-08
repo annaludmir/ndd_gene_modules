@@ -1,0 +1,54 @@
+dataset_name: "atac_first_trimester_brain"
+ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules/"
+output_folder: "results/atac_analysis/"
+
+# ── ATAC inputs ───────────────────────────────────────────────────────────────
+atac:
+  h5ad_path: "/miridan-storage/annaludmir/atac-seq/e88a34d0-d28a-4d10-a8c5-d59f86ba621a.h5ad"
+  # fragment.tsv.bgz — only needed for tools that go from fragments (kept for
+  # completeness; the current pipeline uses the peak matrix in the h5ad).
+  fragment_file: "/miridan-storage/annaludmir/atac-seq/49a73aea-76d5-40a1-b5e4-fa6c0831e164-fragment.tsv.bgz"
+
+  # obs column with cell-type labels (verify against the printed obs columns
+  # in the first-run log — this dataset also has "ClusterName", "Clusters_main").
+  cell_type_col: "cell_type"
+
+  # obs column carrying region-like labels (Telencephalon/Diencephalon/...).
+  # This dataset's obs may not have an obvious "Region" — check the log; likely
+  # candidates: "Shortname", "Clusters_main", "tissue". Update to match.
+  region_col: "tissue"
+
+  genome: "hg38"
+
+  # Optional: path to a GTF for TSS positions. If omitted, snapatac2's built-in
+  # gene annotations are used.
+  gtf_path: null
+
+# ── TF network integration ────────────────────────────────────────────────────
+tf_network:
+  cache_dir: "results/tf_network/all_genes_networks/Cortex_EMX1_louvain3_passedQC_PostM_rev1_v3"
+  min_confidence: "high"   # high | medium | low
+  top_n_tfs: 30            # only the top-N TFs by number of targets
+
+# ── Task 1: TF motif enrichment per cell type ────────────────────────────────
+motif_enrichment:
+  enabled: true
+  cell_types:
+    - "radial glial cell"
+    - "glutamatergic neuron"
+    - "glioblast"
+  motif_source: "cis_bp"   # "cis_bp" (default) or "jaspar"
+  top_peaks_pct: 0.10      # top 10% most-accessible peaks per cell type
+
+# ── Task 2: target-gene promoter accessibility across regions ────────────────
+promoter:
+  enabled: true
+  tss_window: 2000         # ± bp around TSS
+  region_pairs:
+    - ["Telencephalon", "Diencephalon"]
+
+# ── Task 3: motif -> target validation ────────────────────────────────────────
+motif_target_validation:
+  enabled: true
+  promoter_window: 2000
+  motif_pval_cutoff: 1.0e-4
