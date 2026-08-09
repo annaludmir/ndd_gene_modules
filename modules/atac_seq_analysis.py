@@ -334,29 +334,91 @@ def load_tss_annotation(gtf_path: Path | None, genome: str) -> pd.DataFrame:
     return df[["Chromosome", "TSS", "Strand", "gene_name"]]
 
 
+_GENE_FEATURE_TYPES = ("gene", "transcript", "mRNA")
+# GTF attribute keys where a gene symbol may live, in order of preference.
+_GENE_NAME_KEYS = ("gene_name", "Name", "gene_symbol", "symbol")
+# Fallback if no symbol column exists — Ensembl IDs.
+_GENE_ID_KEYS   = ("gene_id", "ID")
+
+
 def _tss_from_gtf(gtf_path: Path) -> pd.DataFrame:
-    """Parse a GTF file (plain or gzipped) to extract per-gene TSS positions."""
+    """Parse a GTF (plain or gzipped) into Chromosome / TSS / Strand / gene_name.
+
+    Tolerates GTFs where the feature column is "transcript" instead of "gene",
+    and GTFs whose attribute uses "Name"/"gene_symbol" instead of "gene_name".
+    Falls back to Ensembl gene_id if no symbol is present.
+    """
     import gzip
     opener = gzip.open if str(gtf_path).endswith(".gz") else open
+
     rows = []
+    feature_type_counts: dict[str, int] = {}
+    sample_lines: list[str] = []
+    sample_attrs_keys: set[str] = set()
+
+    def _find_key(attrs: str, keys) -> str | None:
+        for k in keys:
+            # GTF: key "value";
+            m = re.search(rf'\b{re.escape(k)} "([^"]+)"', attrs)
+            if m:
+                return m.group(1)
+            # GFF3: key=value; (values are semicolon-terminated or end-of-line)
+            m = re.search(rf'(?:^|[;\s]){re.escape(k)}=([^;]+)', attrs)
+            if m:
+                return m.group(1).strip()
+        return None
+
     with opener(gtf_path, "rt", encoding="utf-8") as f:
         for line in f:
             if line.startswith("#"):
                 continue
             parts = line.rstrip("\n").split("\t")
-            if len(parts) < 9 or parts[2] != "gene":
+            if len(parts) < 9:
+                continue
+
+            feature = parts[2]
+            feature_type_counts[feature] = feature_type_counts.get(feature, 0) + 1
+            if len(sample_lines) < 3:
+                sample_lines.append(line.rstrip("\n"))
+                # Extract attr keys once for diagnostic
+                for m in re.finditer(r'(\w+) "', parts[8]):
+                    sample_attrs_keys.add(m.group(1))
+
+            if feature not in _GENE_FEATURE_TYPES:
                 continue
             chrom, start, end, strand = parts[0], int(parts[3]), int(parts[4]), parts[6]
             attrs = parts[8]
-            m = re.search(r'gene_name "([^"]+)"', attrs)
-            if not m:
+
+            name = _find_key(attrs, _GENE_NAME_KEYS) or _find_key(attrs, _GENE_ID_KEYS)
+            if not name:
                 continue
             tss = start if strand == "+" else end
             rows.append({
                 "Chromosome": _normalize_chrom(chrom),
-                "TSS": tss, "Strand": strand, "gene_name": m.group(1),
+                "TSS": tss, "Strand": strand, "gene_name": name,
             })
-    return pd.DataFrame(rows)
+
+    if not rows:
+        top_features = sorted(feature_type_counts.items(), key=lambda x: -x[1])[:8]
+        raise ValueError(
+            f"Parsed 0 gene rows from GTF: {gtf_path}\n"
+            f"  Feature-type counts (top 8): {top_features}\n"
+            f"  Attribute keys seen: {sorted(sample_attrs_keys)}\n"
+            f"  Sample lines (up to 3):\n    "
+            + "\n    ".join(sample_lines[:3])
+            + "\n"
+            f"  Recognized feature types: {_GENE_FEATURE_TYPES}\n"
+            f"  Recognized name keys:     {_GENE_NAME_KEYS + _GENE_ID_KEYS}\n"
+            "Fix: point atac.gtf_path at a GENCODE-format GTF, or extend the "
+            "recognized keys above."
+        )
+
+    df = pd.DataFrame(rows)
+    # Deduplicate — one TSS per gene_name (keep the first, i.e. the primary).
+    df = df.drop_duplicates(subset=["gene_name"], keep="first").reset_index(drop=True)
+    print(f"  [gtf] parsed {len(df):,} gene TSSes  "
+          f"(feature types: {sorted(feature_type_counts, key=lambda k: -feature_type_counts[k])[:5]})")
+    return df
 
 
 def build_promoter_regions(
