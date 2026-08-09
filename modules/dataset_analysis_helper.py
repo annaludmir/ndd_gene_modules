@@ -289,8 +289,9 @@ def _cell_bucket_series(
     return bucket
 
 
-def _cells_expressing_any_gene(adata, genes, sym_col):
-    """Per-cell boolean: does the cell express ANY of the target genes (X > 0)?"""
+def _cells_expressing_enough_genes(adata, genes, sym_col, min_gene_count):
+    """Per-cell boolean: does the cell express ≥ `min_gene_count` of the target
+    genes (X > 0)? Also returns the found/missing lists and the actual count used."""
     import scipy.sparse as sp
 
     if sym_col in adata.var.columns:
@@ -309,14 +310,18 @@ def _cells_expressing_any_gene(adata, genes, sym_col):
     if not found:
         raise ValueError("None of the requested genes were found in adata.")
 
+    threshold = max(1, min(int(min_gene_count), len(found)))
+    print(f"  Expression criterion: ≥ {threshold}/{len(found)} genes with X > 0")
+
     varnames = [sym2var[g] for g in found]
     X_sub    = adata[:, varnames].X
     if sp.issparse(X_sub):
-        n_nonzero = X_sub.getnnz(axis=1)
+        n_nonzero = np.asarray(X_sub.getnnz(axis=1)).ravel()
     else:
         n_nonzero = (np.asarray(X_sub) > 0).sum(axis=1)
-    expresses_any = np.asarray(n_nonzero).ravel() > 0
-    return expresses_any, found, missing
+    n_nonzero = np.asarray(n_nonzero).ravel()
+    expresses_enough = n_nonzero >= threshold
+    return expresses_enough, found, missing, threshold
 
 
 def create_expression_fraction_by_age_region_cellcycle(
@@ -337,10 +342,17 @@ def create_expression_fraction_by_age_region_cellcycle(
     exclude_regions=DEFAULT_EXCLUDE_REGIONS,
     region_order=DEFAULT_REGION_ORDER_DETAILED,
     plot_metric="Proliferating_Cycling",
+    min_gene_fraction=None,
+    min_gene_count=None,
 ):
     """
     Fraction of cells (in each of 4 prolif/diff × cycling buckets) that express
-    at least one gene in `genes`, aggregated by (Age, Region).
+    a sufficient subset of the target gene list, aggregated by (Age, Region).
+
+    Expression criterion (choose one; both None = "any gene" i.e. ≥ 1):
+      - `min_gene_fraction`: fraction of the *found* gene list (0-1); rounded up.
+        e.g. 0.5 with 20 found genes → cell must express ≥ 10 of them.
+      - `min_gene_count`:    absolute integer count of genes required.
 
     Writes:
       - a long CSV: Age, Region, bucket, n_cells, n_expressing, fraction
@@ -348,6 +360,7 @@ def create_expression_fraction_by_age_region_cellcycle(
       - a plot: x=Age, y=fraction for `plot_metric`, one line per region
         (in `region_order`, `exclude_regions` skipped)
     """
+    import math
     adata, h5ad_path = load_filtered_adata(
         h5ad_path, chemistry=chemistry, chemistry_col=chemistry_col,
     )
@@ -367,11 +380,23 @@ def create_expression_fraction_by_age_region_cellcycle(
     )
     print(f"  Cell-bucket counts: {obs['_bucket'].value_counts(dropna=False).to_dict()}")
 
-    # 2. does each cell express ≥1 target gene?
-    expresses_any, found_genes, missing_genes = _cells_expressing_any_gene(
-        adata, genes, sym_col=sym_col,
+    # 2. per-cell "expresses enough genes" flag.
+    # Resolve the required count from either min_gene_fraction or min_gene_count.
+    # If both None → 1 (any gene). Fraction uses ceil so 0.5 * 3 = 2.
+    n_input_genes = len(list(genes))
+    if min_gene_count is not None:
+        required = int(min_gene_count)
+    elif min_gene_fraction is not None:
+        required = max(1, math.ceil(float(min_gene_fraction) * n_input_genes))
+    else:
+        required = 1
+
+    expresses_enough, found_genes, missing_genes, threshold_used = (
+        _cells_expressing_enough_genes(
+            adata, genes, sym_col=sym_col, min_gene_count=required,
+        )
     )
-    obs["_expresses_any"] = expresses_any
+    obs["_expresses_any"] = expresses_enough
 
     # 3. drop excluded regions + cells with no bucket
     excluded_set = set(map(str, exclude_regions or ()))
@@ -411,9 +436,10 @@ def create_expression_fraction_by_age_region_cellcycle(
 
     chemistry_label = sanitize_filename_component(chemistry if chemistry is not None else "all")
     h5ad_stem       = sanitize_filename_component(h5ad_path.stem)
-    long_csv_path   = output_dir / f"expression_fraction_long_{chemistry_label}_{h5ad_stem}.csv"
-    wide_csv_path   = output_dir / f"expression_fraction_wide_{chemistry_label}_{h5ad_stem}.csv"
-    plot_png_path   = output_dir / f"expression_fraction_{sanitize_filename_component(plot_metric)}_{chemistry_label}_{h5ad_stem}.png"
+    threshold_tag   = f"min{threshold_used}of{len(found_genes)}"
+    long_csv_path   = output_dir / f"expression_fraction_long_{threshold_tag}_{chemistry_label}_{h5ad_stem}.csv"
+    wide_csv_path   = output_dir / f"expression_fraction_wide_{threshold_tag}_{chemistry_label}_{h5ad_stem}.csv"
+    plot_png_path   = output_dir / f"expression_fraction_{sanitize_filename_component(plot_metric)}_{threshold_tag}_{chemistry_label}_{h5ad_stem}.png"
 
     grouped.to_csv(long_csv_path, index=False)
     wide.to_csv(wide_csv_path, index=False)
@@ -428,7 +454,7 @@ def create_expression_fraction_by_age_region_cellcycle(
         age_col=age_col, region_col=region_col,
         region_order=region_order, exclude_regions=exclude_regions,
         title=(f"Fraction of {plot_metric.replace('_', ' ')} cells "
-               f"expressing ≥1 of {len(found_genes)} genes"),
+               f"expressing ≥ {threshold_used} of {len(found_genes)} genes"),
         out_path=plot_png_path,
     )
     print(f"  Saved plot:    {plot_png_path.name}")
@@ -439,9 +465,10 @@ def create_expression_fraction_by_age_region_cellcycle(
         "wide_csv_path":      str(wide_csv_path),
         "plot_png_path":      str(plot_png_path),
         "n_cells_after_filter": int(len(obs_kept)),
-        "n_input_genes":      len(list(genes)),
+        "n_input_genes":      n_input_genes,
         "n_found_genes":      len(found_genes),
         "n_missing_genes":    len(missing_genes),
+        "min_gene_count_used": threshold_used,
         "plot_metric":        plot_metric,
     }
 
@@ -584,6 +611,17 @@ def build_arg_parser():
         "--exclude-regions", nargs="*", default=list(DEFAULT_EXCLUDE_REGIONS),
         help="Region values to skip when plotting (default: Brain Head).",
     )
+    parser.add_argument(
+        "--min-gene-fraction", type=float, default=None,
+        help=("Cell counts as 'expressing' if it expresses ≥ ceil(fraction × n_genes) "
+              "of the target genes. e.g. 0.5 = at least half. Mutually exclusive "
+              "with --min-gene-count. If neither is set, ≥1 gene (any) is used."),
+    )
+    parser.add_argument(
+        "--min-gene-count", type=int, default=None,
+        help=("Absolute minimum number of target genes a cell must express to count. "
+              "Overrides --min-gene-fraction when both are provided."),
+    )
     return parser
 
 
@@ -652,6 +690,8 @@ if __name__ == "__main__":
             sym_col=args.sym_col,
             plot_metric=args.plot_metric,
             exclude_regions=args.exclude_regions,
+            min_gene_fraction=args.min_gene_fraction,
+            min_gene_count=args.min_gene_count,
         )
 
     print("Saved dataset analysis results:")

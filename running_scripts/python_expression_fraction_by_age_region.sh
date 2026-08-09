@@ -24,6 +24,12 @@ CHEMISTRY="v3"
 PLOT_METRIC="Proliferating_Cycling"   # Proliferating_Cycling | Differentiating_Cycling |
                                       # Proliferating_NonCycling | Differentiating_NonCycling
 
+# Expression criterion. Leave both empty for "any gene" (≥1).
+# --min-gene-fraction 0.5 → cell must express at least half of the found genes.
+# --min-gene-count 5    → cell must express at least 5 target genes (overrides fraction).
+MIN_GENE_FRACTION="0.5"
+MIN_GENE_COUNT=""
+
 # Optional overrides (keep defaults unless the all-layers h5ad uses different names).
 CELL_CLASS_COL="CellClass"
 CELL_CYCLE_SCORE_COL="cell_cycle_score"
@@ -31,6 +37,10 @@ CELL_CYCLE_THRESHOLD="0.004"
 AGE_COL="Age"
 REGION_COL="Region"
 SYM_COL="Gene"
+
+EXTRA_ARGS=()
+[[ -n "$MIN_GENE_FRACTION" ]] && EXTRA_ARGS+=(--min-gene-fraction "$MIN_GENE_FRACTION")
+[[ -n "$MIN_GENE_COUNT"    ]] && EXTRA_ARGS+=(--min-gene-count    "$MIN_GENE_COUNT")
 
 mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new \
   python -u modules/dataset_analysis_helper.py \
@@ -46,7 +56,8 @@ mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new \
     --age-col "$AGE_COL" \
     --region-col "$REGION_COL" \
     --sym-col "$SYM_COL" \
-    --exclude-regions Brain Head
+    --exclude-regions Brain Head \
+    "${EXTRA_ARGS[@]}"
 
 rc=$?
 echo "Python exit code: $rc"
