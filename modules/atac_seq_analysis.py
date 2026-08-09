@@ -558,12 +558,7 @@ def task_motif_enrichment(
     rows = []
     printed_debug = False
     for ct, res in (result.items() if isinstance(result, dict) else [("all", result)]):
-        if hasattr(res, "to_dataframe"):
-            res_df = res.to_dataframe()
-        elif isinstance(res, pd.DataFrame):
-            res_df = res
-        else:
-            res_df = pd.DataFrame(res)
+        res_df = _to_pandas(res)
 
         if not printed_debug and not res_df.empty:
             print(f"  [debug] motif_enrichment columns for '{ct}': {list(res_df.columns)}")
@@ -574,6 +569,7 @@ def task_motif_enrichment(
 
         for idx, r in res_df.iterrows():
             motif_name = _extract_motif_name(idx, r)
+            tf_name    = _extract_str(r, ["family", "TF", "tf", "gene_name", "gene_symbol", "name"])
             log2fe     = _extract_numeric(r, [
                 "log2_fold_enrichment", "log2FE", "log2 fold enrichment",
                 "log2(fold change)", "log2 fold change", "log2FoldChange",
@@ -588,22 +584,30 @@ def task_motif_enrichment(
             ])
             rows.append({
                 "cell_type": ct, "motif": motif_name,
+                "tf_name": tf_name,
                 "log2_fold_enrichment": log2fe,
                 "p_value": pval,
                 "adjusted_p_value": padj,
             })
     enrich_df = pd.DataFrame(rows)
 
-    # Restrict rows to candidate TFs where possible (motif name usually
-    # contains the TF gene symbol).
+    # Restrict rows to candidate TFs. Try the dedicated tf_name column first
+    # (more reliable), fall back to substring-matching the motif ID.
     if not enrich_df.empty:
-        def _has_candidate_tf(motif_name: str) -> str | None:
-            m = motif_name.upper()
-            for tf in candidate_tfs:
-                if tf.upper() in m:
-                    return tf
+        candidate_upper = {tf.upper() for tf in candidate_tfs}
+        def _match(row) -> str | None:
+            tf = str(row.get("tf_name", "") or "").upper()
+            if tf in candidate_upper:
+                # return the original-case TF from the candidate set
+                for c in candidate_tfs:
+                    if c.upper() == tf:
+                        return c
+            motif = str(row.get("motif", "") or "").upper()
+            for c in candidate_tfs:
+                if c.upper() in motif:
+                    return c
             return None
-        enrich_df["candidate_tf"] = enrich_df["motif"].map(_has_candidate_tf)
+        enrich_df["candidate_tf"] = enrich_df.apply(_match, axis=1)
         candidate_df = enrich_df[enrich_df["candidate_tf"].notna()].copy()
     else:
         candidate_df = enrich_df
@@ -828,27 +832,52 @@ def task_motif_target_validation(
             print(f"  [warn] motif scan failed for {tf}: {e}")
             continue
 
-        hits_df = _flatten_enrichment_result(per_promoter_hits)
-        significant = hits_df[hits_df.get("adjusted_p_value", np.nan) < pval_cutoff]
+        raw_hits = _flatten_enrichment_result(per_promoter_hits)
 
-        n_hits = int(significant.shape[0])
+        # Normalize column names (snapatac2 uses "p-value" / "adjusted p-value";
+        # motif name is often the DataFrame index).
+        hits_rows = []
+        for idx, r in raw_hits.iterrows():
+            hits_rows.append({
+                "motif": _extract_motif_name(idx, r),
+                "log2_fold_enrichment": _extract_numeric(r, [
+                    "log2_fold_enrichment", "log2FE", "log2 fold enrichment",
+                    "log2(fold change)", "log2 fold change", "log2FoldChange", "log2FC",
+                ]),
+                "p_value": _extract_numeric(r, [
+                    "p-value", "p_value", "pvalue", "P-value", "P value",
+                ]),
+                "adjusted_p_value": _extract_numeric(r, [
+                    "adjusted_p_value", "adjusted p-value", "adjusted p value",
+                    "padj", "FDR", "q-value", "qvalue", "adj_pvalue",
+                ]),
+            })
+        hits_df = pd.DataFrame(hits_rows)
+
+        if hits_df.empty:
+            tf_summary_rows.append({
+                "TF": tf, "n_targets": len(target_genes),
+                "n_motifs_found": len(tf_motifs),
+                "n_significant_motif_enrichments": 0,
+                "min_adjusted_p_value": np.nan,
+            })
+            continue
+
+        significant = hits_df[hits_df["adjusted_p_value"] < pval_cutoff]
         tf_summary_rows.append({
             "TF": tf,
             "n_targets": len(target_genes),
             "n_motifs_found": len(tf_motifs),
-            "n_significant_motif_enrichments": n_hits,
-            "min_adjusted_p_value": (
-                float(hits_df["adjusted_p_value"].min())
-                if "adjusted_p_value" in hits_df.columns and not hits_df.empty
-                else np.nan
-            ),
+            "n_significant_motif_enrichments": int(significant.shape[0]),
+            "min_adjusted_p_value": float(hits_df["adjusted_p_value"].min(skipna=True)),
         })
         for _, r in hits_df.iterrows():
             rows.append({
                 "TF": tf,
-                "motif": r.get("name", r.get("motif", "")),
-                "log2_fold_enrichment": r.get("log2_fold_enrichment", np.nan),
-                "adjusted_p_value": r.get("adjusted_p_value", np.nan),
+                "motif": r["motif"],
+                "log2_fold_enrichment": r["log2_fold_enrichment"],
+                "p_value": r["p_value"],
+                "adjusted_p_value": r["adjusted_p_value"],
             })
 
     detail_df  = pd.DataFrame(rows)
@@ -873,6 +902,16 @@ def _extract_motif_name(idx, row) -> str:
     return ""
 
 
+def _extract_str(row, keys) -> str:
+    """First matching key coerced to str. Empty string if none."""
+    for k in keys:
+        if k in row.index:
+            v = row[k]
+            if pd.notna(v):
+                return str(v)
+    return ""
+
+
 def _extract_numeric(row, keys) -> float:
     """First matching key in `keys` present in `row`, coerced to float. NaN if none."""
     for k in keys:
@@ -886,15 +925,23 @@ def _extract_numeric(row, keys) -> float:
     return float("nan")
 
 
+def _to_pandas(x) -> pd.DataFrame:
+    """Convert whatever snapatac2 gave us into a pandas DataFrame with
+    preserved column names. Handles polars, pandas, or generic mappings."""
+    if isinstance(x, pd.DataFrame):
+        return x
+    if hasattr(x, "to_pandas"):        # polars.DataFrame
+        return x.to_pandas()
+    if hasattr(x, "to_dataframe"):     # some snapatac2 result objects
+        return x.to_dataframe()
+    return pd.DataFrame(x)
+
+
 def _flatten_enrichment_result(result) -> pd.DataFrame:
     if isinstance(result, dict):
-        frames = []
-        for _, v in result.items():
-            frames.append(v.to_dataframe() if hasattr(v, "to_dataframe") else pd.DataFrame(v))
+        frames = [_to_pandas(v) for v in result.values()]
         return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
-    if hasattr(result, "to_dataframe"):
-        return result.to_dataframe()
-    return pd.DataFrame(result)
+    return _to_pandas(result)
 
 
 # =============================================================================

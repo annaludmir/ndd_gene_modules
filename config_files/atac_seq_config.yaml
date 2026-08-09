@@ -54,7 +54,7 @@ promoter:
   enabled: true
   tss_window: 2000         # ± bp around TSS
   region_pairs:
-    - ["Telencephalon", "Diencephalon"]
+    - ["telencephalon", "diencephalon"]
 
 # ── Task 3: motif -> target validation ────────────────────────────────────────
 motif_target_validation:
