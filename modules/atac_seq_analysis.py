@@ -335,9 +335,11 @@ def load_tss_annotation(gtf_path: Path | None, genome: str) -> pd.DataFrame:
 
 
 def _tss_from_gtf(gtf_path: Path) -> pd.DataFrame:
-    """Parse a GTF file to extract per-gene TSS positions."""
+    """Parse a GTF file (plain or gzipped) to extract per-gene TSS positions."""
+    import gzip
+    opener = gzip.open if str(gtf_path).endswith(".gz") else open
     rows = []
-    with open(gtf_path) as f:
+    with opener(gtf_path, "rt", encoding="utf-8") as f:
         for line in f:
             if line.startswith("#"):
                 continue
