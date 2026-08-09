@@ -250,6 +250,245 @@ def create_gene_expression_boxplot_by_region(
     }
 
 
+# ---------------------------------------------------------------------------
+# Expressing-fraction by (Age, Region) × cell-cycle × prolif/diff class
+# ---------------------------------------------------------------------------
+
+CELL_BUCKETS = [
+    "Proliferating_Cycling",
+    "Differentiating_Cycling",
+    "Proliferating_NonCycling",
+    "Differentiating_NonCycling",
+]
+
+DEFAULT_REGION_ORDER_DETAILED = (
+    "Forebrain", "Telencephalon", "Diencephalon",
+    "Midbrain",
+    "Hindbrain", "Cerebellum", "Pons", "Medulla",
+)
+DEFAULT_EXCLUDE_REGIONS = ("Brain", "Head")
+
+DEFAULT_PROLIFERATING_CLASSES   = ("Radial glia", "Neuronal IPC", "Glioblast")
+DEFAULT_DIFFERENTIATING_CLASSES = ("Neuroblast", "Neuron")
+
+
+def _cell_bucket_series(
+    obs, cell_class_col, cell_cycle_score_col, cell_cycle_threshold,
+    proliferating_classes, differentiating_classes,
+):
+    """Return a Series (index = obs.index) with one of CELL_BUCKETS or NA."""
+    is_prolif = obs[cell_class_col].isin(list(proliferating_classes))
+    is_diff   = obs[cell_class_col].isin(list(differentiating_classes))
+    is_cyc    = pd.to_numeric(obs[cell_cycle_score_col], errors="coerce") > float(cell_cycle_threshold)
+
+    bucket = pd.Series(pd.NA, index=obs.index, dtype="object")
+    bucket[is_prolif &  is_cyc] = "Proliferating_Cycling"
+    bucket[is_diff   &  is_cyc] = "Differentiating_Cycling"
+    bucket[is_prolif & ~is_cyc] = "Proliferating_NonCycling"
+    bucket[is_diff   & ~is_cyc] = "Differentiating_NonCycling"
+    return bucket
+
+
+def _cells_expressing_any_gene(adata, genes, sym_col):
+    """Per-cell boolean: does the cell express ANY of the target genes (X > 0)?"""
+    import scipy.sparse as sp
+
+    if sym_col in adata.var.columns:
+        sym2var = (
+            pd.Series(adata.var_names.values, index=adata.var[sym_col].astype(str))
+            .dropna().to_dict()
+        )
+    else:
+        sym2var = {g: g for g in adata.var_names.astype(str)}
+
+    found   = [g for g in genes if g in sym2var]
+    missing = [g for g in genes if g not in sym2var]
+    if missing:
+        preview = ", ".join(missing[:5]) + (" ..." if len(missing) > 5 else "")
+        print(f"  [warn] {len(missing):,} gene(s) not found: {preview}")
+    if not found:
+        raise ValueError("None of the requested genes were found in adata.")
+
+    varnames = [sym2var[g] for g in found]
+    X_sub    = adata[:, varnames].X
+    if sp.issparse(X_sub):
+        n_nonzero = X_sub.getnnz(axis=1)
+    else:
+        n_nonzero = (np.asarray(X_sub) > 0).sum(axis=1)
+    expresses_any = np.asarray(n_nonzero).ravel() > 0
+    return expresses_any, found, missing
+
+
+def create_expression_fraction_by_age_region_cellcycle(
+    h5ad_path,
+    genes,
+    output_dir=DEFAULT_OUTPUT_DIR,
+    subfolder_name=None,
+    chemistry="v3",
+    chemistry_col=DEFAULT_CHEMISTRY_COL,
+    age_col="Age",
+    region_col=DEFAULT_REGION_COL,
+    cell_class_col="CellClass",
+    cell_cycle_score_col="cell_cycle_score",
+    cell_cycle_threshold=0.004,
+    sym_col="Gene",
+    proliferating_classes=DEFAULT_PROLIFERATING_CLASSES,
+    differentiating_classes=DEFAULT_DIFFERENTIATING_CLASSES,
+    exclude_regions=DEFAULT_EXCLUDE_REGIONS,
+    region_order=DEFAULT_REGION_ORDER_DETAILED,
+    plot_metric="Proliferating_Cycling",
+):
+    """
+    Fraction of cells (in each of 4 prolif/diff × cycling buckets) that express
+    at least one gene in `genes`, aggregated by (Age, Region).
+
+    Writes:
+      - a long CSV: Age, Region, bucket, n_cells, n_expressing, fraction
+      - a wide CSV: Age, Region, one column per bucket (fraction)
+      - a plot: x=Age, y=fraction for `plot_metric`, one line per region
+        (in `region_order`, `exclude_regions` skipped)
+    """
+    adata, h5ad_path = load_filtered_adata(
+        h5ad_path, chemistry=chemistry, chemistry_col=chemistry_col,
+    )
+
+    for col in (age_col, region_col, cell_class_col, cell_cycle_score_col):
+        if col not in adata.obs.columns:
+            raise KeyError(
+                f"Column '{col}' not found in adata.obs. "
+                f"Available: {list(adata.obs.columns)}"
+            )
+
+    # 1. bucket each cell
+    obs = adata.obs.copy()
+    obs["_bucket"] = _cell_bucket_series(
+        obs, cell_class_col, cell_cycle_score_col, cell_cycle_threshold,
+        proliferating_classes, differentiating_classes,
+    )
+    print(f"  Cell-bucket counts: {obs['_bucket'].value_counts(dropna=False).to_dict()}")
+
+    # 2. does each cell express ≥1 target gene?
+    expresses_any, found_genes, missing_genes = _cells_expressing_any_gene(
+        adata, genes, sym_col=sym_col,
+    )
+    obs["_expresses_any"] = expresses_any
+
+    # 3. drop excluded regions + cells with no bucket
+    excluded_set = set(map(str, exclude_regions or ()))
+    keep_mask = (
+        obs["_bucket"].notna()
+        & ~obs[region_col].astype(str).isin(excluded_set)
+    )
+    obs_kept = obs.loc[keep_mask].copy()
+    print(f"  Kept cells after excluding regions {sorted(excluded_set)}: "
+          f"{len(obs_kept):,} / {len(obs):,}")
+
+    # 4. aggregate: per (Age, Region, bucket) → n_cells + n_expressing → fraction
+    grouped = (
+        obs_kept.groupby([age_col, region_col, "_bucket"], observed=True)
+        .agg(n_cells=("_expresses_any", "size"),
+             n_expressing=("_expresses_any", "sum"))
+        .reset_index()
+    )
+    grouped["fraction"] = grouped["n_expressing"] / grouped["n_cells"].replace(0, np.nan)
+    grouped = grouped.rename(columns={"_bucket": "cell_bucket"})
+
+    # 5. wide format
+    wide = grouped.pivot_table(
+        index=[age_col, region_col], columns="cell_bucket", values="fraction",
+    ).reset_index()
+    # Ensure all four bucket columns exist (some buckets may be missing entirely).
+    for b in CELL_BUCKETS:
+        if b not in wide.columns:
+            wide[b] = np.nan
+    wide = wide[[age_col, region_col, *CELL_BUCKETS]]
+
+    # 6. output paths
+    output_dir = Path(output_dir)
+    if subfolder_name:
+        output_dir = output_dir / sanitize_filename_component(subfolder_name)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    chemistry_label = sanitize_filename_component(chemistry if chemistry is not None else "all")
+    h5ad_stem       = sanitize_filename_component(h5ad_path.stem)
+    long_csv_path   = output_dir / f"expression_fraction_long_{chemistry_label}_{h5ad_stem}.csv"
+    wide_csv_path   = output_dir / f"expression_fraction_wide_{chemistry_label}_{h5ad_stem}.csv"
+    plot_png_path   = output_dir / f"expression_fraction_{sanitize_filename_component(plot_metric)}_{chemistry_label}_{h5ad_stem}.png"
+
+    grouped.to_csv(long_csv_path, index=False)
+    wide.to_csv(wide_csv_path, index=False)
+    print(f"  Saved long CSV: {long_csv_path.name}")
+    print(f"  Saved wide CSV: {wide_csv_path.name}")
+
+    # 7. plot
+    if plot_metric not in CELL_BUCKETS:
+        raise ValueError(f"plot_metric must be one of {CELL_BUCKETS}")
+    _plot_fraction_by_age_and_region(
+        grouped[grouped["cell_bucket"] == plot_metric],
+        age_col=age_col, region_col=region_col,
+        region_order=region_order, exclude_regions=exclude_regions,
+        title=(f"Fraction of {plot_metric.replace('_', ' ')} cells "
+               f"expressing ≥1 of {len(found_genes)} genes"),
+        out_path=plot_png_path,
+    )
+    print(f"  Saved plot:    {plot_png_path.name}")
+
+    return {
+        "output_dir":         str(output_dir),
+        "long_csv_path":      str(long_csv_path),
+        "wide_csv_path":      str(wide_csv_path),
+        "plot_png_path":      str(plot_png_path),
+        "n_cells_after_filter": int(len(obs_kept)),
+        "n_input_genes":      len(list(genes)),
+        "n_found_genes":      len(found_genes),
+        "n_missing_genes":    len(missing_genes),
+        "plot_metric":        plot_metric,
+    }
+
+
+def _plot_fraction_by_age_and_region(
+    df, age_col, region_col, region_order, exclude_regions, title, out_path,
+):
+    """Line plot: x=age, y=fraction, one line per region (in `region_order`)."""
+    if df.empty:
+        print("  [warn] no data to plot for the selected metric.")
+        return
+
+    excluded_set = set(map(str, exclude_regions or ()))
+    ordered_regions = [r for r in region_order if r not in excluded_set]
+    # Add any observed regions not in the fixed order (kept but plotted after).
+    observed = df[region_col].dropna().astype(str).unique().tolist()
+    extras   = [r for r in observed if r not in ordered_regions and r not in excluded_set]
+    plot_regions = ordered_regions + sorted(extras)
+
+    # Convert Age to numeric where possible for a proper x-axis.
+    df = df.copy()
+    df["_age_num"] = pd.to_numeric(df[age_col], errors="coerce")
+    sort_key = "_age_num" if df["_age_num"].notna().any() else age_col
+
+    palette = plt.get_cmap("tab10").colors + plt.get_cmap("Set2").colors
+    color_map = {r: palette[i % len(palette)] for i, r in enumerate(plot_regions)}
+
+    fig, ax = plt.subplots(figsize=(9, 5.5))
+    for region in plot_regions:
+        sub = df[df[region_col].astype(str) == region].sort_values(sort_key)
+        if sub.empty:
+            continue
+        ax.plot(sub[sort_key], sub["fraction"],
+                marker="o", linewidth=1.5, color=color_map[region], label=region)
+
+    ax.set_xlabel(age_col)
+    ax.set_ylabel("Fraction of cells expressing ≥1 gene")
+    ax.set_title(title, fontsize=11)
+    ax.set_ylim(-0.02, min(1.02, ax.get_ylim()[1] * 1.02) if ax.get_ylim()[1] > 0 else 1.02)
+    ax.grid(alpha=0.3)
+    ax.legend(loc="center left", bbox_to_anchor=(1.02, 0.5), frameon=False,
+              title="Region")
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=300, bbox_inches="tight")
+    plt.close(fig)
+
+
 def build_arg_parser():
     parser = argparse.ArgumentParser(
         description="Create helper dataset-analysis plots and tables."
@@ -257,7 +496,7 @@ def build_arg_parser():
     parser.add_argument(
         "--task",
         default="age_counts",
-        choices=["age_counts", "gene_region_boxplot"],
+        choices=["age_counts", "gene_region_boxplot", "expression_fraction_by_age_region_cellcycle"],
         help="Which dataset-analysis helper task to run.",
     )
     parser.add_argument(
@@ -306,7 +545,66 @@ def build_arg_parser():
         default=DEFAULT_REGION_GROUP_COL,
         help="Temporary/ad hoc column name to store collapsed region groups.",
     )
+
+    # -- expression_fraction_by_age_region_cellcycle -----------------------
+    parser.add_argument(
+        "--gene-list",
+        default=None,
+        help=("CSV/text file listing genes for --task "
+              "expression_fraction_by_age_region_cellcycle. CSV: uses column "
+              "'gene' if present, otherwise the first column; text: one gene "
+              "per line."),
+    )
+    parser.add_argument(
+        "--subfolder-name", default=None,
+        help="Optional subfolder under --output-dir.",
+    )
+    parser.add_argument(
+        "--cell-class-col", default="CellClass",
+        help="Column in adata.obs with the proliferating/differentiating class labels.",
+    )
+    parser.add_argument(
+        "--cell-cycle-score-col", default="cell_cycle_score",
+        help="Column in adata.obs with the cell-cycle score.",
+    )
+    parser.add_argument(
+        "--cell-cycle-threshold", type=float, default=0.004,
+        help="cell_cycle_score > this = 'cycling' cell.",
+    )
+    parser.add_argument(
+        "--sym-col", default="Gene",
+        help="Column in adata.var containing gene symbols.",
+    )
+    parser.add_argument(
+        "--plot-metric", default="Proliferating_Cycling",
+        choices=CELL_BUCKETS,
+        help="Which cell-bucket fraction to plot on the y-axis.",
+    )
+    parser.add_argument(
+        "--exclude-regions", nargs="*", default=list(DEFAULT_EXCLUDE_REGIONS),
+        help="Region values to skip when plotting (default: Brain Head).",
+    )
     return parser
+
+
+def _load_gene_list(path):
+    """CSV ('gene' col or first col) or plain-text (one per line)."""
+    if path is None:
+        return []
+    p = Path(path)
+    if p.suffix.lower() == ".csv":
+        df = pd.read_csv(p)
+        col = "gene" if "gene" in df.columns else df.columns[0]
+        genes = df[col].dropna().astype(str).str.strip().tolist()
+    else:
+        with open(p) as f:
+            genes = [line.strip() for line in f if line.strip()]
+    seen, uniq = set(), []
+    for g in genes:
+        if g and g not in seen:
+            seen.add(g)
+            uniq.append(g)
+    return uniq
 
 
 if __name__ == "__main__":
@@ -322,7 +620,7 @@ if __name__ == "__main__":
             region=args.region,
             region_col=args.region_col,
         )
-    else:
+    elif args.task == "gene_region_boxplot":
         result = create_gene_expression_boxplot_by_region(
             h5ad_path=args.h5ad_path,
             genes=args.genes or [],
@@ -331,6 +629,29 @@ if __name__ == "__main__":
             chemistry_col=args.chemistry_col,
             region_col=args.region_col,
             region_group_col=args.region_group_col,
+        )
+    else:
+        genes = args.genes or _load_gene_list(args.gene_list)
+        if not genes:
+            raise SystemExit(
+                "expression_fraction_by_age_region_cellcycle needs a gene list. "
+                "Pass --genes A B C  or  --gene-list path/to/genes.csv"
+            )
+        result = create_expression_fraction_by_age_region_cellcycle(
+            h5ad_path=args.h5ad_path,
+            genes=genes,
+            output_dir=args.output_dir,
+            subfolder_name=args.subfolder_name,
+            chemistry=chemistry,
+            chemistry_col=args.chemistry_col,
+            age_col=args.age_col,
+            region_col=args.region_col,
+            cell_class_col=args.cell_class_col,
+            cell_cycle_score_col=args.cell_cycle_score_col,
+            cell_cycle_threshold=args.cell_cycle_threshold,
+            sym_col=args.sym_col,
+            plot_metric=args.plot_metric,
+            exclude_regions=args.exclude_regions,
         )
 
     print("Saved dataset analysis results:")
