@@ -274,8 +274,9 @@ def peaks_to_dataframe(adata, peak_columns: dict | None = None) -> pd.DataFrame:
 def load_tss_annotation(gtf_path: Path | None, genome: str) -> pd.DataFrame:
     """Return a DataFrame with columns Chromosome / TSS / Strand / gene_name.
 
-    If a GTF file is provided, parse it. Otherwise fall back to SnapATAC2's
-    built-in gene annotations (which are curated for supported genomes).
+    If a GTF file is provided, parse it. Otherwise try to obtain a GTF from
+    SnapATAC2's built-in `Genome` object (this downloads on first use and
+    caches locally).
     """
     if gtf_path is not None and Path(gtf_path).exists():
         print(f"\n[Load] gene TSSes from GTF: {gtf_path}")
@@ -285,22 +286,46 @@ def load_tss_annotation(gtf_path: Path | None, genome: str) -> pd.DataFrame:
     try:
         import snapatac2 as snap
     except ImportError as e:
-        raise ImportError(
-            "snapatac2 is required. Install with: pip install snapatac2"
-        ) from e
+        raise ImportError("pip install snapatac2") from e
+
     genome_obj = getattr(snap.genome, genome, None)
     if genome_obj is None:
         raise ValueError(f"snapatac2.genome has no attribute '{genome}'.")
-    # SnapATAC2 exposes gene annotations; if the exact API differs across
-    # versions, we may need to switch to a GTF file (set atac.gtf_path).
+
+    # Try, in order:
+    #   1. .fetch_annotations()  — returns a path to a cached GTF
+    #   2. .annotation as a str/Path pointing to a GTF
+    #   3. .annotation as an iterable of records → DataFrame
+    fetched_gtf = None
+    if hasattr(genome_obj, "fetch_annotations"):
+        try:
+            fetched_gtf = Path(genome_obj.fetch_annotations())
+        except Exception as e:
+            print(f"  [warn] genome.fetch_annotations() failed: {e}")
+
+    if fetched_gtf is None:
+        ann = getattr(genome_obj, "annotation", None)
+        if isinstance(ann, (str, Path)):
+            fetched_gtf = Path(ann)
+
+    if fetched_gtf is not None and fetched_gtf.exists():
+        print(f"  [snapatac2 GTF] {fetched_gtf}")
+        return _tss_from_gtf(fetched_gtf)
+
     ann = getattr(genome_obj, "annotation", None)
     if ann is None:
         raise RuntimeError(
-            f"snap.genome.{genome} has no `annotation` attribute in this snapatac2 "
-            "version. Please provide atac.gtf_path in the config."
+            f"Could not obtain gene annotations for '{genome}' from snapatac2. "
+            "Please set atac.gtf_path in the config to a GENCODE/Ensembl GTF."
         )
-    df = pd.DataFrame(ann)
-    # Normalise column names — snapatac2 versions vary slightly here.
+    try:
+        df = pd.DataFrame(list(ann))
+    except Exception as e:
+        raise RuntimeError(
+            f"Failed to parse snap.genome.{genome}.annotation "
+            f"(type={type(ann).__name__}): {e}. "
+            "Please set atac.gtf_path in the config to a GENCODE/Ensembl GTF."
+        )
     rename = {"chrom": "Chromosome", "start": "Start", "end": "End",
               "strand": "Strand", "gene_name": "gene_name"}
     df = df.rename(columns={k: v for k, v in rename.items() if k in df.columns})
@@ -467,6 +492,7 @@ def task_motif_enrichment(
 
     # Flatten result into a long DataFrame regardless of exact return shape.
     rows = []
+    printed_debug = False
     for ct, res in (result.items() if isinstance(result, dict) else [("all", result)]):
         if hasattr(res, "to_dataframe"):
             res_df = res.to_dataframe()
@@ -474,13 +500,33 @@ def task_motif_enrichment(
             res_df = res
         else:
             res_df = pd.DataFrame(res)
-        for _, r in res_df.iterrows():
-            motif_name = str(r.get("name", r.get("motif", "")))
-            log2fe     = float(r.get("log2_fold_enrichment", r.get("log2FE", np.nan)))
-            padj       = float(r.get("adjusted_p_value",   r.get("padj",   np.nan)))
+
+        if not printed_debug and not res_df.empty:
+            print(f"  [debug] motif_enrichment columns for '{ct}': {list(res_df.columns)}")
+            print(f"  [debug] index name: {res_df.index.name}  "
+                  f"first index value: {res_df.index[0]!r}")
+            print(f"  [debug] first row: {res_df.iloc[0].to_dict()}")
+            printed_debug = True
+
+        for idx, r in res_df.iterrows():
+            motif_name = _extract_motif_name(idx, r)
+            log2fe     = _extract_numeric(r, [
+                "log2_fold_enrichment", "log2FE", "log2 fold enrichment",
+                "log2(fold change)", "log2 fold change", "log2FoldChange",
+                "log2FC", "log2 fold-enrichment", "fold enrichment",
+            ])
+            padj       = _extract_numeric(r, [
+                "adjusted_p_value", "adjusted p-value", "adjusted p value",
+                "padj", "FDR", "q-value", "qvalue", "adj_pvalue",
+            ])
+            pval       = _extract_numeric(r, [
+                "p-value", "p_value", "pvalue", "P-value", "P value",
+            ])
             rows.append({
                 "cell_type": ct, "motif": motif_name,
-                "log2_fold_enrichment": log2fe, "adjusted_p_value": padj,
+                "log2_fold_enrichment": log2fe,
+                "p_value": pval,
+                "adjusted_p_value": padj,
             })
     enrich_df = pd.DataFrame(rows)
 
@@ -750,6 +796,30 @@ def task_motif_target_validation(
     print(f"\n  Saved: {detail_csv.name}   ({len(detail_df):,} rows)")
     print(f"  Saved: {summary_csv.name}  ({len(summary_df):,} TFs)")
     return summary_csv
+
+
+def _extract_motif_name(idx, row) -> str:
+    """Motif name may live in the row's index (typical for snapatac2) or in
+    a name/motif/id column. Try each in turn."""
+    if idx is not None and not isinstance(idx, (int, np.integer)):
+        return str(idx)
+    for col in ("name", "motif", "motif_name", "id", "TF"):
+        if col in row.index and pd.notna(row[col]):
+            return str(row[col])
+    return ""
+
+
+def _extract_numeric(row, keys) -> float:
+    """First matching key in `keys` present in `row`, coerced to float. NaN if none."""
+    for k in keys:
+        if k in row.index:
+            v = row[k]
+            if pd.notna(v):
+                try:
+                    return float(v)
+                except (TypeError, ValueError):
+                    pass
+    return float("nan")
 
 
 def _flatten_enrichment_result(result) -> pd.DataFrame:
