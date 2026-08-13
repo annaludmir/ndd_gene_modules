@@ -738,6 +738,20 @@ def task_promoter_accessibility(
         print(f"    Saved: {pair_csv.name}  ({len(pair_df):,} genes)")
         all_rows.append(pair_df.assign(pair=pair_label))
 
+    # ── All-regions heatmap (mirrors the layout of Task 1) ──────────────────
+    if task_cfg.get("all_regions_heatmap", True):
+        _accessibility_heatmap_all_regions(
+            adata, overlap_df, peak_to_ix, X,
+            region_col=region_col,
+            regions=task_cfg.get("heatmap_regions"),
+            exclude_regions=task_cfg.get(
+                "heatmap_exclude_regions", ["Brain", "Head"]
+            ),
+            top_n_genes=int(task_cfg.get("heatmap_top_n_genes", 50)),
+            gene_ranking=task_cfg.get("heatmap_gene_ranking", "variance"),
+            out_dir=out_dir,
+        )
+
     if not all_rows:
         return None
     combined = pd.concat(all_rows, ignore_index=True)
@@ -745,6 +759,90 @@ def task_promoter_accessibility(
     combined.to_csv(combined_csv, index=False)
     print(f"  Saved: {combined_csv.name}  ({len(combined):,} rows total)")
     return combined_csv
+
+
+def _accessibility_heatmap_all_regions(
+    adata, overlap_df, peak_to_ix, X,
+    region_col: str,
+    regions: list | None,
+    exclude_regions: list,
+    top_n_genes: int,
+    gene_ranking: str,
+    out_dir: Path,
+) -> None:
+    """Compute per-region mean promoter accessibility for every target gene and
+    save a full-matrix CSV + a top-N-genes heatmap (region × gene). The heatmap
+    reuses `_order_heatmap_by_enrichment` so rows/columns are ordered to make
+    region-specific patterns visually obvious (same convention as Task 1)."""
+    obs_region = adata.obs[region_col].astype(str)
+    all_regions = list(pd.unique(obs_region))
+
+    exclude_set = set(map(str, exclude_regions or ()))
+    if regions:
+        target_regions = [r for r in regions if r in all_regions and r not in exclude_set]
+    else:
+        target_regions = [r for r in all_regions if r not in exclude_set]
+
+    if not target_regions:
+        print(f"  [skip] all-regions heatmap: no regions to plot (available: {all_regions})")
+        return
+
+    print(f"\n  All-regions heatmap: {len(target_regions)} region(s) × "
+          f"{overlap_df['gene_name'].nunique():,} genes")
+
+    # Per-gene per-cell accessibility score (sum of overlapping-peak values).
+    per_gene = overlap_df.groupby("gene_name")["peak_id"].apply(list).to_dict()
+
+    # region × gene DataFrame
+    region_masks = {r: (obs_region == r).to_numpy() for r in target_regions}
+    for r, mask in region_masks.items():
+        if int(mask.sum()) == 0:
+            print(f"    [warn] region '{r}' has 0 cells — will be all-NaN row.")
+
+    data = {r: {} for r in target_regions}
+    for gene, peak_ids in per_gene.items():
+        ix = [peak_to_ix[p] for p in peak_ids if p in peak_to_ix]
+        if not ix:
+            continue
+        per_cell_sum = np.asarray(X[:, ix].sum(axis=1)).ravel()
+        for r in target_regions:
+            mask = region_masks[r]
+            data[r][gene] = (
+                float(per_cell_sum[mask].mean()) if mask.any() else np.nan
+            )
+
+    mat = pd.DataFrame(data).T  # rows = regions, cols = genes
+    mat.index.name = region_col
+    mat.columns.name = "gene"
+
+    full_csv = out_dir / "promoter_accessibility_region_x_gene.csv"
+    mat.to_csv(full_csv)
+    print(f"  Saved: {full_csv.name}  ({mat.shape[0]} regions × {mat.shape[1]:,} genes)")
+
+    # Rank genes so the heatmap shows the most informative ones.
+    if gene_ranking == "variance":
+        scores = mat.var(axis=0, skipna=True)
+    elif gene_ranking == "range":
+        scores = mat.max(axis=0, skipna=True) - mat.min(axis=0, skipna=True)
+    elif gene_ranking == "max":
+        scores = mat.max(axis=0, skipna=True)
+    else:
+        raise ValueError(f"gene_ranking must be one of variance | range | max; got {gene_ranking}")
+
+    top_genes = scores.dropna().sort_values(ascending=False).head(top_n_genes).index
+    if len(top_genes) == 0:
+        print("  [skip] heatmap: no genes with non-NaN scores")
+        return
+    sub = mat[top_genes]
+
+    sub = _order_heatmap_by_enrichment(sub)
+    _heatmap(
+        sub, out_dir / "promoter_accessibility_region_x_gene_heatmap.png",
+        title=(f"Promoter accessibility — {region_col} × top-{len(top_genes)} genes "
+               f"(ranked by {gene_ranking})"),
+        cmap="viridis",
+    )
+    print(f"  Saved: promoter_accessibility_region_x_gene_heatmap.png")
 
 
 # =============================================================================

@@ -75,6 +75,15 @@ promoter:
   region_pairs:
     - ["telencephalon", "diencephalon"]
 
+  # All-regions heatmap (mirrors Task 1's layout): rows = regions, cols = top-N
+  # target genes, values = mean promoter accessibility. Ordered so region-
+  # specific patterns cluster into diagonal blocks.
+  all_regions_heatmap: true
+  heatmap_regions: null              # null = every region in region_col
+  heatmap_exclude_regions: ["Brain", "Head"]
+  heatmap_top_n_genes: 50            # too many columns get unreadable
+  heatmap_gene_ranking: "variance"   # variance | range | max
+
 # ── Task 3: motif -> target validation ────────────────────────────────────────
 motif_target_validation:
   enabled: true
