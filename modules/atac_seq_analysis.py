@@ -987,7 +987,266 @@ def task_motif_target_validation(
     summary_df.to_csv(summary_csv, index=False)
     print(f"\n  Saved: {detail_csv.name}   ({len(detail_df):,} rows)")
     print(f"  Saved: {summary_csv.name}  ({len(summary_df):,} TFs)")
+
+    # ── Per-pair MOODS scan (each (TF, target) gets its own row) ───────────
+    if task_cfg.get("per_pair_scoring", True):
+        _per_pair_motif_scan(
+            adata=adata,
+            tf_targets=tf_targets,
+            tss_df=tss_df,
+            motifs=motifs,
+            find_motifs_for_tf=_find_motifs_for_tf,
+            genome_obj=genome_obj,
+            cfg=cfg,
+            out_dir=out_dir,
+        )
+
     return summary_csv
+
+
+# ---------------------------------------------------------------------------
+# Per-pair MOODS scan (Task 3, additional output)
+# ---------------------------------------------------------------------------
+
+def _extract_pwm(motif) -> np.ndarray | None:
+    """Extract a 4×L PWM (probability or count matrix) from a snapatac2 motif.
+    Returns None if the format is unrecognizable."""
+    for attr in ("counts", "probability_matrix", "matrix", "pwm"):
+        if hasattr(motif, attr):
+            mat = np.asarray(getattr(motif, attr), dtype=float)
+            if mat.ndim == 2:
+                # Some libraries store L×4, some 4×L. Normalize to 4×L.
+                if mat.shape[0] != 4 and mat.shape[1] == 4:
+                    mat = mat.T
+                if mat.shape[0] == 4:
+                    return mat
+    # dict-like access
+    if hasattr(motif, "__getitem__"):
+        for k in ("matrix", "pwm", "counts"):
+            try:
+                mat = np.asarray(motif[k], dtype=float)
+                if mat.ndim == 2:
+                    if mat.shape[0] != 4 and mat.shape[1] == 4:
+                        mat = mat.T
+                    if mat.shape[0] == 4:
+                        return mat
+            except Exception:
+                continue
+    return None
+
+
+def _pwm_to_moods_log_odds(pwm: np.ndarray, bg=(0.25, 0.25, 0.25, 0.25),
+                           pseudocount: float = 0.01) -> list[list[float]]:
+    """Convert a 4×L count/probability matrix to a log-odds matrix (rows ACGT)
+    in the list-of-lists format MOODS.scan expects."""
+    m = np.asarray(pwm, dtype=float)
+    # If it's counts, normalize per-column to probabilities.
+    col_sums = m.sum(axis=0, keepdims=True)
+    col_sums = np.where(col_sums > 0, col_sums, 1.0)
+    ppm = m / col_sums
+    ppm = np.clip(ppm + pseudocount, 1e-9, None)
+    bg_arr = np.asarray(bg).reshape(-1, 1)
+    lo = np.log2(ppm / bg_arr)
+    return lo.tolist()
+
+
+def _resolve_fasta_path(genome_obj, cfg) -> Path | None:
+    """Find the reference FASTA path snapatac2 uses. Config override wins."""
+    explicit = cfg.get("atac", {}).get("fasta_path")
+    if explicit and Path(explicit).exists():
+        return Path(explicit)
+    for attr in ("fasta_file", "fasta", "genome_fasta"):
+        v = getattr(genome_obj, attr, None)
+        if callable(v):
+            try:
+                v = v()
+            except Exception:
+                v = None
+        if v and Path(str(v)).exists():
+            return Path(str(v))
+    # snapatac2 caches under ~/.cache/snapatac2/. Try that.
+    cache = Path.home() / ".cache" / "snapatac2"
+    for pattern in ("*.fa.gz.decomp", "*.fa", "*.fasta"):
+        for p in cache.glob(pattern):
+            return p
+    return None
+
+
+def _peaks_by_chrom(peaks_df: pd.DataFrame) -> dict[str, np.ndarray]:
+    """Return {chrom: sorted 2-col array of (start, end)} for O(log n) overlap
+    queries via numpy searchsorted."""
+    out = {}
+    for chrom, sub in peaks_df.groupby("Chromosome"):
+        starts_ends = sub[["Start", "End"]].to_numpy()
+        starts_ends = starts_ends[starts_ends[:, 0].argsort()]
+        out[chrom] = starts_ends
+    return out
+
+
+def _hit_in_any_peak(chrom: str, hit_start: int, hit_end: int,
+                     peaks_by_chrom: dict) -> bool:
+    """True if [hit_start, hit_end) overlaps any peak on `chrom`."""
+    arr = peaks_by_chrom.get(chrom)
+    if arr is None or len(arr) == 0:
+        return False
+    # Peaks whose start < hit_end AND end > hit_start.
+    idx = np.searchsorted(arr[:, 0], hit_end, side="right")
+    for i in range(idx - 1, -1, -1):
+        p_start, p_end = arr[i, 0], arr[i, 1]
+        if p_end <= hit_start:
+            # Since peaks are sorted by start, we can break once we've gone
+            # past overlap range on both sides. Cap the backward scan for
+            # very large peak sets.
+            if arr[max(0, i - 500), 1] <= hit_start:
+                break
+            continue
+        return True
+    return False
+
+
+def _per_pair_motif_scan(
+    adata, tf_targets, tss_df, motifs, find_motifs_for_tf,
+    genome_obj, cfg, out_dir,
+) -> Path | None:
+    """MOODS per-sequence scan: one row per (TF, target).
+
+    Reports the best MOODS score across the TF's cis_bp motif variants at each
+    target promoter, plus a flag for whether the best hit falls inside an
+    accessible ATAC peak.
+    """
+    task_cfg = cfg.get("motif_target_validation", {})
+    pval     = float(task_cfg.get("moods_pvalue_cutoff", 1e-4))
+    tss_win  = int(task_cfg.get("promoter_window", 2000))
+
+    print("\n" + "-" * 62)
+    print("  Task 3b: per-pair MOODS scan")
+    print("-" * 62)
+
+    try:
+        import MOODS.scan
+        import MOODS.tools
+    except ImportError as e:
+        raise ImportError(
+            "MOODS-python required for per-pair scoring: pip install MOODS-python\n"
+            "(or disable via motif_target_validation.per_pair_scoring: false)"
+        ) from e
+
+    try:
+        import pyfaidx
+    except ImportError as e:
+        raise ImportError("pyfaidx required: pip install pyfaidx") from e
+
+    fasta_path = _resolve_fasta_path(genome_obj, cfg)
+    if fasta_path is None:
+        raise RuntimeError(
+            "Could not locate reference FASTA. Set atac.fasta_path in the config "
+            "to the same file snapatac2 uses (usually under ~/.cache/snapatac2/)."
+        )
+    print(f"  FASTA: {fasta_path}")
+    fasta = pyfaidx.Fasta(str(fasta_path))
+
+    # Peak coords for accessibility overlay (same auto-detection Task 1/2 use).
+    peaks_df = peaks_to_dataframe(adata, cfg["atac"].get("peak_columns"))
+    peaks_by_chrom = _peaks_by_chrom(peaks_df)
+    print(f"  Peak index built: {sum(len(v) for v in peaks_by_chrom.values()):,} peaks "
+          f"across {len(peaks_by_chrom)} chromosomes")
+
+    bg = (0.25, 0.25, 0.25, 0.25)
+    rows = []
+    n_skipped_pwm = 0
+    n_skipped_seq = 0
+
+    for tf, tf_group in tf_targets.groupby("TF"):
+        tf_motifs = find_motifs_for_tf(str(tf))
+        if not tf_motifs:
+            continue
+
+        # Build PWMs + thresholds for this TF's motif variants.
+        pwms:   list[list[list[float]]] = []
+        motif_names: list[str]          = []
+        for m in tf_motifs:
+            pwm = _extract_pwm(m)
+            if pwm is None:
+                n_skipped_pwm += 1
+                continue
+            lo = _pwm_to_moods_log_odds(pwm, bg=bg)
+            pwms.append(lo)
+            motif_names.append(str(getattr(m, "name", f"motif_{len(motif_names)}")))
+        if not pwms:
+            continue
+
+        thresholds = [MOODS.tools.threshold_from_p(m, list(bg), pval) for m in pwms]
+
+        target_genes = tf_group["target"].astype(str).unique().tolist()
+        promoter_df  = build_promoter_regions(tss_df, tss_win, genes=target_genes)
+        if promoter_df.empty:
+            continue
+
+        for _, prow in promoter_df.iterrows():
+            chrom = str(prow["Chromosome"])
+            start = int(prow["Start"])
+            end   = int(prow["End"])
+            gene  = str(prow["gene_name"])
+
+            try:
+                seq = str(fasta[chrom][start:end].seq).upper()
+            except (KeyError, ValueError):
+                n_skipped_seq += 1
+                continue
+            if len(seq) < max(len(pwm[0]) for pwm in pwms):
+                n_skipped_seq += 1
+                continue
+
+            hit_lists = MOODS.scan.scan_dna(seq, pwms, list(bg), thresholds)
+
+            best_score = -np.inf
+            best_motif_name = ""
+            best_in_peak = False
+            n_hits = 0
+            n_hits_in_peak = 0
+
+            for motif_i, hits in enumerate(hit_lists):
+                width = len(pwms[motif_i][0])
+                for pos, score in hits:
+                    n_hits += 1
+                    hit_start = start + int(pos)
+                    hit_end   = hit_start + width
+                    in_peak   = _hit_in_any_peak(chrom, hit_start, hit_end, peaks_by_chrom)
+                    if in_peak:
+                        n_hits_in_peak += 1
+                    if float(score) > best_score:
+                        best_score      = float(score)
+                        best_motif_name = motif_names[motif_i]
+                        best_in_peak    = in_peak
+
+            rows.append({
+                "TF": tf,
+                "target": gene,
+                "n_motif_hits": n_hits,
+                "n_motif_hits_in_accessible_peak": n_hits_in_peak,
+                "best_motif_score": (best_score if np.isfinite(best_score) else np.nan),
+                "best_motif": best_motif_name,
+                "best_hit_in_accessible_peak": bool(best_in_peak) if n_hits > 0 else False,
+                "validated_by_motif_and_accessibility": bool(n_hits_in_peak > 0),
+            })
+
+    if n_skipped_pwm:
+        print(f"  [warn] {n_skipped_pwm} motif(s) had unrecognizable PWM format and were skipped.")
+    if n_skipped_seq:
+        print(f"  [warn] {n_skipped_seq} promoter(s) had missing/short sequence and were skipped.")
+
+    if not rows:
+        print("  [skip] no per-pair scores produced.")
+        return None
+
+    pair_df  = pd.DataFrame(rows).sort_values(["TF", "best_motif_score"],
+                                              ascending=[True, False])
+    pair_csv = out_dir / "motif_target_pair_scores.csv"
+    pair_df.to_csv(pair_csv, index=False)
+    print(f"  Saved: {pair_csv.name}  "
+          f"({len(pair_df):,} pairs; validated: "
+          f"{int(pair_df['validated_by_motif_and_accessibility'].sum()):,})")
+    return pair_csv
 
 
 def _extract_motif_name(idx, row) -> str:

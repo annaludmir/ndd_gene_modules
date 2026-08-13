@@ -80,7 +80,7 @@ promoter:
   # specific patterns cluster into diagonal blocks.
   all_regions_heatmap: true
   heatmap_regions: null              # null = every region in region_col
-  heatmap_exclude_regions: ["Brain", "Head"]
+  # heatmap_exclude_regions: ["Brain", "Head"]
   heatmap_top_n_genes: 50            # too many columns get unreadable
   heatmap_gene_ranking: "variance"   # variance | range | max
 
@@ -88,4 +88,10 @@ promoter:
 motif_target_validation:
   enabled: true
   promoter_window: 2000
-  motif_pval_cutoff: 1.0e-4
+  motif_pval_cutoff: 1.0e-4   # threshold for the set-level enrichment (Task 3)
+
+  # Per-pair MOODS scan (Task 3b). Writes motif_target_pair_scores.csv with
+  # one row per (TF, target) — best motif score plus a flag for whether the
+  # hit falls inside an accessible ATAC peak.
+  per_pair_scoring: true
+  moods_pvalue_cutoff: 1.0e-4
