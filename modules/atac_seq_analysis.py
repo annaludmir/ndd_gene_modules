@@ -1008,30 +1008,89 @@ def task_motif_target_validation(
 # Per-pair MOODS scan (Task 3, additional output)
 # ---------------------------------------------------------------------------
 
+_PWM_ATTR_CANDIDATES = (
+    "counts", "probability_matrix", "matrix", "pwm",
+    "probabilities", "probs", "ppm", "prob_matrix", "weights",
+    # Some backends expose methods rather than attributes:
+    "get_matrix", "get_pwm", "get_counts", "get_probabilities",
+    "to_matrix", "to_pwm",
+)
+
+
+def _normalize_pwm_shape(mat) -> np.ndarray | None:
+    """Coerce a 2-D array to shape (4, L). Returns None on failure."""
+    try:
+        m = np.asarray(mat, dtype=float)
+    except Exception:
+        return None
+    if m.ndim != 2:
+        return None
+    if m.shape[0] != 4 and m.shape[1] == 4:
+        m = m.T
+    if m.shape[0] != 4 or m.shape[1] < 1:
+        return None
+    return m
+
+
+_PWM_DEBUG_PRINTED = False
+
+
 def _extract_pwm(motif) -> np.ndarray | None:
-    """Extract a 4×L PWM (probability or count matrix) from a snapatac2 motif.
-    Returns None if the format is unrecognizable."""
-    for attr in ("counts", "probability_matrix", "matrix", "pwm"):
-        if hasattr(motif, attr):
-            mat = np.asarray(getattr(motif, attr), dtype=float)
-            if mat.ndim == 2:
-                # Some libraries store L×4, some 4×L. Normalize to 4×L.
-                if mat.shape[0] != 4 and mat.shape[1] == 4:
-                    mat = mat.T
-                if mat.shape[0] == 4:
-                    return mat
-    # dict-like access
-    if hasattr(motif, "__getitem__"):
-        for k in ("matrix", "pwm", "counts"):
+    """Extract a 4×L PWM/PPM from a snapatac2 motif object. Returns None if the
+    format is unrecognizable. Prints the motif's shape / dir() on the very first
+    call so we can iterate on the extraction if a new backend shows up."""
+    global _PWM_DEBUG_PRINTED
+    if not _PWM_DEBUG_PRINTED:
+        _PWM_DEBUG_PRINTED = True
+        public = [a for a in dir(motif) if not a.startswith("_")]
+        print(f"  [pwm-debug] motif type: {type(motif).__module__}.{type(motif).__name__}")
+        print(f"  [pwm-debug] name attr:  {getattr(motif, 'name', 'N/A')!r}")
+        print(f"  [pwm-debug] public members: {public}")
+        for attr in public:
             try:
-                mat = np.asarray(motif[k], dtype=float)
-                if mat.ndim == 2:
-                    if mat.shape[0] != 4 and mat.shape[1] == 4:
-                        mat = mat.T
-                    if mat.shape[0] == 4:
-                        return mat
+                v = getattr(motif, attr)
             except Exception:
                 continue
+            if callable(v):
+                continue
+            shape = getattr(v, "shape", None)
+            if shape is not None:
+                print(f"  [pwm-debug]   {attr}: shape={shape}, dtype={getattr(v, 'dtype', '?')}")
+            elif isinstance(v, (list, tuple)) and v and isinstance(v[0], (list, tuple)):
+                print(f"  [pwm-debug]   {attr}: nested-seq {len(v)}×{len(v[0])}")
+
+    # Try attribute access + method calls.
+    for name in _PWM_ATTR_CANDIDATES:
+        if not hasattr(motif, name):
+            continue
+        v = getattr(motif, name)
+        if callable(v):
+            try:
+                v = v()
+            except TypeError:
+                continue
+            except Exception:
+                continue
+        m = _normalize_pwm_shape(v)
+        if m is not None:
+            return m
+
+    # Dict-like fallback.
+    if hasattr(motif, "__getitem__"):
+        for k in ("matrix", "pwm", "counts", "probabilities"):
+            try:
+                v = motif[k]
+            except Exception:
+                continue
+            m = _normalize_pwm_shape(v)
+            if m is not None:
+                return m
+
+    # If the motif itself is iterable and looks matrix-shaped, try that.
+    m = _normalize_pwm_shape(motif)
+    if m is not None:
+        return m
+
     return None
 
 
@@ -1310,36 +1369,56 @@ def _sanitize(name: str) -> str:
     return re.sub(r"[^A-Za-z0-9._-]+", "_", str(name)).strip("_") or "unnamed"
 
 
-def _order_heatmap_by_enrichment(df: pd.DataFrame) -> pd.DataFrame:
-    """Reorder rows and columns to make enrichment patterns visually obvious.
+def _cluster_axis(vectors: np.ndarray, method: str = "average",
+                  metric: str = "correlation") -> np.ndarray:
+    """Return leaf ordering (indices) from hierarchical clustering of `vectors`
+    (n_items × n_features). Empty / one-item input returns identity ordering."""
+    from scipy.cluster.hierarchy import linkage, leaves_list
+    n = vectors.shape[0]
+    if n <= 1:
+        return np.arange(n)
+    Z = linkage(vectors, method=method, metric=metric)
+    return leaves_list(Z)
 
-    - Rows sorted by max enrichment across columns (descending) so the most-
-      active cell type is on top.
-    - Columns grouped by which row they peak in (in the sorted row order), then
-      sorted by descending value within each block. Produces a diagonal /
-      block-diagonal structure: TFs preferred by row 0 come first (strongest
-      first), then row 1, etc.
+
+def _order_heatmap_by_enrichment(df: pd.DataFrame) -> pd.DataFrame:
+    """Reorder rows and columns so patterns are visually obvious.
+
+    Columns are hierarchically clustered on their full profile across rows
+    (correlation distance + average linkage), so items with similar patterns end
+    up adjacent. Rows are max-sorted (small n → clustering adds little).
+
+    Constant / all-NaN columns can't be clustered on correlation distance and
+    are appended after the clustered block.
     """
-    if df.empty:
+    if df.empty or df.shape[1] < 2:
         return df
 
-    # Row order: strongest cell type first.
+    # Rows: strongest first.
     row_scores = df.max(axis=1, skipna=True)
     row_order  = row_scores.sort_values(ascending=False, na_position="last").index
     df = df.reindex(index=row_order)
 
-    # Column order: which row does each column peak in?
-    #   idxmax gives the row label (e.g. 'glioblast').
-    #   Convert to position via row_order.get_loc for sorting.
-    row_pos    = {r: i for i, r in enumerate(row_order)}
-    peak_row   = df.idxmax(axis=0, skipna=True).map(row_pos).fillna(len(row_order))
-    peak_value = df.max(axis=0, skipna=True)
-    col_order  = (
-        pd.DataFrame({"peak_row": peak_row, "peak_value": peak_value})
-        .sort_values(by=["peak_row", "peak_value"], ascending=[True, False])
-        .index
-    )
-    return df.reindex(columns=col_order)
+    # Columns: cluster by profile similarity.
+    X = df.fillna(0).to_numpy(dtype=float).T   # (n_cols, n_rows)
+
+    # Correlation distance is undefined for zero-variance vectors — filter.
+    stds     = X.std(axis=1)
+    good_ix  = np.where(stds > 1e-12)[0]
+    const_ix = np.where(stds <= 1e-12)[0]
+
+    if len(good_ix) >= 2:
+        try:
+            leaves = _cluster_axis(X[good_ix], method="average", metric="correlation")
+        except Exception:
+            # Correlation can still fail on degenerate rows; fall back to euclidean.
+            leaves = _cluster_axis(X[good_ix], method="average", metric="euclidean")
+        good_order = good_ix[leaves]
+    else:
+        good_order = good_ix
+
+    col_order_ix = np.concatenate([good_order, const_ix]).astype(int)
+    return df.iloc[:, col_order_ix]
 
 
 def _heatmap(df: pd.DataFrame, out_path: Path, title: str, cmap: str = "viridis"):
