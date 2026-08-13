@@ -37,7 +37,7 @@ atac:
 tf_network:
   cache_dir: "results/tf_network/all_genes_networks/Cortex_EMX1_louvain3_passedQC_PostM_rev1_v3"
   min_confidence: "high"   # high | medium | low
-  top_n_tfs: 30            # only the top-N TFs by number of targets
+  top_n_tfs: 142            # only the top-N TFs by number of targets
 
 # ── Task 1: TF motif enrichment per cell type ────────────────────────────────
 motif_enrichment:
@@ -46,6 +46,25 @@ motif_enrichment:
     - "radial glial cell"
     - "glutamatergic neuron"
     - "glioblast"
+    - "Purkinje cell"
+    - "microglial cell"
+    - "pericyte"
+    - "endothelial cell"
+    - "interneuron"
+    - "oligodendrocyte precursor cell"
+    - "glycinergic neuron"
+    - "vascular leptomeningeal cell"
+    - "progenitor cell"
+    - "neuroblast (sensu Nematoda and Protostomia)"
+    - "neural progenitor cell"
+    - "oligodendrocyte"
+    - "Schwann cell"
+    - "dopaminergic neuron"
+    - "vascular associated smooth muscle cell"
+    - "serotonergic neuron"
+    - "sensory neuron of dorsal root ganglion"
+    - "committed oligodendrocyte precursor"
+    
   motif_source: "cis_bp"   # "cis_bp" (default) or "jaspar"
   top_peaks_pct: 0.10      # top 10% most-accessible peaks per cell type
 
