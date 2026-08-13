@@ -626,6 +626,7 @@ def task_motif_enrichment(
                  .groupby(["cell_type", "candidate_tf"])["log2_fold_enrichment"]
                  .max()
                  .unstack(fill_value=np.nan))
+        pivot = _order_heatmap_by_enrichment(pivot)
         _heatmap(pivot, out_dir / "motif_enrichment_heatmap.png",
                  title="TF motif enrichment (log2 FE) — cell type × candidate TF",
                  cmap="viridis")
@@ -950,6 +951,38 @@ def _flatten_enrichment_result(result) -> pd.DataFrame:
 
 def _sanitize(name: str) -> str:
     return re.sub(r"[^A-Za-z0-9._-]+", "_", str(name)).strip("_") or "unnamed"
+
+
+def _order_heatmap_by_enrichment(df: pd.DataFrame) -> pd.DataFrame:
+    """Reorder rows and columns to make enrichment patterns visually obvious.
+
+    - Rows sorted by max enrichment across columns (descending) so the most-
+      active cell type is on top.
+    - Columns grouped by which row they peak in (in the sorted row order), then
+      sorted by descending value within each block. Produces a diagonal /
+      block-diagonal structure: TFs preferred by row 0 come first (strongest
+      first), then row 1, etc.
+    """
+    if df.empty:
+        return df
+
+    # Row order: strongest cell type first.
+    row_scores = df.max(axis=1, skipna=True)
+    row_order  = row_scores.sort_values(ascending=False, na_position="last").index
+    df = df.reindex(index=row_order)
+
+    # Column order: which row does each column peak in?
+    #   idxmax gives the row label (e.g. 'glioblast').
+    #   Convert to position via row_order.get_loc for sorting.
+    row_pos    = {r: i for i, r in enumerate(row_order)}
+    peak_row   = df.idxmax(axis=0, skipna=True).map(row_pos).fillna(len(row_order))
+    peak_value = df.max(axis=0, skipna=True)
+    col_order  = (
+        pd.DataFrame({"peak_row": peak_row, "peak_value": peak_value})
+        .sort_values(by=["peak_row", "peak_value"], ascending=[True, False])
+        .index
+    )
+    return df.reindex(columns=col_order)
 
 
 def _heatmap(df: pd.DataFrame, out_path: Path, title: str, cmap: str = "viridis"):
