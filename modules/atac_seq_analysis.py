@@ -1008,6 +1008,71 @@ def task_motif_target_validation(
 # Per-pair MOODS scan (Task 3, additional output)
 # ---------------------------------------------------------------------------
 
+def _load_meme_motifs(meme_path: Path) -> dict[str, np.ndarray]:
+    """Parse a MEME-format motif file into {motif_name: 4×L probability matrix}.
+    Handles the standard MEME format that cis_bp / JASPAR / HOMER export."""
+    motifs: dict[str, np.ndarray] = {}
+    current_name  = None
+    current_rows: list[list[float]] = []
+    in_matrix     = False
+
+    def _flush():
+        if current_name and current_rows:
+            mat = np.asarray(current_rows, dtype=float).T   # (L, 4) -> (4, L)
+            if mat.shape[0] == 4 and mat.shape[1] >= 1:
+                motifs[current_name] = mat
+
+    with open(meme_path) as f:
+        for raw in f:
+            line = raw.rstrip("\n")
+            stripped = line.strip()
+
+            if stripped.startswith("MOTIF"):
+                _flush()
+                parts = stripped.split()
+                # "MOTIF <id> [alt_name]" — use the first token after MOTIF.
+                current_name = parts[1] if len(parts) > 1 else None
+                current_rows = []
+                in_matrix    = False
+                continue
+
+            if stripped.startswith("letter-probability matrix"):
+                in_matrix = True
+                continue
+
+            if in_matrix:
+                parts = stripped.split()
+                if len(parts) == 4:
+                    try:
+                        current_rows.append([float(x) for x in parts])
+                        continue
+                    except ValueError:
+                        pass
+                # Non-4-numeric line ends the matrix block.
+                if current_rows:
+                    _flush()
+                    current_name = None
+                    current_rows = []
+                in_matrix = False
+
+    _flush()
+    return motifs
+
+
+def _find_meme_file(cfg) -> Path | None:
+    """Locate a MEME motif file. Config override wins, else look in the
+    snapatac2 cache."""
+    explicit = cfg.get("atac", {}).get("meme_file") or \
+               cfg.get("motif_target_validation", {}).get("meme_file")
+    if explicit and Path(explicit).exists():
+        return Path(explicit)
+    cache = Path.home() / ".cache" / "snapatac2"
+    for pattern in ("cisBP_human*.meme", "*.meme"):
+        for p in cache.glob(pattern):
+            return p
+    return None
+
+
 _PWM_ATTR_CANDIDATES = (
     "counts", "probability_matrix", "matrix", "pwm",
     "probabilities", "probs", "ppm", "prob_matrix", "weights",
@@ -1204,6 +1269,28 @@ def _per_pair_motif_scan(
     print(f"  FASTA: {fasta_path}")
     fasta = pyfaidx.Fasta(str(fasta_path))
 
+    # snapatac2's PyDNAMotif is opaque (Rust class) — no matrix accessor. We
+    # parse the same cis_bp MEME file snapatac2 downloaded and take PWMs from
+    # there. Motif names match one-for-one, so TF matching is unchanged.
+    meme_path = _find_meme_file(cfg)
+    if meme_path is None:
+        raise RuntimeError(
+            "Could not locate a MEME motif file. Snapatac2 usually caches one at "
+            "~/.cache/snapatac2/cisBP_human.meme after Task 1 runs; if it's missing "
+            "or elsewhere, set atac.meme_file or motif_target_validation.meme_file "
+            "in the config."
+        )
+    print(f"  MEME:  {meme_path}")
+    meme_pwms = _load_meme_motifs(meme_path)
+    print(f"  Loaded {len(meme_pwms):,} motifs from MEME file.")
+    if not meme_pwms:
+        raise RuntimeError(f"MEME file at {meme_path} yielded 0 motifs — parser bug?")
+
+    def _find_meme_pwms_for_tf(tf: str) -> list[tuple[str, np.ndarray]]:
+        tf_up = tf.upper()
+        return [(name, mat) for name, mat in meme_pwms.items()
+                if tf_up in name.upper()]
+
     # Peak coords for accessibility overlay (same auto-detection Task 1/2 use).
     peaks_df = peaks_to_dataframe(adata, cfg["atac"].get("peak_columns"))
     peaks_by_chrom = _peaks_by_chrom(peaks_df)
@@ -1214,24 +1301,22 @@ def _per_pair_motif_scan(
     rows = []
     n_skipped_pwm = 0
     n_skipped_seq = 0
+    n_tf_no_motif = 0
 
     for tf, tf_group in tf_targets.groupby("TF"):
-        tf_motifs = find_motifs_for_tf(str(tf))
-        if not tf_motifs:
+        meme_matches = _find_meme_pwms_for_tf(str(tf))
+        if not meme_matches:
+            n_tf_no_motif += 1
             continue
 
-        # Build PWMs + thresholds for this TF's motif variants.
-        pwms:   list[list[list[float]]] = []
-        motif_names: list[str]          = []
-        for m in tf_motifs:
-            pwm = _extract_pwm(m)
-            if pwm is None:
-                n_skipped_pwm += 1
-                continue
-            lo = _pwm_to_moods_log_odds(pwm, bg=bg)
+        pwms:        list[list[list[float]]] = []
+        motif_names: list[str]               = []
+        for name, mat in meme_matches:
+            lo = _pwm_to_moods_log_odds(mat, bg=bg)
             pwms.append(lo)
-            motif_names.append(str(getattr(m, "name", f"motif_{len(motif_names)}")))
+            motif_names.append(name)
         if not pwms:
+            n_skipped_pwm += 1
             continue
 
         thresholds = [MOODS.tools.threshold_from_p(m, list(bg), pval) for m in pwms]
@@ -1289,8 +1374,10 @@ def _per_pair_motif_scan(
                 "validated_by_motif_and_accessibility": bool(n_hits_in_peak > 0),
             })
 
+    if n_tf_no_motif:
+        print(f"  [info] {n_tf_no_motif} TF(s) had no matching motif in the MEME file.")
     if n_skipped_pwm:
-        print(f"  [warn] {n_skipped_pwm} motif(s) had unrecognizable PWM format and were skipped.")
+        print(f"  [warn] {n_skipped_pwm} TF(s) had all-invalid PWMs and were skipped.")
     if n_skipped_seq:
         print(f"  [warn] {n_skipped_seq} promoter(s) had missing/short sequence and were skipped.")
 
