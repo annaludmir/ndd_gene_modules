@@ -1351,7 +1351,13 @@ def _per_pair_motif_scan(
 
             for motif_i, hits in enumerate(hit_lists):
                 width = len(pwms[motif_i][0])
-                for pos, score in hits:
+                for h in hits:
+                    # MOODS <=1.9 yields (pos, score) tuples; >=1.9.4 yields
+                    # `match` objects with `.pos` / `.score`. Accept both.
+                    if hasattr(h, "pos") and hasattr(h, "score"):
+                        pos, score = h.pos, h.score
+                    else:
+                        pos, score = h
                     n_hits += 1
                     hit_start = start + int(pos)
                     hit_end   = hit_start + width
