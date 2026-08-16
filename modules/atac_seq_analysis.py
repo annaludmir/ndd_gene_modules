@@ -1508,18 +1508,123 @@ def _per_pair_motif_scan(
             top_ix_per_ct = _top_peaks_ix_per_cell_type(
                 adata, cell_type_col, cell_types, top_pct,
             )
+
+            # Collect per-CT validation booleans + shared sequence stats for the
+            # cross-CT diff CSV built after the loop.
+            per_ct_validated: dict[str, dict[tuple[str, str], bool]] = {}
+            sequence_stats:   dict[tuple[str, str], tuple[int, float, str]] = {}
+            per_ct_slugs:     dict[str, str] = {}
+
             for ct, top_ix in top_ix_per_ct.items():
                 ct_peaks_df       = peaks_df.iloc[top_ix].reset_index(drop=True)
                 ct_peaks_by_chrom = _peaks_by_chrom(ct_peaks_df)
                 ct_df   = _summarize_pair_hits(pair_hits, ct_peaks_by_chrom)
                 ct_slug = _sanitize(ct)
+                per_ct_slugs[ct] = ct_slug
                 ct_csv  = per_ct_dir / f"motif_target_pair_scores_{ct_slug}.csv"
                 ct_df.to_csv(ct_csv, index=False)
                 print(f"    {ct}: saved {ct_csv.name}  "
                       f"({len(ct_df):,} pairs; validated: "
                       f"{int(ct_df['validated_by_motif_and_accessibility'].sum()):,})")
 
+                validated_map = dict(zip(
+                    zip(ct_df["TF"].astype(str), ct_df["target"].astype(str)),
+                    ct_df["validated_by_motif_and_accessibility"].astype(bool),
+                ))
+                per_ct_validated[ct] = validated_map
+
+                # Populate shared sequence stats once (identical across cell types).
+                if not sequence_stats:
+                    for _, row in ct_df.iterrows():
+                        key = (str(row["TF"]), str(row["target"]))
+                        sequence_stats[key] = (
+                            int(row["n_motif_hits"]),
+                            float(row["best_motif_score"]) if pd.notna(row["best_motif_score"]) else float("nan"),
+                            str(row["best_motif"]),
+                        )
+
+            # ── Cross-CT diff CSV ───────────────────────────────────────────
+            _write_cross_ct_diff_csv(
+                out_dir=per_ct_dir.parent,
+                per_ct_validated=per_ct_validated,
+                per_ct_slugs=per_ct_slugs,
+                sequence_stats=sequence_stats,
+            )
+
     return global_csv
+
+
+def _write_cross_ct_diff_csv(
+    out_dir: Path,
+    per_ct_validated: dict[str, dict[tuple[str, str], bool]],
+    per_ct_slugs: dict[str, str],
+    sequence_stats: dict[tuple[str, str], tuple[int, float, str]],
+) -> Path | None:
+    """One row per (TF, target). Aggregates the per-cell-type validation flags
+    into: which cell types validate it, how many, and a specificity score.
+    Sorted so cell-type-specific edges come first."""
+    if not per_ct_validated or not sequence_stats:
+        return None
+
+    cell_types  = list(per_ct_validated.keys())
+    n_ct_total  = len(cell_types)
+    all_pairs   = sorted(sequence_stats.keys())
+
+    rows = []
+    for tf, tgt in all_pairs:
+        n_hits, best_score, best_motif = sequence_stats[(tf, tgt)]
+        flags = [bool(per_ct_validated[c].get((tf, tgt), False)) for c in cell_types]
+        n_valid = int(sum(flags))
+        validated_in = [c for c, f in zip(cell_types, flags) if f]
+
+        row = {
+            "TF": tf,
+            "target": tgt,
+            "n_motif_hits": n_hits,
+            "best_motif_score": best_score,
+            "best_motif": best_motif,
+            "n_cell_types_validated": n_valid,
+            "n_cell_types_total": n_ct_total,
+            # Higher = more cell-type-specific. 0 = validated in every CT.
+            # Set to NaN when the pair isn't validated anywhere (undefined).
+            "specificity_score": (1.0 - n_valid / n_ct_total) if n_valid > 0 else float("nan"),
+            "validated_cell_types": ";".join(validated_in),
+        }
+        # Per-CT boolean columns for full drill-down.
+        for c, f in zip(cell_types, flags):
+            row[f"validated_{per_ct_slugs[c]}"] = f
+        rows.append(row)
+
+    diff_df = pd.DataFrame(rows)
+
+    # Sort: pairs with any validation first (most specific → most ubiquitous),
+    # then never-validated pairs at the bottom.
+    diff_df["_has_validation"] = diff_df["n_cell_types_validated"] > 0
+    diff_df = (diff_df
+               .sort_values(
+                   ["_has_validation", "n_cell_types_validated", "TF", "target"],
+                   ascending=[False, True, True, True],
+               )
+               .drop(columns=["_has_validation"])
+               .reset_index(drop=True))
+
+    out_csv = out_dir / "motif_target_pair_scores_cross_ct_diff.csv"
+    diff_df.to_csv(out_csv, index=False)
+
+    # Human-readable summary of the diff distribution.
+    counts = diff_df["n_cell_types_validated"].value_counts().sort_index()
+    n_pairs = len(diff_df)
+    print(f"\n  Cross-CT diff: {out_csv.name}  ({n_pairs:,} pairs × {n_ct_total} cell types)")
+    print(f"    Validated in 0 CTs:    {int(counts.get(0, 0)):,}  (never)")
+    n_1  = int(counts.get(1, 0))
+    n_23 = int(sum(counts.get(k, 0) for k in (2, 3)))
+    n_4_10 = int(sum(counts.get(k, 0) for k in range(4, 11)))
+    n_11p  = int(sum(counts.get(k, 0) for k in range(11, n_ct_total + 1)))
+    print(f"    Validated in exactly 1 CT: {n_1:,}  (highly cell-type-specific)")
+    print(f"    Validated in 2-3 CTs:      {n_23:,}")
+    print(f"    Validated in 4-10 CTs:     {n_4_10:,}")
+    print(f"    Validated in >10 CTs:      {n_11p:,}  (mostly ubiquitous)")
+    return out_csv
 
 
 def _extract_motif_name(idx, row) -> str:
