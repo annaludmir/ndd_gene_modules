@@ -851,6 +851,7 @@ def _accessibility_heatmap_all_regions(
 
 def task_motif_target_validation(
     adata, tf_targets: pd.DataFrame, cfg: dict, out_dir: Path,
+    force_per_pair: bool = False,
 ) -> Path | None:
     """
     For each candidate TF, scan the promoters of its predicted targets for the
@@ -990,16 +991,21 @@ def task_motif_target_validation(
 
     # ── Per-pair MOODS scan (each (TF, target) gets its own row) ───────────
     if task_cfg.get("per_pair_scoring", True):
-        _per_pair_motif_scan(
-            adata=adata,
-            tf_targets=tf_targets,
-            tss_df=tss_df,
-            motifs=motifs,
-            find_motifs_for_tf=_find_motifs_for_tf,
-            genome_obj=genome_obj,
-            cfg=cfg,
-            out_dir=out_dir,
-        )
+        pair_out = out_dir / "motif_target_pair_scores.csv"
+        if pair_out.exists() and not force_per_pair:
+            print(f"[skip] per-pair MOODS scan — output exists: {pair_out.name} "
+                  f"(delete or --force to rerun).")
+        else:
+            _per_pair_motif_scan(
+                adata=adata,
+                tf_targets=tf_targets,
+                tss_df=tss_df,
+                motifs=motifs,
+                find_motifs_for_tf=_find_motifs_for_tf,
+                genome_obj=genome_obj,
+                cfg=cfg,
+                out_dir=out_dir,
+            )
 
     return summary_csv
 
@@ -1533,12 +1539,45 @@ def _heatmap(df: pd.DataFrame, out_path: Path, title: str, cmap: str = "viridis"
 # Pipeline orchestration
 # =============================================================================
 
-def run(config_path: str) -> None:
+TASK_NAMES = ("motif_enrichment", "promoter", "motif_target_validation")
+
+
+def _primary_output(task_name: str, run_dir: Path) -> Path:
+    """Return the file whose existence marks a task as 'done' for skip-if-exists."""
+    if task_name == "motif_enrichment":
+        return run_dir / "1_motif_enrichment" / "motif_enrichment_all_motifs.csv"
+    if task_name == "promoter":
+        return run_dir / "2_promoter_accessibility" / "promoter_accessibility_region_x_gene.csv"
+    if task_name == "motif_target_validation":
+        return run_dir / "3_motif_target_validation" / "motif_target_validation_summary.csv"
+    raise ValueError(f"Unknown task: {task_name}")
+
+
+def run(
+    config_path: str,
+    tasks: list[str] | None = None,
+    run_dir: str | Path | None = None,
+    force: bool = False,
+) -> None:
+    """
+    Orchestrate the ATAC-seq analysis.
+
+    Parameters
+    ----------
+    tasks    : which of TASK_NAMES to consider running. Default = all.
+               Config's `enabled: false` still wins (hard-disable).
+    run_dir  : reuse this dated run dir instead of creating today's.
+    force    : rerun tasks even if their primary output already exists.
+    """
     cfg = load_config(config_path)
 
     date_str = datetime.datetime.now().strftime("%Y%m%d")
     dataset_name = cfg.get("dataset_name", "atac_run")
-    run_dir = cfg["output_folder"] / f"{dataset_name}_{date_str}"
+
+    if run_dir is not None:
+        run_dir = Path(run_dir).resolve()
+    else:
+        run_dir = cfg["output_folder"] / f"{dataset_name}_{date_str}"
     run_dir.mkdir(parents=True, exist_ok=True)
 
     metadata_dir = run_dir / "metadata"
@@ -1549,12 +1588,47 @@ def run(config_path: str) -> None:
     ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     log_path = metadata_dir / f"pipeline_output_{ts}.log"
 
+    # Which tasks did the user request? Default = all.
+    requested = list(tasks) if tasks else list(TASK_NAMES)
+    invalid = [t for t in requested if t not in TASK_NAMES]
+    if invalid:
+        raise ValueError(f"Unknown task(s): {invalid}. Valid: {TASK_NAMES}")
+
+    # Filter by config's `enabled` flag (config wins).
+    def _enabled_in_config(task_name: str) -> bool:
+        section_map = {
+            "motif_enrichment":         "motif_enrichment",
+            "promoter":                 "promoter",
+            "motif_target_validation":  "motif_target_validation",
+        }
+        return bool(cfg.get(section_map[task_name], {}).get("enabled", True))
+
+    enabled = [t for t in requested if _enabled_in_config(t)]
+
+    # Skip-if-exists (unless --force). Task 3 has a secondary output (per-pair
+    # scan) that's checked inside the task function itself.
+    to_run = []
+    for t in enabled:
+        out = _primary_output(t, run_dir)
+        if out.exists() and not force:
+            print(f"[skip] {t}: primary output exists → {out}")
+        else:
+            to_run.append(t)
+
     with _log_to_file(log_path):
         print("=" * 62)
         print(f"  ATAC-seq analysis — {dataset_name}")
-        print(f"  Run dir: {run_dir}")
+        print(f"  Run dir:      {run_dir}")
+        print(f"  Requested:    {requested}")
+        print(f"  Enabled+run:  {to_run if to_run else '(none — everything already done)'}")
+        print(f"  Force rerun:  {force}")
         print("=" * 62)
 
+        if not to_run:
+            print("\nNothing to do. Use --force to rerun or --tasks to pick specific ones.")
+            return
+
+        # Only load adata + tf_targets when at least one task will run.
         adata      = load_atac_h5ad(cfg["atac"])
         tf_targets = load_tf_network_targets(
             cfg["tf_network"],
@@ -1562,9 +1636,15 @@ def run(config_path: str) -> None:
             top_n_tfs=cfg["tf_network"].get("top_n_tfs"),
         )
 
-        task_motif_enrichment(adata, tf_targets, cfg, run_dir / "1_motif_enrichment")
-        task_promoter_accessibility(adata, tf_targets, cfg, run_dir / "2_promoter_accessibility")
-        task_motif_target_validation(adata, tf_targets, cfg, run_dir / "3_motif_target_validation")
+        if "motif_enrichment" in to_run:
+            task_motif_enrichment(adata, tf_targets, cfg, run_dir / "1_motif_enrichment")
+        if "promoter" in to_run:
+            task_promoter_accessibility(adata, tf_targets, cfg, run_dir / "2_promoter_accessibility")
+        if "motif_target_validation" in to_run:
+            task_motif_target_validation(
+                adata, tf_targets, cfg, run_dir / "3_motif_target_validation",
+                force_per_pair=force,
+            )
 
         print(f"\nDone → {run_dir}")
 
@@ -1574,5 +1654,18 @@ if __name__ == "__main__":
         description="ATAC-seq analysis complementing the tf_network module."
     )
     parser.add_argument("config", help="YAML config file.")
+    parser.add_argument(
+        "--tasks", nargs="+", choices=list(TASK_NAMES), default=None,
+        help="Run only these tasks (default: run everything enabled in config).",
+    )
+    parser.add_argument(
+        "--run-dir", default=None,
+        help="Reuse an existing dated run dir instead of creating today's. "
+             "Combines with skip-if-exists to fill in missing outputs.",
+    )
+    parser.add_argument(
+        "--force", action="store_true",
+        help="Rerun tasks even if their outputs already exist.",
+    )
     args = parser.parse_args()
-    run(args.config)
+    run(args.config, tasks=args.tasks, run_dir=args.run_dir, force=args.force)
