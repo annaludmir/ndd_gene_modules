@@ -95,3 +95,11 @@ motif_target_validation:
   # hit falls inside an accessible ATAC peak.
   per_pair_scoring: true
   moods_pvalue_cutoff: 1.0e-4
+
+  # Optional: same per-pair scan, but per-cell-type. Writes one CSV per cell
+  # type under 3_motif_target_validation/per_cell_type/ where "accessible" means
+  # "peak is in the top X% most-accessible peaks in that cell type". The MOODS
+  # sequence scan runs once and is reused for every cell type — cheap add-on.
+  per_cell_type_scoring: true
+  per_cell_type_cell_types: null       # null → reuse motif_enrichment.cell_types
+  per_cell_type_top_peaks_pct: 0.10    # top 10% most-accessible peaks per CT

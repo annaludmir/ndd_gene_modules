@@ -991,9 +991,16 @@ def task_motif_target_validation(
 
     # ── Per-pair MOODS scan (each (TF, target) gets its own row) ───────────
     if task_cfg.get("per_pair_scoring", True):
-        pair_out = out_dir / "motif_target_pair_scores.csv"
-        if pair_out.exists() and not force_per_pair:
-            print(f"[skip] per-pair MOODS scan — output exists: {pair_out.name} "
+        pair_out    = out_dir / "motif_target_pair_scores.csv"
+        per_ct_dir  = out_dir / "per_cell_type"
+        want_per_ct = bool(task_cfg.get("per_cell_type_scoring", False))
+        per_ct_done = want_per_ct and per_ct_dir.exists() and any(per_ct_dir.iterdir())
+
+        # Skip only when the global CSV exists AND (per-CT is disabled OR per-CT
+        # CSVs already exist). Otherwise rerun so missing outputs get filled in.
+        skip_ok = pair_out.exists() and (not want_per_ct or per_ct_done) and not force_per_pair
+        if skip_ok:
+            print(f"[skip] per-pair MOODS scan — outputs already present "
                   f"(delete or --force to rerun).")
         else:
             _per_pair_motif_scan(
@@ -1234,6 +1241,69 @@ def _hit_in_any_peak(chrom: str, hit_start: int, hit_end: int,
     return False
 
 
+def _summarize_pair_hits(pair_hits: dict, peaks_by_chrom: dict) -> pd.DataFrame:
+    """Turn `{(TF, target): [hit, ...]}` into the standard per-pair scores
+    DataFrame, checking each hit against the given accessibility index.
+
+    A `hit` is a tuple (chrom, hit_start, hit_end, score, motif_name).
+    """
+    rows = []
+    for (tf, gene), hits in pair_hits.items():
+        best_score      = -np.inf
+        best_motif_name = ""
+        best_in_peak    = False
+        n_hits          = 0
+        n_hits_in_peak  = 0
+        for chrom, hit_start, hit_end, score, motif_name in hits:
+            n_hits += 1
+            in_peak = _hit_in_any_peak(chrom, hit_start, hit_end, peaks_by_chrom)
+            if in_peak:
+                n_hits_in_peak += 1
+            if float(score) > best_score:
+                best_score      = float(score)
+                best_motif_name = motif_name
+                best_in_peak    = in_peak
+        rows.append({
+            "TF": tf,
+            "target": gene,
+            "n_motif_hits": n_hits,
+            "n_motif_hits_in_accessible_peak": n_hits_in_peak,
+            "best_motif_score": best_score if np.isfinite(best_score) else np.nan,
+            "best_motif": best_motif_name,
+            "best_hit_in_accessible_peak": bool(best_in_peak) if n_hits > 0 else False,
+            "validated_by_motif_and_accessibility": bool(n_hits_in_peak > 0),
+        })
+    df = pd.DataFrame(rows)
+    if df.empty:
+        return df
+    return df.sort_values(["TF", "best_motif_score"], ascending=[True, False])
+
+
+def _top_peaks_ix_per_cell_type(
+    adata, cell_type_col: str, cell_types: list[str], top_peaks_pct: float,
+) -> dict[str, np.ndarray]:
+    """For each cell type, return the row-indices into adata.var of the top
+    `top_peaks_pct` most-accessible peaks (mean over cells of that type).
+    Cell types not present in adata.obs are skipped with a warning."""
+    import scipy.sparse as sp
+    X = adata.X
+    if sp.issparse(X):
+        X = X.tocsr()
+
+    out = {}
+    n_peaks = adata.n_vars
+    n_top   = max(1, int(n_peaks * top_peaks_pct))
+
+    for ct in cell_types:
+        mask = (adata.obs[cell_type_col].astype(str) == str(ct)).to_numpy()
+        if int(mask.sum()) == 0:
+            print(f"    [warn] cell_type '{ct}' has 0 cells — skipping per-CT slice.")
+            continue
+        ct_mean = np.asarray(X[mask, :].mean(axis=0)).ravel()
+        out[str(ct)] = np.argsort(ct_mean)[::-1][:n_top]
+    return out
+
+
 def _per_pair_motif_scan(
     adata, tf_targets, tss_df, motifs, find_motifs_for_tf,
     genome_obj, cfg, out_dir,
@@ -1242,7 +1312,9 @@ def _per_pair_motif_scan(
 
     Reports the best MOODS score across the TF's cis_bp motif variants at each
     target promoter, plus a flag for whether the best hit falls inside an
-    accessible ATAC peak.
+    accessible ATAC peak. Sequence-based hits are collected ONCE per pair, then
+    summarized against multiple accessibility indices (global + per cell type
+    if enabled) so per-cell-type CSVs don't repeat the expensive scan.
     """
     task_cfg = cfg.get("motif_target_validation", {})
     pval     = float(task_cfg.get("moods_pvalue_cutoff", 1e-4))
@@ -1275,9 +1347,6 @@ def _per_pair_motif_scan(
     print(f"  FASTA: {fasta_path}")
     fasta = pyfaidx.Fasta(str(fasta_path))
 
-    # snapatac2's PyDNAMotif is opaque (Rust class) — no matrix accessor. We
-    # parse the same cis_bp MEME file snapatac2 downloaded and take PWMs from
-    # there. Motif names match one-for-one, so TF matching is unchanged.
     meme_path = _find_meme_file(cfg)
     if meme_path is None:
         raise RuntimeError(
@@ -1297,14 +1366,14 @@ def _per_pair_motif_scan(
         return [(name, mat) for name, mat in meme_pwms.items()
                 if tf_up in name.upper()]
 
-    # Peak coords for accessibility overlay (same auto-detection Task 1/2 use).
+    # Global peak coords + index (accessibility "anywhere in the dataset").
     peaks_df = peaks_to_dataframe(adata, cfg["atac"].get("peak_columns"))
-    peaks_by_chrom = _peaks_by_chrom(peaks_df)
-    print(f"  Peak index built: {sum(len(v) for v in peaks_by_chrom.values()):,} peaks "
-          f"across {len(peaks_by_chrom)} chromosomes")
+    global_peaks_by_chrom = _peaks_by_chrom(peaks_df)
+    print(f"  Peak index built: {sum(len(v) for v in global_peaks_by_chrom.values()):,} peaks "
+          f"across {len(global_peaks_by_chrom)} chromosomes")
 
     bg = (0.25, 0.25, 0.25, 0.25)
-    rows = []
+    pair_hits:    dict[tuple[str, str], list[tuple]] = {}
     n_skipped_pwm = 0
     n_skipped_seq = 0
     n_tf_no_motif = 0
@@ -1349,12 +1418,7 @@ def _per_pair_motif_scan(
 
             hit_lists = MOODS.scan.scan_dna(seq, pwms, list(bg), thresholds)
 
-            best_score = -np.inf
-            best_motif_name = ""
-            best_in_peak = False
-            n_hits = 0
-            n_hits_in_peak = 0
-
+            hits_for_pair = []
             for motif_i, hits in enumerate(hit_lists):
                 width = len(pwms[motif_i][0])
                 for h in hits:
@@ -1364,27 +1428,12 @@ def _per_pair_motif_scan(
                         pos, score = h.pos, h.score
                     else:
                         pos, score = h
-                    n_hits += 1
                     hit_start = start + int(pos)
                     hit_end   = hit_start + width
-                    in_peak   = _hit_in_any_peak(chrom, hit_start, hit_end, peaks_by_chrom)
-                    if in_peak:
-                        n_hits_in_peak += 1
-                    if float(score) > best_score:
-                        best_score      = float(score)
-                        best_motif_name = motif_names[motif_i]
-                        best_in_peak    = in_peak
-
-            rows.append({
-                "TF": tf,
-                "target": gene,
-                "n_motif_hits": n_hits,
-                "n_motif_hits_in_accessible_peak": n_hits_in_peak,
-                "best_motif_score": (best_score if np.isfinite(best_score) else np.nan),
-                "best_motif": best_motif_name,
-                "best_hit_in_accessible_peak": bool(best_in_peak) if n_hits > 0 else False,
-                "validated_by_motif_and_accessibility": bool(n_hits_in_peak > 0),
-            })
+                    hits_for_pair.append(
+                        (chrom, hit_start, hit_end, float(score), motif_names[motif_i])
+                    )
+            pair_hits[(tf, gene)] = hits_for_pair
 
     if n_tf_no_motif:
         print(f"  [info] {n_tf_no_motif} TF(s) had no matching motif in the MEME file.")
@@ -1393,18 +1442,53 @@ def _per_pair_motif_scan(
     if n_skipped_seq:
         print(f"  [warn] {n_skipped_seq} promoter(s) had missing/short sequence and were skipped.")
 
-    if not rows:
+    if not pair_hits:
         print("  [skip] no per-pair scores produced.")
         return None
 
-    pair_df  = pd.DataFrame(rows).sort_values(["TF", "best_motif_score"],
-                                              ascending=[True, False])
-    pair_csv = out_dir / "motif_target_pair_scores.csv"
-    pair_df.to_csv(pair_csv, index=False)
-    print(f"  Saved: {pair_csv.name}  "
-          f"({len(pair_df):,} pairs; validated: "
-          f"{int(pair_df['validated_by_motif_and_accessibility'].sum()):,})")
-    return pair_csv
+    # ── Global CSV (all peaks) ────────────────────────────────────────────
+    global_df  = _summarize_pair_hits(pair_hits, global_peaks_by_chrom)
+    global_csv = out_dir / "motif_target_pair_scores.csv"
+    global_df.to_csv(global_csv, index=False)
+    print(f"  Saved: {global_csv.name}  "
+          f"({len(global_df):,} pairs; validated: "
+          f"{int(global_df['validated_by_motif_and_accessibility'].sum()):,})")
+
+    # ── Per-cell-type CSVs ────────────────────────────────────────────────
+    per_ct_cfg = task_cfg.get("per_cell_type_scoring", False)
+    if per_ct_cfg:
+        cell_type_col = cfg["atac"].get("cell_type_col", "cell_type")
+        cell_types    = (task_cfg.get("per_cell_type_cell_types")
+                         or cfg.get("motif_enrichment", {}).get("cell_types") or [])
+        cell_types    = [str(c) for c in cell_types]
+        top_pct       = float(task_cfg.get("per_cell_type_top_peaks_pct", 0.10))
+
+        if not cell_types:
+            print("  [warn] per_cell_type_scoring enabled but no cell types resolved "
+                  "(set per_cell_type_cell_types or motif_enrichment.cell_types).")
+        elif cell_type_col not in adata.obs.columns:
+            print(f"  [warn] cell_type_col '{cell_type_col}' not in adata.obs — skipping per-CT scoring.")
+        else:
+            print(f"\n  Per-cell-type scoring: top {top_pct:.0%} peaks per cell type "
+                  f"→ {len(cell_types)} cell type(s)")
+            per_ct_dir = out_dir / "per_cell_type"
+            per_ct_dir.mkdir(exist_ok=True)
+
+            top_ix_per_ct = _top_peaks_ix_per_cell_type(
+                adata, cell_type_col, cell_types, top_pct,
+            )
+            for ct, top_ix in top_ix_per_ct.items():
+                ct_peaks_df       = peaks_df.iloc[top_ix].reset_index(drop=True)
+                ct_peaks_by_chrom = _peaks_by_chrom(ct_peaks_df)
+                ct_df   = _summarize_pair_hits(pair_hits, ct_peaks_by_chrom)
+                ct_slug = _sanitize(ct)
+                ct_csv  = per_ct_dir / f"motif_target_pair_scores_{ct_slug}.csv"
+                ct_df.to_csv(ct_csv, index=False)
+                print(f"    {ct}: saved {ct_csv.name}  "
+                      f"({len(ct_df):,} pairs; validated: "
+                      f"{int(ct_df['validated_by_motif_and_accessibility'].sum()):,})")
+
+    return global_csv
 
 
 def _extract_motif_name(idx, row) -> str:
