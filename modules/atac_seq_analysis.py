@@ -1284,7 +1284,9 @@ def _top_peaks_ix_per_cell_type(
 ) -> dict[str, np.ndarray]:
     """For each cell type, return the row-indices into adata.var of the top
     `top_peaks_pct` most-accessible peaks (mean over cells of that type).
-    Cell types not present in adata.obs are skipped with a warning."""
+    Cell types not present in adata.obs are skipped with a warning.
+    Also prints a pairwise Jaccard overlap of the top sets — if that's near
+    1.0 across the board, per-cell-type outputs will look nearly identical."""
     import scipy.sparse as sp
     X = adata.X
     if sp.issparse(X):
@@ -1293,14 +1295,43 @@ def _top_peaks_ix_per_cell_type(
     out = {}
     n_peaks = adata.n_vars
     n_top   = max(1, int(n_peaks * top_peaks_pct))
+    print(f"    Top-peak set size: {n_top:,} peaks per cell type "
+          f"({top_peaks_pct:.0%} of {n_peaks:,}).")
 
     for ct in cell_types:
         mask = (adata.obs[cell_type_col].astype(str) == str(ct)).to_numpy()
-        if int(mask.sum()) == 0:
+        n_cells_ct = int(mask.sum())
+        if n_cells_ct == 0:
             print(f"    [warn] cell_type '{ct}' has 0 cells — skipping per-CT slice.")
             continue
         ct_mean = np.asarray(X[mask, :].mean(axis=0)).ravel()
-        out[str(ct)] = np.argsort(ct_mean)[::-1][:n_top]
+        top_ix  = np.argsort(ct_mean)[::-1][:n_top]
+        out[str(ct)] = top_ix
+        print(f"      {ct:40s}  n_cells={n_cells_ct:>7,}  "
+              f"first_5_top_peak_ix={top_ix[:5].tolist()}")
+
+    # Pairwise Jaccard of the top-peak sets → diagnoses "why are CSVs similar?"
+    names = list(out.keys())
+    if len(names) >= 2:
+        sets = {ct: set(ix.tolist()) for ct, ix in out.items()}
+        first = names[0]
+        overlaps = []
+        for other in names[1:]:
+            inter = len(sets[first] & sets[other])
+            union = len(sets[first] | sets[other])
+            jacc  = inter / union if union else 0.0
+            overlaps.append((other, jacc, inter))
+        print(f"    Top-peak overlap vs '{first}':")
+        for other, jacc, inter in overlaps:
+            print(f"      {other:40s}  Jaccard={jacc:.3f}  (shared={inter:,}/{n_top:,})")
+        max_jacc = max(j for _, j, _ in overlaps)
+        if max_jacc > 0.90:
+            print("    [note] Top-peak sets are nearly identical across cell types "
+                  "(Jaccard > 0.9). Per-CT CSVs will look very similar — mostly "
+                  "constitutively-accessible peaks. Consider using a stricter "
+                  "definition, e.g. lower per_cell_type_top_peaks_pct or a "
+                  "differential-accessibility filter.")
+
     return out
 
 
