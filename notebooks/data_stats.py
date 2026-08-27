@@ -34,81 +34,63 @@ def _(all_layers):
 
 
 @app.cell
-def _(all_layers, np):
-    # Extract metadata DataFrame from AnnData object or DataFrame directly
+def _(all_layers, np, pd, plt, sns):
+    # Extract metadata DataFrame
     obs = all_layers.obs.copy() if hasattr(all_layers, "obs") else all_layers.copy()
 
-    # 1. Filter for Chemistry == "v3"
-    v3_df = obs[obs["Chemistry"].astype(str).str.lower() == "v3"].copy()
-
-    # Dynamically map region column name (handles 'region', 'Region', 'top_region', etc.)
+    # Dynamically map region column name
     region_col = next(
         (
             c
             for c in ["region", "Region", "top_region", "tissue", "brain_region"]
-            if c in v3_df.columns
+            if c in obs.columns
         ),
         "region",
     )
 
-    # 2. Define conditions based on CellClass and CellCycleFraction
-    is_proliferating_class = v3_df["CellClass"].isin(
-        ["Radial glia", "Neuronal IPC", "Glioblast"]
-    )
-    is_differentiating_class = v3_df["CellClass"].isin(["Neuroblast", "Neuron"])
-    is_cycling = v3_df["cell_cycle_score"] > 0.004
+    # 1. Filter for Chemistry == "v3" AND CellClass == "Radial glia"
+    rg_df = obs[
+        (obs["CellClass"] == "Radial glia")
+    ].copy()
 
-    conditions = [
-        is_proliferating_class & is_cycling,
-        is_differentiating_class & is_cycling,
-        is_proliferating_class & (~is_cycling),
-        is_differentiating_class & (~is_cycling),
-    ]
+    # 2. Categorize cell cycle state for Radial Glia
+    is_cycling = rg_df["cell_cycle_score"] > 0.004
 
-    categories = [
-        "Proliferating_Cycling",
-        "Differentiating_Cycling",
-        "Proliferating_NonCycling",
-        "Differentiating_NonCycling",
-    ]
+    rg_df["State_Category"] = np.where(is_cycling, "Cycling", "NonCycling")
 
-    v3_df["State_Category"] = np.select(conditions, categories, default="Other")
-
-    # 3. Aggregate counts per (Age, Region) and State Category
+    # 3. Aggregate counts per (Age, Region) and State_Category
     category_counts = (
-        v3_df.groupby(["Age", region_col, "State_Category"])
+        rg_df.groupby(["Age", region_col, "State_Category"])
         .size()
         .unstack(fill_value=0)
     )
 
-    # Reorder columns explicitly
-    target_cols = [
-        "Proliferating_Cycling",
-        "Differentiating_Cycling",
-        "Proliferating_NonCycling",
-        "Differentiating_NonCycling",
-    ]
+    # Ensure required columns exist
+    target_cols = ["Cycling", "NonCycling"]
     category_counts = category_counts.reindex(columns=target_cols, fill_value=0)
 
-    # 4. Calculate Percentage per (Age, Region) combination (normalized per row)
+    # 4. Calculate Percentage of Cycling Radial Glia relative to TOTAL Radial Glia in that (Age, Region)
     group_totals = category_counts.sum(axis=1)
     percentages_df = category_counts.div(group_totals, axis=0) * 100
 
-    # Summary formatted with percentages and total cell count per combination
-    summary_table = percentages_df.round(2).astype(str) + "%"
-    summary_table["Total_Cells"] = group_totals
-    return (summary_table,)
+    # Prepare dataframe for plotting
+    plot_df = percentages_df.reset_index().copy()
 
+    # Ensure standard column naming for Region
+    if region_col != "Region":
+        plot_df = plot_df.rename(columns={region_col: "Region"})
 
-@app.cell
-def _(summary_table):
-    summary_table
-    return
+    # Clean 'Age' and 'Cycling' percentage columns
+    plot_df["Age"] = pd.to_numeric(plot_df["Age"], errors="coerce")
+    plot_df["Cycling"] = pd.to_numeric(plot_df["Cycling"], errors="coerce")
 
+    # Filter out unspecific regions
+    excluded_regions = ["brain", "head"]
+    plot_df = plot_df[
+        ~plot_df["Region"].astype(str).str.strip().str.lower().isin(excluded_regions)
+    ].copy()
 
-@app.cell
-def _(pd, plt, sns, summary_table):
-    # Define your desired legend order explicitly
+    # Set ordered Region categories matching your desired sequence
     desired_order = [
         "Forebrain",
         "Telencephalon",
@@ -120,54 +102,26 @@ def _(pd, plt, sns, summary_table):
         "Medulla",
     ]
 
-    # 1. Reset index if Age/Region are in MultiIndex
-    plot_df = summary_table.reset_index().copy()
-
-    # 2. Clean 'Proliferating_Cycling' column to numeric floats
-    if plot_df["Proliferating_Cycling"].dtype == object:
-        plot_df["Proliferating_Cycling"] = (
-            plot_df["Proliferating_Cycling"].astype(str).str.rstrip("%")
-        )
-
-    plot_df["Proliferating_Cycling"] = pd.to_numeric(
-        plot_df["Proliferating_Cycling"], errors="coerce"
-    )
-
-    # 3. Clean 'Age' column
-    plot_df["Age"] = pd.to_numeric(plot_df["Age"], errors="coerce")
-
-    # 4. Filter out 'Brain' and 'Head' regions (case-insensitive)
-    excluded_regions = ["brain", "head"]
-    plot_df = plot_df[
-        ~plot_df["Region"].astype(str).str.strip().str.lower().isin(excluded_regions)
-    ].copy()
-
-    # 5. Set Region as an ORDERED categorical type matching the desired sequence
-    # (This step automatically removes unused categories and fixes legend sorting)
     plot_df["Region"] = pd.Categorical(
         plot_df["Region"].astype(str).str.strip(),
         categories=desired_order,
         ordered=True,
     )
 
-    # 6. Remove any remaining NaN values & sort primarily by Age
-    plot_df = plot_df.dropna(
-        subset=["Age", "Region", "Proliferating_Cycling"]
-    ).copy()
+    # Remove NaNs and sort by Age
+    plot_df = plot_df.dropna(subset=["Age", "Region", "Cycling"]).copy()
     plot_df = plot_df.sort_values("Age")
 
     # ---------------------------------------------------------
     # Plotting
     # ---------------------------------------------------------
     sns.set_theme(style="whitegrid")
-
     fig, ax = plt.subplots(figsize=(9, 5.5), dpi=300)
 
-    # The hue order is now defined by the ordered category mapping
     sns.lineplot(
         data=plot_df,
         x="Age",
-        y="Proliferating_Cycling",
+        y="Cycling",
         hue="Region",
         marker="o",
         markersize=8,
@@ -176,19 +130,17 @@ def _(pd, plt, sns, summary_table):
     )
 
     ax.set_title(
-        "Proliferating Cycling Cell Percentage Across Ages & Brain Regions",
+        "Cycling Radial Glia Percentage Across Ages & Brain Regions",
         fontsize=12,
         fontweight="bold",
         pad=12,
     )
     ax.set_xlabel("Age", fontsize=11, fontweight="bold")
-    ax.set_ylabel(
-        "Proliferating Cycling Cells (%)", fontsize=11, fontweight="bold"
-    )
+    ax.set_ylabel("Cycling Radial Glia (%)", fontsize=11, fontweight="bold")
     ax.legend(title="Region", bbox_to_anchor=(1.02, 1), loc="upper left", frameon=True)
 
     plt.tight_layout()
-    plt.savefig("proliferating_cycling_ordered_legend.png", dpi=300)
+    plt.savefig("cycling_radial_glia_percentage.png", dpi=300)
     plt.show()
     return
 
