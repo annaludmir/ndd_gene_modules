@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=marimo
-# #SBATCH --mem=500G
-#SBATCH --mem=200G
+#SBATCH --mem=500G
+# #SBATCH --mem=200G
 #SBATCH --account=miridan-users_v2  
 #SBATCH --output=/miridan-data/annaludmir/jobs_output/%j.out
 #SBATCH --error=/miridan-data/annaludmir/jobs_output/%j.err

@@ -40,7 +40,7 @@ module load mamba/mamba-1.5.8
 mamba activate /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new
 cd "$NDD_ROOT"
 
-CONFIG="config_files/tf_network_cortex_v3_config.yaml"
+CONFIG="config_files/tf_network_config.yaml"
 GENE_LIST=""
 QUERY_ONLY=""
 
