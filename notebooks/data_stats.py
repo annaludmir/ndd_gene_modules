@@ -34,114 +34,175 @@ def _(all_layers):
 
 
 @app.cell
-def _(all_layers, np, pd, plt, sns):
+def _(all_layers, np, pd):
     # Extract metadata DataFrame
-    obs = all_layers.obs.copy() if hasattr(all_layers, "obs") else all_layers.copy()
+    obs_general = (
+        all_layers.obs.copy()
+        if hasattr(all_layers, "obs")
+        else all_layers.copy()
+    )
+    df_general = obs_general.copy()
 
-    # Dynamically map region column name
-    region_col = next(
+    # Dynamically identify regional metadata column
+    region_col_key = next(
         (
             c
             for c in ["region", "Region", "top_region", "tissue", "brain_region"]
-            if c in obs.columns
+            if c in df_general.columns
         ),
         "region",
     )
 
-    # 1. Filter for Chemistry == "v3" AND CellClass == "Radial glia"
-    rg_df = obs[
-        (obs["CellClass"] == "Radial glia")
-    ].copy()
+    # ---------------------------------------------------------
+    # 1. Map Detailed Regions to Top-Level General Regions
+    # ---------------------------------------------------------
+    forebrain_set = {"Diencephalon", "Forebrain", "Telencephalon"}
+    hindbrain_set = {"Hindbrain", "Cerebellum", "Pons", "Medulla"}
+    midbrain_set = {"Midbrain"}
 
-    # 2. Categorize cell cycle state for Radial Glia
-    is_cycling = rg_df["cell_cycle_score"] > 0.004
 
-    rg_df["State_Category"] = np.where(is_cycling, "Cycling", "NonCycling")
+    def assign_general_region(region_str):
+        if region_str in forebrain_set:
+            return "Forebrain_General"
+        elif region_str in hindbrain_set:
+            return "Hindbrain_General"
+        elif region_str in midbrain_set:
+            return "Midbrain_General"
+        return np.nan
 
-    # 3. Aggregate counts per (Age, Region) and State_Category
-    category_counts = (
-        rg_df.groupby(["Age", region_col, "State_Category"])
+
+    df_general["RegionsGeneral"] = (
+        df_general[region_col_key].astype(str).map(assign_general_region)
+    )
+
+    # Drop rows that don't belong to any general region (e.g. 'Brain', 'Head', NaNs)
+    df_general = df_general.dropna(subset=["RegionsGeneral"]).copy()
+
+    # ---------------------------------------------------------
+    # 2. Define Cell State Categories
+    # ---------------------------------------------------------
+    is_proliferating = df_general["CellClass"].isin(
+        ["Radial glia", "Neuronal IPC", "Glioblast"]
+    )
+    is_differentiating = df_general["CellClass"].isin(["Neuroblast", "Neuron"])
+    is_cycling_cell = df_general["cell_cycle_score"] > 0.004
+
+    conditions_list = [
+        is_proliferating & is_cycling_cell,
+        is_differentiating & is_cycling_cell,
+        is_proliferating & (~is_cycling_cell),
+        is_differentiating & (~is_cycling_cell),
+    ]
+
+    category_labels = [
+        "Proliferating_Cycling",
+        "Differentiating_Cycling",
+        "Proliferating_NonCycling",
+        "Differentiating_NonCycling",
+    ]
+
+    df_general["State_Category"] = np.select(
+        conditions_list, category_labels, default="Other"
+    )
+
+    # ---------------------------------------------------------
+    # 3. Aggregate Counts & Calculate Percentages
+    # ---------------------------------------------------------
+    general_counts = (
+        df_general.groupby(["Age", "RegionsGeneral", "State_Category"])
         .size()
         .unstack(fill_value=0)
     )
 
-    # Ensure required columns exist
-    target_cols = ["Cycling", "NonCycling"]
-    category_counts = category_counts.reindex(columns=target_cols, fill_value=0)
+    target_columns = [
+        "Proliferating_Cycling",
+        "Differentiating_Cycling",
+        "Proliferating_NonCycling",
+        "Differentiating_NonCycling",
+    ]
+    general_counts = general_counts.reindex(columns=target_columns, fill_value=0)
 
-    # 4. Calculate Percentage of Cycling Radial Glia relative to TOTAL Radial Glia in that (Age, Region)
-    group_totals = category_counts.sum(axis=1)
-    percentages_df = category_counts.div(group_totals, axis=0) * 100
+    # Calculate percentages normalized per (Age, RegionsGeneral) row
+    general_totals = general_counts.sum(axis=1)
+    general_percentages = general_counts.div(general_totals, axis=0) * 100
 
-    # Prepare dataframe for plotting
-    plot_df = percentages_df.reset_index().copy()
+    summary_general_df = general_percentages.reset_index().copy()
 
-    # Ensure standard column naming for Region
-    if region_col != "Region":
-        plot_df = plot_df.rename(columns={region_col: "Region"})
+    # Clean numeric values
+    summary_general_df["Proliferating_Cycling"] = pd.to_numeric(
+        summary_general_df["Proliferating_Cycling"], errors="coerce"
+    )
+    summary_general_df["Age"] = pd.to_numeric(
+        summary_general_df["Age"], errors="coerce"
+    )
+    return (summary_general_df,)
 
-    # Clean 'Age' and 'Cycling' percentage columns
-    plot_df["Age"] = pd.to_numeric(plot_df["Age"], errors="coerce")
-    plot_df["Cycling"] = pd.to_numeric(plot_df["Cycling"], errors="coerce")
 
-    # Filter out unspecific regions
-    excluded_regions = ["brain", "head"]
-    plot_df = plot_df[
-        ~plot_df["Region"].astype(str).str.strip().str.lower().isin(excluded_regions)
-    ].copy()
-
-    # Set ordered Region categories matching your desired sequence
-    desired_order = [
-        "Forebrain",
-        "Telencephalon",
-        "Diencephalon",
-        "Midbrain",
-        "Hindbrain",
-        "Cerebellum",
-        "Pons",
-        "Medulla",
+@app.cell
+def _(pd, plt, sns, summary_general_df):
+    # ---------------------------------------------------------
+    # 4. Apply Custom Ordered Categorical (Top Regions Only)
+    # ---------------------------------------------------------
+    general_desired_order = [
+        "Forebrain_General",
+        "Midbrain_General",
+        "Hindbrain_General",
     ]
 
-    plot_df["Region"] = pd.Categorical(
-        plot_df["Region"].astype(str).str.strip(),
-        categories=desired_order,
+    summary_general_df["RegionsGeneral"] = pd.Categorical(
+        summary_general_df["RegionsGeneral"].astype(str).str.strip(),
+        categories=general_desired_order,
         ordered=True,
     )
 
-    # Remove NaNs and sort by Age
-    plot_df = plot_df.dropna(subset=["Age", "Region", "Cycling"]).copy()
-    plot_df = plot_df.sort_values("Age")
+    # Clean missing entries and sort by Age
+    plot_general_df = (
+        summary_general_df.dropna(
+            subset=["Age", "RegionsGeneral", "Proliferating_Cycling"]
+        )
+        .sort_values(["Age", "RegionsGeneral"])
+        .copy()
+    )
 
     # ---------------------------------------------------------
-    # Plotting
+    # 5. Plotting (Fixed for Marimo)
     # ---------------------------------------------------------
-    sns.set_theme(style="whitegrid")
-    fig, ax = plt.subplots(figsize=(9, 5.5), dpi=300)
+    fig_gen, ax_gen = plt.subplots(figsize=(9, 5.5), dpi=300)
 
     sns.lineplot(
-        data=plot_df,
+        data=plot_general_df,
         x="Age",
-        y="Cycling",
-        hue="Region",
+        y="Proliferating_Cycling",
+        hue="RegionsGeneral",
+        style="RegionsGeneral",
         marker="o",
         markersize=8,
         linewidth=2.5,
-        ax=ax,
+        dashes=False,
+        ax=ax_gen,
     )
 
-    ax.set_title(
-        "Cycling Radial Glia Percentage Across Ages & Brain Regions",
+    ax_gen.set_title(
+        "Proliferating Cycling Cell Percentage Across Ages & Top Regions",
         fontsize=12,
         fontweight="bold",
         pad=12,
     )
-    ax.set_xlabel("Age", fontsize=11, fontweight="bold")
-    ax.set_ylabel("Cycling Radial Glia (%)", fontsize=11, fontweight="bold")
-    ax.legend(title="Region", bbox_to_anchor=(1.02, 1), loc="upper left", frameon=True)
+    ax_gen.set_xlabel("Age", fontsize=11, fontweight="bold")
+    ax_gen.set_ylabel(
+        "Proliferating Cycling Cells (%)", fontsize=11, fontweight="bold"
+    )
+    ax_gen.legend(
+        title="General Region",
+        bbox_to_anchor=(1.02, 1),
+        loc="upper left",
+        frameon=True,
+    )
 
     plt.tight_layout()
-    plt.savefig("cycling_radial_glia_percentage.png", dpi=300)
-    plt.show()
+
+    # In Marimo, evaluating the figure object as the final line renders it automatically
+    fig_gen
     return
 
 

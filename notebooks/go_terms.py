@@ -7,13 +7,19 @@ app = marimo.App(width="medium")
 @app.cell
 def _():
     import marimo as mo
-    return
+    import pandas as pd
+    import numpy as np
+    import re
+    from pathlib import Path
+    import gseapy as gp
+    import matplotlib.pyplot as plt
+    from scipy.cluster.hierarchy import linkage, leaves_list
+    from scipy.spatial.distance import pdist
+    return Path, gp, leaves_list, linkage, np, pd, pdist, plt, re
 
 
 @app.cell
-def _():
-    import pandas as pd
-
+def _(pd):
     def get_microcephaly_gene_lists(summary_csv):
         df = pd.read_csv(summary_csv)
 
@@ -36,16 +42,11 @@ def _():
             gene_lists[cond] = list(genes)
 
         return gene_lists
-    return get_microcephaly_gene_lists, pd
+    return (get_microcephaly_gene_lists,)
 
 
 @app.cell
-def _(pd):
-    import re
-    from pathlib import Path
-    import gseapy as gp
-
-
+def _(Path, gp, pd, re):
     def run_go_enrichment_per_condition(
         gene_lists,
         outdir="microcephaly_GO_enrichment",
@@ -210,11 +211,7 @@ def _(collect_top_terms, go_results):
 
 
 @app.cell
-def _():
-    import numpy as np
-    import pandas as pd
-    import matplotlib.pyplot as plt
-
+def _(np, pd, plt):
     def load_enrichr_tables(phase_to_csv: dict, phase_col="Phase") -> pd.DataFrame:
         """phase_to_csv: dict like {'G1': 'g1.csv', 'S': 's.csv', ...}"""
         dfs = []
@@ -310,17 +307,17 @@ def _():
         plt.show()
 
         return {"data": d, "term_order": term_order}
-    return bubble_go_by_phase, load_enrichr_tables, np, pd, plt
+    return bubble_go_by_phase, load_enrichr_tables
 
 
 @app.cell
 def _(bubble_go_by_phase, load_enrichr_tables):
     phase_to_csv = {
-        "G1": "ndd_gene_modules/GO_terms/microcephaly_GO_enrichment/CellCyclePhase_-_G1/significant_hits_fdr_0.05.csv",
-        "S": "ndd_gene_modules/GO_terms/microcephaly_GO_enrichment/CellCyclePhase_-_S/significant_hits_fdr_0.05.csv",
-        "G2M": "ndd_gene_modules/GO_terms/microcephaly_GO_enrichment/CellCyclePhase_-_G2M/significant_hits_fdr_0.05.csv",
-        "PostM": "ndd_gene_modules/GO_terms/microcephaly_GO_enrichment/CellCyclePhase_-_PostM/significant_hits_fdr_0.05.csv",
-        "Non-cycling": "ndd_gene_modules/GO_terms/microcephaly_GO_enrichment/CellCyclePhase_-_Non-cycling/significant_hits_fdr_0.05.csv"
+        "G1": "ndd_gene_modules/results/GO_terms/microcephaly_GO_enrichment/CellCyclePhase_-_G1/significant_hits_fdr_0.05.csv",
+        "S": "ndd_gene_modules/results/GO_terms/microcephaly_GO_enrichment/CellCyclePhase_-_S/significant_hits_fdr_0.05.csv",
+        "G2M": "ndd_gene_modules/results/GO_terms/microcephaly_GO_enrichment/CellCyclePhase_-_G2M/significant_hits_fdr_0.05.csv",
+        "PostM": "ndd_gene_modules/results/GO_terms/microcephaly_GO_enrichment/CellCyclePhase_-_PostM/significant_hits_fdr_0.05.csv",
+        "Non-cycling": "ndd_gene_modules/results/GO_terms/microcephaly_GO_enrichment/CellCyclePhase_-_Non-cycling/significant_hits_fdr_0.05.csv"
     }
     df_all = load_enrichr_tables(phase_to_csv)
 
@@ -329,9 +326,8 @@ def _(bubble_go_by_phase, load_enrichr_tables):
 
 
 @app.cell
-def _(np, pd, plt):
-    from scipy.cluster.hierarchy import linkage, leaves_list
-    from scipy.spatial.distance import pdist
+def _(leaves_list, linkage, np, pd, pdist, plt):
+
 
 
     def _parse_gene_list(s):
@@ -476,7 +472,6 @@ def _(df_all, go_gene_shift_heatmap_clustered):
 @app.cell
 def _(pd):
     summary = pd.read_csv('/miridan-data/annaludmir/ndd_gene_modules/results/ges_score_results/ges_score_for_all_layers_proliferating_20260223/data/ges_spec_ProliferatingRegions_Midbrain.csv')
-
     return (summary,)
 
 
