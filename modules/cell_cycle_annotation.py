@@ -318,6 +318,114 @@ def annotate_cell_cycle(adata, sym_col: str = "Gene"):
 
 
 # ---------------------------------------------------------------------------
+# ATAC-seq version — same logic, but "UMI fraction" becomes "peak accessibility
+# fraction over cell-cycle gene promoters (TSS ± window)".
+# ---------------------------------------------------------------------------
+
+def _peak_indices_for_gene_set(
+    gene_list, tss_df, peaks_df, peak_to_ix, tss_window: int, label: str,
+) -> np.ndarray:
+    """Positional indices into adata.var of peaks overlapping any promoter
+    window (TSS ± tss_window) of a gene in `gene_list`."""
+    # Lazy import — atac_seq_analysis pulls in matplotlib.
+    from atac_seq_analysis import build_promoter_regions, peaks_overlapping_promoters
+
+    unique_requested = list(dict.fromkeys(gene_list))
+    prom_df = build_promoter_regions(tss_df, tss_window, genes=unique_requested)
+    if prom_df.empty:
+        print(f"  {label:15s}  0/{len(unique_requested):>4} genes matched a TSS")
+        return np.asarray([], dtype=int)
+
+    overlap_df = peaks_overlapping_promoters(peaks_df, prom_df)
+    peak_ids   = overlap_df["peak_id"].astype(str).unique().tolist()
+    ix         = [peak_to_ix[p] for p in peak_ids if p in peak_to_ix]
+
+    n_genes_hit = overlap_df["gene_name"].nunique()
+    print(f"  {label:15s}  "
+          f"{n_genes_hit:>4}/{len(unique_requested):>4} genes matched a TSS + peak overlap; "
+          f"{len(ix):>5,} peaks pooled")
+    return np.asarray(ix, dtype=int)
+
+
+def annotate_cell_cycle_atac(
+    adata,
+    gtf_path: str | Path | None = None,
+    genome: str = "hg38",
+    tss_window: int = 2000,
+    peak_columns: dict | None = None,
+):
+    """Add `cycling_score` and `CellCyclePhase` obs columns to an ATAC h5ad.
+
+    For each cell-cycle gene set, finds every ATAC peak overlapping a
+    (TSS ± tss_window) promoter of a gene in the set. Per cell, the "cycling
+    score" is the total accessibility of those peaks divided by the cell's
+    total ATAC signal (X.sum(axis=1)). Same thresholds and priority ordering
+    (G2M > S > G1 > Post-M) as the RNA path.
+    """
+    import scipy.sparse as sp
+    from atac_seq_analysis import peaks_to_dataframe, load_tss_annotation
+
+    print("  Parsing peak coordinates from adata.var ...")
+    peaks_df   = peaks_to_dataframe(adata, peak_columns)
+    peak_to_ix = {pid: i for i, pid in enumerate(peaks_df["peak_id"].astype(str))}
+    print(f"    {len(peaks_df):,} peaks parsed")
+
+    print(f"  Loading TSS annotations (genome={genome}, gtf_path={gtf_path}) ...")
+    tss_df = load_tss_annotation(gtf_path, genome)
+    print(f"    {len(tss_df):,} gene TSSes")
+
+    print(f"  Building per-gene-set peak indices (TSS ± {tss_window} bp):")
+    cc_ix  = _peak_indices_for_gene_set(CC_GENES_HUMAN, tss_df, peaks_df, peak_to_ix, tss_window, "cc_genes")
+    g1_ix  = _peak_indices_for_gene_set(G1_GENES,       tss_df, peaks_df, peak_to_ix, tss_window, "G1")
+    s_ix   = _peak_indices_for_gene_set(S_GENES,        tss_df, peaks_df, peak_to_ix, tss_window, "S")
+    g2m_ix = _peak_indices_for_gene_set(G2M_GENES,      tss_df, peaks_df, peak_to_ix, tss_window, "G2M")
+
+    if len(cc_ix) == 0:
+        raise RuntimeError(
+            "0 peaks overlap any cell-cycle gene promoter. Common causes: wrong "
+            "gtf_path/genome, peak var_names in a different coordinate style, or "
+            "gene names in the GTF using Ensembl IDs. Check the log above."
+        )
+
+    X = adata.X
+    if sp.issparse(X):
+        X = X.tocsr()
+
+    print("  Computing per-cell fractions ...")
+    total         = np.asarray(X.sum(axis=1)).ravel()
+    cycling_score = _per_cell_fraction(X, cc_ix,  total)
+    g1_frac       = _per_cell_fraction(X, g1_ix,  total)
+    s_frac        = _per_cell_fraction(X, s_ix,   total)
+    g2m_frac      = _per_cell_fraction(X, g2m_ix, total)
+
+    # Same classification logic as RNA (priority: G2M > S > G1 > Post-M).
+    is_cycling = cycling_score > CYCLING_THRESHOLD
+    passes_g1  = g1_frac  > G1_THRESHOLD
+    passes_s   = s_frac   > S_THRESHOLD
+    passes_g2m = g2m_frac > G2M_THRESHOLD
+
+    phases = np.full(adata.n_obs, "Non-cycling", dtype=object)
+    phases[is_cycling] = "Post-M"
+    phases[is_cycling & passes_g1]  = "G1"
+    phases[is_cycling & passes_s]   = "S"
+    phases[is_cycling & passes_g2m] = "G2M"
+
+    adata.obs["cycling_score"]  = cycling_score.astype(np.float32)
+    adata.obs["CellCyclePhase"] = pd.Categorical(
+        phases, categories=PHASE_ORDER, ordered=False,
+    )
+
+    counts = pd.Series(phases).value_counts()
+    total_cells = adata.n_obs
+    print("\n  Phase distribution (ATAC):")
+    for phase in PHASE_ORDER:
+        n = int(counts.get(phase, 0))
+        pct = 100.0 * n / total_cells if total_cells else 0.0
+        print(f"    {phase:12s}  {n:>10,}  ({pct:5.2f}%)")
+    return adata
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
@@ -328,10 +436,25 @@ def main():
     parser.add_argument("--h5ad-input",  required=True, help="Input .h5ad path.")
     parser.add_argument("--h5ad-output", required=True,
                         help="Output .h5ad path. Can be same as --h5ad-input to overwrite.")
-    parser.add_argument("--sym-col", default="Gene",
-                        help="adata.var column with gene symbols. Falls back to var_names.")
+    parser.add_argument("--modality", choices=("rna", "atac"), default="rna",
+                        help="rna: peak-independent UMI-based scoring. "
+                             "atac: peak-accessibility over cell-cycle gene promoters.")
     parser.add_argument("--overwrite-ok", action="store_true",
                         help="Silently allow --h5ad-output to equal --h5ad-input.")
+
+    # RNA-specific
+    parser.add_argument("--sym-col", default="Gene",
+                        help="[RNA] adata.var column with gene symbols. Falls back to var_names.")
+
+    # ATAC-specific
+    parser.add_argument("--gtf-path", default=None,
+                        help="[ATAC] Path to GTF/GFF3 for TSS lookup. If omitted, "
+                             "snapatac2's built-in annotations are used.")
+    parser.add_argument("--genome", default="hg38",
+                        help="[ATAC] Genome name for snapatac2 built-in TSS lookup.")
+    parser.add_argument("--tss-window", type=int, default=2000,
+                        help="[ATAC] ± bp around TSS to consider promoter peaks.")
+
     args = parser.parse_args()
 
     in_path  = Path(args.h5ad_input).resolve()
@@ -344,9 +467,17 @@ def main():
     print(f"Loading: {in_path}")
     import scanpy as sc
     adata = sc.read_h5ad(str(in_path))
-    print(f"  {adata.n_obs:,} cells × {adata.n_vars:,} genes")
+    print(f"  {adata.n_obs:,} cells × {adata.n_vars:,} features  (modality={args.modality})")
 
-    annotate_cell_cycle(adata, sym_col=args.sym_col)
+    if args.modality == "rna":
+        annotate_cell_cycle(adata, sym_col=args.sym_col)
+    else:
+        annotate_cell_cycle_atac(
+            adata,
+            gtf_path=args.gtf_path,
+            genome=args.genome,
+            tss_window=args.tss_window,
+        )
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     print(f"\nSaving: {out_path}")
