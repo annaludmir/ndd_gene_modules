@@ -140,6 +140,17 @@ def annotate_tf_network_csv(
     # Also expose how many CTs each pair was validated in — useful for sorting.
     df["n_cell_types_validated"] = df[ct_cols].sum(axis=1).astype(int) if ct_cols else 0
 
+    # Semicolon-separated list of cell types where the pair passed validation.
+    # Empty string when the pair wasn't validated anywhere.
+    if ct_cols:
+        ct_matrix = df[ct_cols].to_numpy(dtype=bool)
+        df["validated_cell_types"] = [
+            ";".join(ct_slugs[i] for i in np.where(row)[0])
+            for row in ct_matrix
+        ]
+    else:
+        df["validated_cell_types"] = ""
+
     out_csv.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(out_csv, index=False)
 
