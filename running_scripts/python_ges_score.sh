@@ -26,7 +26,7 @@ cd /miridan-data/annaludmir/ndd_gene_modules
 
 mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new \
   python -u modules/specificity_score_calculations.py \
-  config_files/ges_score_all_layers_config_v2_4.yaml
+  config_files/ges_score_all_layers_cell_phase_config_v2.yaml
 
 rc=$?
 echo "Python exit code: $rc"

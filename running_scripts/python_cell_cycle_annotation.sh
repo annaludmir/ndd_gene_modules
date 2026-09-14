@@ -17,9 +17,9 @@ mamba activate /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new
 cd /miridan-data/annaludmir/ndd_gene_modules
 
 # Edit these before submitting.
-MODALITY="rna"   # rna | atac
-H5AD_INPUT="data/human_dev_without_week_5.h5ad"
-H5AD_OUTPUT="data/human_dev_without_week_5_cc_annotated.h5ad"
+MODALITY="atac"   # rna | atac
+H5AD_INPUT="/miridan-storage/annaludmir/atac-seq/e88a34d0-d28a-4d10-a8c5-d59f86ba621a.h5ad"
+H5AD_OUTPUT="/miridan-storage/annaludmir/atac-seq/e88a34d0-d28a-4d10-a8c5-d59f86ba621a_cc_annotated.h5ad"
 
 # RNA-specific
 SYM_COL="Gene"
