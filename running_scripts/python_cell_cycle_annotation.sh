@@ -29,6 +29,14 @@ GTF_PATH=""             # leave empty → snapatac2 built-in
 GENOME="hg38"
 TSS_WINDOW="2000"
 
+# Optional threshold overrides. Leave empty to use module defaults (RNA-cal).
+# ATAC defaults typically need higher values — the pipeline prints a
+# 'Per-cell fraction distribution' table you can use to calibrate.
+CYCLING_THRESHOLD=""    # e.g. 0.05 for ATAC
+G1_THRESHOLD=""         # e.g. 0.005
+S_THRESHOLD=""          # e.g. 0.003
+G2M_THRESHOLD=""        # e.g. 0.005
+
 EXTRA_ARGS=(--modality "$MODALITY")
 if [[ "$MODALITY" == "rna" ]]; then
   EXTRA_ARGS+=(--sym-col "$SYM_COL")
@@ -36,6 +44,11 @@ else
   EXTRA_ARGS+=(--genome "$GENOME" --tss-window "$TSS_WINDOW")
   [[ -n "$GTF_PATH" ]] && EXTRA_ARGS+=(--gtf-path "$GTF_PATH")
 fi
+
+[[ -n "$CYCLING_THRESHOLD" ]] && EXTRA_ARGS+=(--cycling-threshold "$CYCLING_THRESHOLD")
+[[ -n "$G1_THRESHOLD"      ]] && EXTRA_ARGS+=(--g1-threshold      "$G1_THRESHOLD")
+[[ -n "$S_THRESHOLD"       ]] && EXTRA_ARGS+=(--s-threshold       "$S_THRESHOLD")
+[[ -n "$G2M_THRESHOLD"     ]] && EXTRA_ARGS+=(--g2m-threshold     "$G2M_THRESHOLD")
 
 mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new \
   python -u modules/cell_cycle_annotation.py \

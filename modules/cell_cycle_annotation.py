@@ -326,24 +326,40 @@ def _peak_indices_for_gene_set(
     gene_list, tss_df, peaks_df, peak_to_ix, tss_window: int, label: str,
 ) -> np.ndarray:
     """Positional indices into adata.var of peaks overlapping any promoter
-    window (TSS ± tss_window) of a gene in `gene_list`."""
-    # Lazy import — atac_seq_analysis pulls in matplotlib.
+    window (TSS ± tss_window) of a gene in `gene_list`. Prints a two-stage
+    diagnostic so you can see whether losses happen at TSS match or peak
+    overlap."""
     from atac_seq_analysis import build_promoter_regions, peaks_overlapping_promoters
 
     unique_requested = list(dict.fromkeys(gene_list))
     prom_df = build_promoter_regions(tss_df, tss_window, genes=unique_requested)
+    n_by_tss = int(prom_df["gene_name"].nunique()) if not prom_df.empty else 0
+
     if prom_df.empty:
-        print(f"  {label:15s}  0/{len(unique_requested):>4} genes matched a TSS")
+        missing = unique_requested
+        print(f"  {label:15s}  0/{len(unique_requested):>4} matched a TSS; "
+              f"missing genes: {missing[:12]}{' ...' if len(missing) > 12 else ''}")
         return np.asarray([], dtype=int)
 
     overlap_df = peaks_overlapping_promoters(peaks_df, prom_df)
-    peak_ids   = overlap_df["peak_id"].astype(str).unique().tolist()
+    n_by_peak  = int(overlap_df["gene_name"].nunique()) if not overlap_df.empty else 0
+    peak_ids   = overlap_df["peak_id"].astype(str).unique().tolist() if not overlap_df.empty else []
     ix         = [peak_to_ix[p] for p in peak_ids if p in peak_to_ix]
 
-    n_genes_hit = overlap_df["gene_name"].nunique()
     print(f"  {label:15s}  "
-          f"{n_genes_hit:>4}/{len(unique_requested):>4} genes matched a TSS + peak overlap; "
-          f"{len(ix):>5,} peaks pooled")
+          f"TSS-matched: {n_by_tss:>3}/{len(unique_requested):<3}  "
+          f"→ peak-overlap: {n_by_peak:>3}  "
+          f"→ pooled peaks: {len(ix):>5,}")
+
+    if n_by_tss > 0 and n_by_peak == 0:
+        genes_in_prom = set(prom_df["gene_name"].astype(str))
+        print(f"    [note] {n_by_tss} promoter(s) built but 0 ATAC peaks overlap them.")
+        print(f"           TSS-matched genes: {sorted(genes_in_prom)}")
+    elif len(unique_requested) - n_by_tss > 0:
+        matched_set = set(prom_df["gene_name"].astype(str))
+        missing = [g for g in unique_requested if g not in matched_set]
+        print(f"    [note] {len(missing)} gene(s) missing from GTF: "
+              f"{missing[:10]}{' ...' if len(missing) > 10 else ''}")
     return np.asarray(ix, dtype=int)
 
 
@@ -353,6 +369,10 @@ def annotate_cell_cycle_atac(
     genome: str = "hg38",
     tss_window: int = 2000,
     peak_columns: dict | None = None,
+    cycling_threshold: float = CYCLING_THRESHOLD,
+    g1_threshold: float  = G1_THRESHOLD,
+    s_threshold: float   = S_THRESHOLD,
+    g2m_threshold: float = G2M_THRESHOLD,
 ):
     """Add `cycling_score` and `CellCyclePhase` obs columns to an ATAC h5ad.
 
@@ -398,11 +418,25 @@ def annotate_cell_cycle_atac(
     s_frac        = _per_cell_fraction(X, s_ix,   total)
     g2m_frac      = _per_cell_fraction(X, g2m_ix, total)
 
+    def _pct(a, q): return float(np.percentile(a, q))
+    print("\n  Per-cell fraction distribution (helps calibrate thresholds):")
+    print(f"    {'set':10s}  {'threshold':>10s}  "
+          f"{'p10':>10s}  {'median':>10s}  {'p90':>10s}  {'max':>10s}")
+    for name, arr, th in [
+        ("cycling_score", cycling_score, cycling_threshold),
+        ("g1_frac",       g1_frac,       g1_threshold),
+        ("s_frac",        s_frac,        s_threshold),
+        ("g2m_frac",      g2m_frac,      g2m_threshold),
+    ]:
+        print(f"    {name:10s}  {th:>10.4g}  "
+              f"{_pct(arr,10):>10.4g}  {_pct(arr,50):>10.4g}  "
+              f"{_pct(arr,90):>10.4g}  {float(arr.max()):>10.4g}")
+
     # Same classification logic as RNA (priority: G2M > S > G1 > Post-M).
-    is_cycling = cycling_score > CYCLING_THRESHOLD
-    passes_g1  = g1_frac  > G1_THRESHOLD
-    passes_s   = s_frac   > S_THRESHOLD
-    passes_g2m = g2m_frac > G2M_THRESHOLD
+    is_cycling = cycling_score > cycling_threshold
+    passes_g1  = g1_frac  > g1_threshold
+    passes_s   = s_frac   > s_threshold
+    passes_g2m = g2m_frac > g2m_threshold
 
     phases = np.full(adata.n_obs, "Non-cycling", dtype=object)
     phases[is_cycling] = "Post-M"
@@ -455,6 +489,18 @@ def main():
     parser.add_argument("--tss-window", type=int, default=2000,
                         help="[ATAC] ± bp around TSS to consider promoter peaks.")
 
+    # Thresholds — defaults are RNA-calibrated. ATAC typically needs higher
+    # cycling_threshold and slightly higher phase thresholds; check the
+    # 'Per-cell fraction distribution' line printed at run time and tune.
+    parser.add_argument("--cycling-threshold", type=float, default=CYCLING_THRESHOLD,
+                        help=f"cycling_score > this = cycling. Default {CYCLING_THRESHOLD}.")
+    parser.add_argument("--g1-threshold",  type=float, default=G1_THRESHOLD,
+                        help=f"G1 fraction cutoff. Default {G1_THRESHOLD}.")
+    parser.add_argument("--s-threshold",   type=float, default=S_THRESHOLD,
+                        help=f"S fraction cutoff. Default {S_THRESHOLD}.")
+    parser.add_argument("--g2m-threshold", type=float, default=G2M_THRESHOLD,
+                        help=f"G2M fraction cutoff. Default {G2M_THRESHOLD}.")
+
     args = parser.parse_args()
 
     in_path  = Path(args.h5ad_input).resolve()
@@ -470,6 +516,16 @@ def main():
     print(f"  {adata.n_obs:,} cells × {adata.n_vars:,} features  (modality={args.modality})")
 
     if args.modality == "rna":
+        # RNA path currently uses the module-level constants; note if the user
+        # overrode them we honor those by patching the classification block.
+        if any(v != d for v, d in [
+            (args.cycling_threshold, CYCLING_THRESHOLD),
+            (args.g1_threshold,      G1_THRESHOLD),
+            (args.s_threshold,       S_THRESHOLD),
+            (args.g2m_threshold,     G2M_THRESHOLD),
+        ]):
+            print("[warn] Threshold flags apply only to --modality atac in this build. "
+                  "Ignoring for RNA.")
         annotate_cell_cycle(adata, sym_col=args.sym_col)
     else:
         annotate_cell_cycle_atac(
@@ -477,6 +533,10 @@ def main():
             gtf_path=args.gtf_path,
             genome=args.genome,
             tss_window=args.tss_window,
+            cycling_threshold=args.cycling_threshold,
+            g1_threshold=args.g1_threshold,
+            s_threshold=args.s_threshold,
+            g2m_threshold=args.g2m_threshold,
         )
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
