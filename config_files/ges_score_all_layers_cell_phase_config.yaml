@@ -8,7 +8,7 @@ column_conditions:
     - "G1"
     - "S"
     - "G2M"
-    - "PostM"
+    - "Post-M"
     - "Non-cycling"
 
 expression_threshold: 0.05

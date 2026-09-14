@@ -27,7 +27,7 @@ SYM_COL="Gene"
 # ATAC-specific (used only when MODALITY=atac)
 GTF_PATH=""             # leave empty → snapatac2 built-in
 GENOME="hg38"
-TSS_WINDOW="2000"
+TSS_WINDOW="10000"
 
 # Optional threshold overrides. Leave empty to use module defaults (RNA-cal).
 # ATAC defaults typically need higher values — the pipeline prints a
