@@ -427,5 +427,22 @@ app._unparsable_cell(
 )
 
 
+@app.cell
+def _(sc):
+    all_layers_cc=sc.read_h5ad("/miridan-data/annaludmir/ndd_gene_modules/data/human_dev_without_week_5_cc_annotated.h5ad")
+    return (all_layers_cc,)
+
+
+@app.cell
+def _(all_layers_cc):
+    all_layers_cc.obs
+    return
+
+
+@app.cell
+def _():
+    return
+
+
 if __name__ == "__main__":
     app.run()
