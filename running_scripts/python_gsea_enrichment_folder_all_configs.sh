@@ -116,6 +116,7 @@ for gene_list_path in "${csv_files[@]}"; do
   run_config "config_files/enrichment_cortex_config.yaml" "Cortex" "$gene_list_path" "$gene_list_stem"
   run_config "config_files/enrichment_cortex_cell_phase_config.yaml" "Cell Phase" "$gene_list_path" "$gene_list_stem"
   run_config "config_files/enrichment_all_layers_config.yaml" "All Layers" "$gene_list_path" "$gene_list_stem"
+  run_config "config_files/enrichment_all_layers_cell_phase_config.yaml" "All Layers Cell Phase" "$gene_list_path" "$gene_list_stem"
 done
 
 echo
