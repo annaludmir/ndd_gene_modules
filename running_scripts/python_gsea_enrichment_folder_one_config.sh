@@ -20,13 +20,20 @@
 
 # Run the enrichment pipeline with ONE config on every gene list CSV found in a
 # folder (recursively, including subfolders). For each CSV a temporary copy of
-# the config is created with gene_list_path and run_name replaced, where the
-# run name is built from the CSV's location relative to <gene_list_dir>:
-#   <gene_list_dir>/autism/strong.csv  ->  "[prefix] autism strong [suffix]"
+# the config is created with gene_list_path and run_name replaced.
+#
+# run_name = [<prefix>_]<gene_list>_<config_label>
+#   <gene_list>    : CSV path relative to <gene_list_dir>, "/" -> "_"
+#                    (<gene_list_dir>/autism/strong.csv -> autism_strong)
+#   <config_label> : derived from the config filename unless given as 4th arg
+#                    (enrichment_all_layers_cell_phase_config_v2.yaml
+#                     -> all_layers_cell_phase_v2)
+# The pipeline itself then appends "_threshold_<min_ges_score_threshold>_<date>",
+# so the final run dir is e.g. autism_strong_all_layers_cell_phase_v2_threshold_0_20260915
 #
 # Usage:
 #   sbatch running_scripts/python_gsea_enrichment_folder_one_config.sh \
-#       <gene_list_dir> <config_yaml> [run_name_prefix] [run_name_suffix]
+#       <gene_list_dir> <config_yaml> [run_name_prefix] [config_label]
 
 set -euo pipefail
 
@@ -38,10 +45,10 @@ PIPELINE_SCRIPT="modules/enrichment_pipeline_for_gene_list.py"
 GENE_LIST_DIR="${1:-}"
 BASE_CONFIG="${2:-}"
 RUN_NAME_PREFIX="${3:-}"
-RUN_NAME_SUFFIX="${4:-}"
+CONFIG_LABEL="${4:-}"
 
 if [[ -z "$GENE_LIST_DIR" || -z "$BASE_CONFIG" ]]; then
-  echo "Usage: sbatch running_scripts/python_gsea_enrichment_folder_one_config.sh <gene_list_dir> <config_yaml> [run_name_prefix] [run_name_suffix]"
+  echo "Usage: sbatch running_scripts/python_gsea_enrichment_folder_one_config.sh <gene_list_dir> <config_yaml> [run_name_prefix] [config_label]"
   exit 1
 fi
 
@@ -62,6 +69,14 @@ trap 'rm -rf "$TMP_CONFIG_DIR" "$MANIFEST_FILE"' EXIT
 TODAY="$(date +%Y%m%d)"
 OUTPUT_ROOT="$(sed -nE 's|^output_folder:[[:space:]]*"?([^"]*[^"/])/?"?[[:space:]]*$|\1|p' "$BASE_CONFIG")"
 OUTPUT_ROOT="${OUTPUT_ROOT:-results/enrichment_results}"
+
+# Default config label: config filename without "enrichment_" prefix, "_config"
+# and ".yaml", e.g. enrichment_all_layers_cell_phase_config_v2 -> all_layers_cell_phase_v2
+if [[ -z "$CONFIG_LABEL" ]]; then
+  CONFIG_LABEL="$(basename "$BASE_CONFIG" .yaml)"
+  CONFIG_LABEL="${CONFIG_LABEL#enrichment_}"
+  CONFIG_LABEL="${CONFIG_LABEL//_config/}"
+fi
 
 # Strip trailing slash so relative paths below are computed cleanly.
 GENE_LIST_DIR="${GENE_LIST_DIR%/}"
@@ -84,15 +99,12 @@ run_gene_list() {
   local gene_list_path="$1"
   local rel_path="${gene_list_path#"$GENE_LIST_DIR"/}"
   local rel_stem="${rel_path%.*}"
-  # Subfolder path becomes part of the run name: "sub/dir/list" -> "sub dir list"
-  local run_name="${rel_stem//\// }"
+  # Subfolder path becomes part of the run name: "sub/dir/list" -> "sub_dir_list"
+  local run_name="${rel_stem//\//_}_${CONFIG_LABEL}"
   local temp_config
 
   if [[ -n "$RUN_NAME_PREFIX" ]]; then
-    run_name="${RUN_NAME_PREFIX} ${run_name}"
-  fi
-  if [[ -n "$RUN_NAME_SUFFIX" ]]; then
-    run_name="${run_name} ${RUN_NAME_SUFFIX}"
+    run_name="${RUN_NAME_PREFIX}_${run_name}"
   fi
 
   temp_config="$(create_temp_config "$gene_list_path" "$run_name")"
@@ -144,7 +156,7 @@ if [[ -s "$MANIFEST_FILE" ]]; then
   else
     suffix="$(basename "$GENE_LIST_DIR")"
   fi
-  suffix="${suffix}_$(basename "$BASE_CONFIG" .yaml)"
+  suffix="${suffix}_${CONFIG_LABEL}"
   SUMMARY_CSV="${OUTPUT_ROOT}/batch_summary_${TODAY}_${suffix}.csv"
 
   mapfile -t run_dirs < "$MANIFEST_FILE"
