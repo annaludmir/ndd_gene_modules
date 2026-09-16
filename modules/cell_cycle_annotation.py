@@ -22,6 +22,13 @@ Usage:
   python modules/cell_cycle_annotation.py \
     --h5ad-input  data/input.h5ad \
     --h5ad-output data/input_with_cc.h5ad
+
+ATAC-seq has two modes (--modality atac):
+  * peak-based (default): sum accessibility of called peaks overlapping each
+    gene set's promoters (TSS ± --tss-window) from adata.X.
+  * fragment-based (--fragments fragments.tsv.bgz): count Tn5 fragments
+    directly in each gene's promoter window with snapatac2, independent of
+    peak calling. Denominator is the cell's total fragment count.
 """
 
 import argparse
@@ -460,6 +467,272 @@ def annotate_cell_cycle_atac(
 
 
 # ---------------------------------------------------------------------------
+# ATAC-seq, fragment-based version — count Tn5 fragments in promoter windows
+# (TSS ± window) directly from a fragments.tsv(.bgz) file via snapatac2, so
+# genes without a called peak still contribute. Denominator per cell is the
+# total number of fragments (snapatac2's `n_fragment`).
+# ---------------------------------------------------------------------------
+
+_MAIN_CHROM_RE = re.compile(r"^(chr)?([0-9]+|X|Y)$")
+
+
+def _chrom_style(name: str) -> str | None:
+    """'ucsc' for chr1/chrX, 'ensembl' for 1/X, None for contigs like GL000009.2."""
+    m = _MAIN_CHROM_RE.match(str(name))
+    if m is None:
+        return None
+    return "ucsc" if m.group(1) else "ensembl"
+
+
+def _to_ensembl_chrom(name: str) -> str:
+    s = str(name)
+    if s == "chrM":
+        return "MT"
+    return s[3:] if s.startswith("chr") else s
+
+
+def _open_text(path):
+    import gzip
+    return gzip.open(path, "rt") if str(path).endswith((".gz", ".bgz")) else open(path, "rt")
+
+
+def _detect_fragments_chrom_style(fragments_path, max_lines: int = 5_000_000) -> str:
+    """Scan the fragments file until a main chromosome (1..22/X/Y, with or
+    without 'chr') is seen. Unplaced contigs (GL*/KI*) are often first in
+    coordinate-sorted files, so we keep scanning past them."""
+    with _open_text(fragments_path) as f:
+        for i, line in enumerate(f):
+            if line.startswith("#"):
+                continue
+            style = _chrom_style(line.split("\t", 1)[0])
+            if style is not None:
+                return style
+            if i >= max_lines:
+                break
+    print("  [warn] Could not detect chromosome naming from fragments file; assuming 'ucsc'.")
+    return "ucsc"
+
+
+def _detect_gtf_chrom_style(gtf_path) -> str:
+    with _open_text(gtf_path) as f:
+        for line in f:
+            if line.startswith("#"):
+                continue
+            style = _chrom_style(line.split("\t", 1)[0])
+            if style is not None:
+                return style
+    print("  [warn] Could not detect chromosome naming from annotation; assuming 'ucsc'.")
+    return "ucsc"
+
+
+def _rewrite_gtf_chroms(gtf_path, target_style: str, out_dir) -> Path:
+    """Write a copy of the GTF/GFF3 with column 1 renamed to `target_style`."""
+    from atac_seq_analysis import _normalize_chrom
+    conv = _normalize_chrom if target_style == "ucsc" else _to_ensembl_chrom
+    src = Path(gtf_path)
+    stem = src.name
+    for suf in (".bgz", ".gz"):
+        if stem.endswith(suf):
+            stem = stem[: -len(suf)]
+    out = Path(out_dir) / f"{stem}.{target_style}_chroms.gff"
+    with _open_text(src) as fin, open(out, "wt") as fout:
+        for line in fin:
+            if line.startswith("#") or "\t" not in line:
+                fout.write(line)
+                continue
+            chrom, rest = line.split("\t", 1)
+            fout.write(f"{conv(chrom)}\t{rest}")
+    print(f"  Rewrote annotation chromosome names to '{target_style}': {out}")
+    return out
+
+
+def _classify_phases(cycling_score, g1_frac, s_frac, g2m_frac,
+                     cycling_threshold, g1_threshold, s_threshold, g2m_threshold):
+    """Same rule as the RNA / peak paths (priority: G2M > S > G1 > Post-M).
+    NaN scores (cells without data) get None."""
+    n = len(cycling_score)
+    valid = ~np.isnan(cycling_score)
+    is_cycling = valid & (cycling_score > cycling_threshold)
+    passes_g1  = np.nan_to_num(g1_frac)  > g1_threshold
+    passes_s   = np.nan_to_num(s_frac)   > s_threshold
+    passes_g2m = np.nan_to_num(g2m_frac) > g2m_threshold
+
+    phases = np.full(n, None, dtype=object)
+    phases[valid] = "Non-cycling"
+    phases[is_cycling] = "Post-M"
+    phases[is_cycling & passes_g1]  = "G1"
+    phases[is_cycling & passes_s]   = "S"
+    phases[is_cycling & passes_g2m] = "G2M"
+    return phases
+
+
+def _print_fraction_table(rows):
+    def _pct(a, q): return float(np.nanpercentile(a, q))
+    print("\n  Per-cell fraction distribution (helps calibrate thresholds):")
+    print(f"    {'set':13s}  {'threshold':>10s}  "
+          f"{'p10':>10s}  {'median':>10s}  {'p90':>10s}  {'max':>10s}")
+    for name, arr, th in rows:
+        print(f"    {name:13s}  {th:>10.4g}  "
+              f"{_pct(arr,10):>10.4g}  {_pct(arr,50):>10.4g}  "
+              f"{_pct(arr,90):>10.4g}  {float(np.nanmax(arr)):>10.4g}")
+
+
+def annotate_cell_cycle_fragments(
+    adata,
+    fragments_path: str | Path,
+    gtf_path: str | Path | None = None,
+    genome: str = "hg38",
+    tss_window: int = 2000,
+    cycling_threshold: float = CYCLING_THRESHOLD,
+    g1_threshold: float  = G1_THRESHOLD,
+    s_threshold: float   = S_THRESHOLD,
+    g2m_threshold: float = G2M_THRESHOLD,
+    tempdir: str | Path | None = None,
+    n_jobs: int = 8,
+):
+    """Add `cycling_score` and `CellCyclePhase` obs columns to an ATAC h5ad
+    using a fragments file instead of the peak matrix.
+
+    Steps: snapatac2 import_data (restricted to adata.obs_names) → gene matrix
+    over TSS ± tss_window (no gene body) → per-set fraction of each cell's
+    total fragments → same thresholds / priority as the other paths. Cells
+    absent from the fragments file get NaN score and a NaN phase.
+    """
+    import tempfile
+    import scipy.sparse as sp
+    import snapatac2 as snap
+    from atac_seq_analysis import resolve_annotation_path, get_snapatac2_genome
+
+    fragments_path = Path(fragments_path)
+    if not fragments_path.exists():
+        raise FileNotFoundError(f"fragments file not found: {fragments_path}")
+
+    genome_obj = get_snapatac2_genome(genome)
+    ann_path = resolve_annotation_path(gtf_path, genome)
+    if ann_path is None:
+        raise RuntimeError(
+            f"Could not obtain a gene annotation for '{genome}'. Pass --gtf-path.")
+    print(f"  Annotation: {ann_path}")
+
+    # --- chromosome naming: fragments file decides, annotation + chrom_sizes follow
+    frag_style = _detect_fragments_chrom_style(fragments_path)
+    ann_style  = _detect_gtf_chrom_style(ann_path)
+    print(f"  Chromosome naming: fragments='{frag_style}', annotation='{ann_style}'")
+
+    work_dir = Path(tempdir) if tempdir else Path(tempfile.mkdtemp(prefix="cc_frag_"))
+    work_dir.mkdir(parents=True, exist_ok=True)
+    if ann_style != frag_style:
+        ann_path = _rewrite_gtf_chroms(ann_path, frag_style, work_dir)
+
+    chrom_sizes = genome_obj.chrom_sizes
+    chrom_sizes = dict(chrom_sizes() if callable(chrom_sizes) else chrom_sizes)
+    if frag_style == "ensembl":
+        chrom_sizes = {_to_ensembl_chrom(k): v for k, v in chrom_sizes.items()}
+
+    # --- import fragments for the cells in adata only
+    barcodes = adata.obs_names.astype(str).tolist()
+    print(f"  Importing fragments for {len(barcodes):,} whitelisted cells "
+          f"(n_jobs={n_jobs}, tempdir={work_dir}) ...")
+    frag = snap.pp.import_data(
+        str(fragments_path),
+        chrom_sizes=chrom_sizes,
+        whitelist=barcodes,
+        min_num_fragments=0,
+        sorted_by_barcode=False,
+        tempdir=str(work_dir),
+        n_jobs=n_jobs,
+    )
+    n_found = frag.n_obs
+    print(f"    {n_found:,}/{len(barcodes):,} cells found in fragments file")
+    if n_found == 0:
+        raise RuntimeError(
+            "No whitelisted barcodes found in the fragments file. Check that "
+            "adata.obs_names match the fragment barcodes (column 4) and that "
+            "chromosome names match chrom_sizes (see log above).")
+
+    # --- promoter-window gene matrix (TSS ± window, no gene body)
+    print(f"  Building gene matrix over TSS ± {tss_window} bp ...")
+    gm_kwargs = dict(upstream=tss_window, downstream=tss_window, id_type="gene")
+    try:
+        gene_mat = snap.pp.make_gene_matrix(frag, str(ann_path), include_gene_body=False, **gm_kwargs)
+    except TypeError:
+        print("  [warn] this snapatac2 has no include_gene_body=; counts will include gene bodies.")
+        gene_mat = snap.pp.make_gene_matrix(frag, str(ann_path), **gm_kwargs)
+    print(f"    {gene_mat.n_obs:,} cells × {gene_mat.n_vars:,} genes")
+
+    if "n_fragment" in frag.obs.columns:
+        total = np.asarray(frag.obs["n_fragment"].values, dtype=float)
+    else:
+        print("  [warn] frag.obs has no 'n_fragment'; using gene-matrix row sums as denominator.")
+        total = np.asarray(gene_mat.X.sum(axis=1)).ravel().astype(float)
+
+    X = gene_mat.X
+    X = X.tocsr() if sp.issparse(X) else np.asarray(X)
+    var_names = gene_mat.var_names.astype(str)
+    sym2var = {g: g for g in var_names}
+    var_pos = {v: i for i, v in enumerate(var_names)}
+
+    print("  Resolving gene sets:")
+    cc_ix  = _gene_indices(CC_GENES_HUMAN, sym2var, var_pos, "cc_genes")
+    g1_ix  = _gene_indices(G1_GENES,       sym2var, var_pos, "G1")
+    s_ix   = _gene_indices(S_GENES,        sym2var, var_pos, "S")
+    g2m_ix = _gene_indices(G2M_GENES,      sym2var, var_pos, "G2M")
+    if len(cc_ix) == 0:
+        raise RuntimeError("None of the cell-cycle genes found in the gene matrix; "
+                           "check the annotation's gene_name attribute.")
+
+    print("  Computing per-cell fractions ...")
+    frac = {
+        "cycling_score": _per_cell_fraction(X, cc_ix,  total),
+        "g1_frac":       _per_cell_fraction(X, g1_ix,  total),
+        "s_frac":        _per_cell_fraction(X, s_ix,   total),
+        "g2m_frac":      _per_cell_fraction(X, g2m_ix, total),
+    }
+
+    # --- align back to adata.obs (cells missing from fragments → NaN)
+    pos_in_adata = pd.Index(adata.obs_names.astype(str)).get_indexer(gene_mat.obs_names.astype(str))
+    keep = pos_in_adata >= 0
+    aligned = {}
+    for k, v in frac.items():
+        arr = np.full(adata.n_obs, np.nan)
+        arr[pos_in_adata[keep]] = v[keep]
+        aligned[k] = arr
+    n_missing = int(np.isnan(aligned["cycling_score"]).sum())
+    if n_missing:
+        print(f"  [note] {n_missing:,} cells in adata have no fragments → NaN score / NaN phase")
+
+    _print_fraction_table([
+        ("cycling_score", aligned["cycling_score"], cycling_threshold),
+        ("g1_frac",       aligned["g1_frac"],       g1_threshold),
+        ("s_frac",        aligned["s_frac"],        s_threshold),
+        ("g2m_frac",      aligned["g2m_frac"],      g2m_threshold),
+    ])
+
+    phases = _classify_phases(
+        aligned["cycling_score"], aligned["g1_frac"], aligned["s_frac"], aligned["g2m_frac"],
+        cycling_threshold, g1_threshold, s_threshold, g2m_threshold,
+    )
+
+    adata.obs["cycling_score"]  = aligned["cycling_score"].astype(np.float32)
+    adata.obs["CellCyclePhase"] = pd.Categorical(
+        phases, categories=PHASE_ORDER, ordered=False,
+    )
+    total_frag = np.full(adata.n_obs, np.nan)
+    total_frag[pos_in_adata[keep]] = total[keep]
+    adata.obs["n_fragment"] = total_frag.astype(np.float32)
+
+    counts = pd.Series(phases).value_counts()
+    print("\n  Phase distribution (ATAC, fragment-based):")
+    for phase in PHASE_ORDER:
+        n = int(counts.get(phase, 0))
+        pct = 100.0 * n / adata.n_obs if adata.n_obs else 0.0
+        print(f"    {phase:12s}  {n:>10,}  ({pct:5.2f}%)")
+    if n_missing:
+        print(f"    {'(no data)':12s}  {n_missing:>10,}")
+    return adata
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
@@ -488,6 +761,13 @@ def main():
                         help="[ATAC] Genome name for snapatac2 built-in TSS lookup.")
     parser.add_argument("--tss-window", type=int, default=2000,
                         help="[ATAC] ± bp around TSS to consider promoter peaks.")
+    parser.add_argument("--fragments", default=None,
+                        help="[ATAC] fragments.tsv(.bgz) file. If given, score cells by "
+                             "fragments in promoter windows (snapatac2) instead of adata.X peaks.")
+    parser.add_argument("--tempdir", default=None,
+                        help="[ATAC --fragments] scratch dir for snapatac2 import (large!).")
+    parser.add_argument("--n-jobs", type=int, default=8,
+                        help="[ATAC --fragments] threads for snapatac2 import_data.")
 
     # Thresholds — defaults are RNA-calibrated. ATAC typically needs higher
     # cycling_threshold and slightly higher phase thresholds; check the
@@ -527,6 +807,20 @@ def main():
             print("[warn] Threshold flags apply only to --modality atac in this build. "
                   "Ignoring for RNA.")
         annotate_cell_cycle(adata, sym_col=args.sym_col)
+    elif args.fragments:
+        annotate_cell_cycle_fragments(
+            adata,
+            fragments_path=args.fragments,
+            gtf_path=args.gtf_path,
+            genome=args.genome,
+            tss_window=args.tss_window,
+            cycling_threshold=args.cycling_threshold,
+            g1_threshold=args.g1_threshold,
+            s_threshold=args.s_threshold,
+            g2m_threshold=args.g2m_threshold,
+            tempdir=args.tempdir,
+            n_jobs=args.n_jobs,
+        )
     else:
         annotate_cell_cycle_atac(
             adata,

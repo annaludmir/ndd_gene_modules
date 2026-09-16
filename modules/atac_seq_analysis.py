@@ -271,18 +271,8 @@ def peaks_to_dataframe(adata, peak_columns: dict | None = None) -> pd.DataFrame:
     )
 
 
-def load_tss_annotation(gtf_path: Path | None, genome: str) -> pd.DataFrame:
-    """Return a DataFrame with columns Chromosome / TSS / Strand / gene_name.
-
-    If a GTF file is provided, parse it. Otherwise try to obtain a GTF from
-    SnapATAC2's built-in `Genome` object (this downloads on first use and
-    caches locally).
-    """
-    if gtf_path is not None and Path(gtf_path).exists():
-        print(f"\n[Load] gene TSSes from GTF: {gtf_path}")
-        return _tss_from_gtf(Path(gtf_path))
-
-    print(f"\n[Load] gene TSSes from snapatac2 built-in ({genome})")
+def get_snapatac2_genome(genome: str):
+    """Return the snapatac2 `Genome` object for `genome` (e.g. "hg38")."""
     try:
         import snapatac2 as snap
     except ImportError as e:
@@ -291,11 +281,21 @@ def load_tss_annotation(gtf_path: Path | None, genome: str) -> pd.DataFrame:
     genome_obj = getattr(snap.genome, genome, None)
     if genome_obj is None:
         raise ValueError(f"snapatac2.genome has no attribute '{genome}'.")
+    return genome_obj
+
+
+def resolve_annotation_path(gtf_path: Path | None, genome: str) -> Path | None:
+    """Return a local GTF/GFF3 path: `gtf_path` if it exists, otherwise the
+    snapatac2 built-in annotation for `genome` (downloaded on first use and
+    cached locally). Returns None if no file could be obtained."""
+    if gtf_path is not None and Path(gtf_path).exists():
+        return Path(gtf_path)
+
+    genome_obj = get_snapatac2_genome(genome)
 
     # Try, in order:
     #   1. .fetch_annotations()  — returns a path to a cached GTF
     #   2. .annotation as a str/Path pointing to a GTF
-    #   3. .annotation as an iterable of records → DataFrame
     fetched_gtf = None
     if hasattr(genome_obj, "fetch_annotations"):
         try:
@@ -309,9 +309,29 @@ def load_tss_annotation(gtf_path: Path | None, genome: str) -> pd.DataFrame:
             fetched_gtf = Path(ann)
 
     if fetched_gtf is not None and fetched_gtf.exists():
+        return fetched_gtf
+    return None
+
+
+def load_tss_annotation(gtf_path: Path | None, genome: str) -> pd.DataFrame:
+    """Return a DataFrame with columns Chromosome / TSS / Strand / gene_name.
+
+    If a GTF file is provided, parse it. Otherwise try to obtain a GTF from
+    SnapATAC2's built-in `Genome` object (this downloads on first use and
+    caches locally).
+    """
+    if gtf_path is not None and Path(gtf_path).exists():
+        print(f"\n[Load] gene TSSes from GTF: {gtf_path}")
+        return _tss_from_gtf(Path(gtf_path))
+
+    print(f"\n[Load] gene TSSes from snapatac2 built-in ({genome})")
+    fetched_gtf = resolve_annotation_path(None, genome)
+    if fetched_gtf is not None:
         print(f"  [snapatac2 GTF] {fetched_gtf}")
         return _tss_from_gtf(fetched_gtf)
 
+    # Last resort: .annotation as an iterable of records → DataFrame
+    genome_obj = get_snapatac2_genome(genome)
     ann = getattr(genome_obj, "annotation", None)
     if ann is None:
         raise RuntimeError(
@@ -349,7 +369,7 @@ def _tss_from_gtf(gtf_path: Path) -> pd.DataFrame:
     Falls back to Ensembl gene_id if no symbol is present.
     """
     import gzip
-    opener = gzip.open if str(gtf_path).endswith(".gz") else open
+    opener = gzip.open if str(gtf_path).endswith((".gz", ".bgz")) else open
 
     rows = []
     feature_type_counts: dict[str, int] = {}
