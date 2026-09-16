@@ -23,6 +23,13 @@ def _():
 
 @app.cell
 def _(sc):
+    a=sc.read_h5ad('/miridan-storage/annaludmir/atac-seq/e88a34d0-d28a-4d10-a8c5-d59f86ba621a.h5ad', backed='r')
+    print(a.obs_names[:3].tolist())
+    return
+
+
+@app.cell
+def _(sc):
     # 1. Load Data
     h5ad_file_path = "/miridan-data/annaludmir/ndd_gene_modules/data/human_dev_without_week_5.h5ad"
 
@@ -275,8 +282,21 @@ def _(adata_filtered_final, np, pd):
     forebrain_medians = np.median(matrix_forebrain, axis=0)
     midbrain_medians = np.median(matrix_midbrain, axis=0)
 
+    # Calculate Fraction Expressing (across all cells)
     forebrain_fractions = (matrix_forebrain > 0).mean(axis=0) * 100
     midbrain_fractions = (matrix_midbrain > 0).mean(axis=0) * 100
+
+    # Calculate Median Expression ONLY in Expressing Cells (> 0)
+    n_genes = expression_matrix_x.shape[1]
+    forebrain_medians = np.zeros(n_genes)
+    midbrain_medians = np.zeros(n_genes)
+
+    for i in range(n_genes):
+        fb_expressed = matrix_forebrain[matrix_forebrain[:, i] > 0, i]
+        forebrain_medians[i] = np.median(fb_expressed) if len(fb_expressed) > 0 else 0.0
+
+        mb_expressed = matrix_midbrain[matrix_midbrain[:, i] > 0, i]
+        midbrain_medians[i] = np.median(mb_expressed) if len(mb_expressed) > 0 else 0.0
 
     # Assemble Summary DataFrame
     regional_metrics_df = pd.DataFrame(
