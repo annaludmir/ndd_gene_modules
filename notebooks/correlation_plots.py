@@ -23,13 +23,6 @@ def _():
 
 @app.cell
 def _(sc):
-    a=sc.read_h5ad('/miridan-storage/annaludmir/atac-seq/e88a34d0-d28a-4d10-a8c5-d59f86ba621a.h5ad', backed='r')
-    print(a.obs_names[:3].tolist())
-    return
-
-
-@app.cell
-def _(sc):
     # 1. Load Data
     h5ad_file_path = "/miridan-data/annaludmir/ndd_gene_modules/data/human_dev_without_week_5.h5ad"
 

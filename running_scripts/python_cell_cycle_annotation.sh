@@ -7,7 +7,11 @@
 #SBATCH --account=miridan-users_v2
 #SBATCH --output=/miridan-data/annaludmir/jobs_output/%j.out
 #SBATCH --error=/miridan-data/annaludmir/jobs_output/%j.err
+<<<<<<< HEAD
 #SBATCH --time=0-24:00:00
+=======
+#SBATCH --time=0-48:00:00
+>>>>>>> 52e8d95 (Update notebook and running scripts)
 #SBATCH --partition=power-general-public-pool
 #SBATCH --qos=public
 
