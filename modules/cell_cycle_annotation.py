@@ -513,37 +513,31 @@ def _detect_fragments_chrom_style(fragments_path, max_lines: int = 5_000_000) ->
     return "ucsc"
 
 
-def _detect_gtf_chrom_style(gtf_path) -> str:
-    with _open_text(gtf_path) as f:
-        for line in f:
-            if line.startswith("#"):
-                continue
-            style = _chrom_style(line.split("\t", 1)[0])
-            if style is not None:
-                return style
-    print("  [warn] Could not detect chromosome naming from annotation; assuming 'ucsc'.")
-    return "ucsc"
+def _promoter_regions_for_genes(tss_df, genes, window: int, to_frag_chrom, allowed_chroms):
+    """Build merged TSS ± window intervals per gene, restricted to `genes` and
+    to chromosomes present in `allowed_chroms` (after renaming with
+    `to_frag_chrom`). Returns (regions, region_gene): region strings
+    "chrom:start-end" in snapatac2 format and the gene of each region."""
+    df = tss_df[tss_df["gene_name"].isin(set(genes))].copy()
+    df["Chromosome"] = df["Chromosome"].astype(str).map(to_frag_chrom)
+    df = df[df["Chromosome"].isin(allowed_chroms)]
+    df["Start"] = (df["TSS"].astype(int) - window).clip(lower=0)
+    df["End"]   = df["TSS"].astype(int) + window
 
-
-def _rewrite_gtf_chroms(gtf_path, target_style: str, out_dir) -> Path:
-    """Write a copy of the GTF/GFF3 with column 1 renamed to `target_style`."""
-    from atac_seq_analysis import _normalize_chrom
-    conv = _normalize_chrom if target_style == "ucsc" else _to_ensembl_chrom
-    src = Path(gtf_path)
-    stem = src.name
-    for suf in (".bgz", ".gz"):
-        if stem.endswith(suf):
-            stem = stem[: -len(suf)]
-    out = Path(out_dir) / f"{stem}.{target_style}_chroms.gff"
-    with _open_text(src) as fin, open(out, "wt") as fout:
-        for line in fin:
-            if line.startswith("#") or "\t" not in line:
-                fout.write(line)
-                continue
-            chrom, rest = line.split("\t", 1)
-            fout.write(f"{conv(chrom)}\t{rest}")
-    print(f"  Rewrote annotation chromosome names to '{target_style}': {out}")
-    return out
+    regions, region_gene = [], []
+    for (gene, chrom), grp in df.groupby(["gene_name", "Chromosome"], sort=True):
+        cur_s = cur_e = None
+        for st, en in sorted(zip(grp["Start"], grp["End"])):
+            if cur_s is None:
+                cur_s, cur_e = st, en
+            elif st <= cur_e:            # overlapping / touching → merge
+                cur_e = max(cur_e, en)
+            else:
+                regions.append(f"{chrom}:{cur_s}-{cur_e}"); region_gene.append(gene)
+                cur_s, cur_e = st, en
+        if cur_s is not None:
+            regions.append(f"{chrom}:{cur_s}-{cur_e}"); region_gene.append(gene)
+    return regions, region_gene
 
 
 def _classify_phases(cycling_score, g1_frac, s_frac, g2m_frac,
@@ -593,41 +587,46 @@ def annotate_cell_cycle_fragments(
     """Add `cycling_score` and `CellCyclePhase` obs columns to an ATAC h5ad
     using a fragments file instead of the peak matrix.
 
-    Steps: snapatac2 import_data (restricted to adata.obs_names) → gene matrix
-    over TSS ± tss_window (no gene body) → per-set fraction of each cell's
-    total fragments → same thresholds / priority as the other paths. Cells
-    absent from the fragments file get NaN score and a NaN phase.
+    Steps: snapatac2 import_data (restricted to adata.obs_names) → count
+    fragments in TSS ± tss_window windows of the cell-cycle genes
+    (make_peak_matrix on explicit regions, so it works across snapatac2
+    versions) → per-set fraction of each cell's total fragments → same
+    thresholds / priority as the other paths. Cells absent from the fragments
+    file get NaN score and a NaN phase.
     """
     import tempfile
     import scipy.sparse as sp
     import snapatac2 as snap
-    from atac_seq_analysis import resolve_annotation_path, get_snapatac2_genome
+    from atac_seq_analysis import get_snapatac2_genome, load_tss_annotation
 
     fragments_path = Path(fragments_path)
     if not fragments_path.exists():
         raise FileNotFoundError(f"fragments file not found: {fragments_path}")
 
     genome_obj = get_snapatac2_genome(genome)
-    ann_path = resolve_annotation_path(gtf_path, genome)
-    if ann_path is None:
-        raise RuntimeError(
-            f"Could not obtain a gene annotation for '{genome}'. Pass --gtf-path.")
-    print(f"  Annotation: {ann_path}")
 
-    # --- chromosome naming: fragments file decides, annotation + chrom_sizes follow
+    # --- chromosome naming: fragments file decides; chrom_sizes + regions follow
     frag_style = _detect_fragments_chrom_style(fragments_path)
-    ann_style  = _detect_gtf_chrom_style(ann_path)
-    print(f"  Chromosome naming: fragments='{frag_style}', annotation='{ann_style}'")
-
-    work_dir = Path(tempdir) if tempdir else Path(tempfile.mkdtemp(prefix="cc_frag_"))
-    work_dir.mkdir(parents=True, exist_ok=True)
-    if ann_style != frag_style:
-        ann_path = _rewrite_gtf_chroms(ann_path, frag_style, work_dir)
+    print(f"  Chromosome naming in fragments file: '{frag_style}'")
+    to_frag_chrom = _to_ensembl_chrom if frag_style == "ensembl" else (lambda c: c)
 
     chrom_sizes = genome_obj.chrom_sizes
     chrom_sizes = dict(chrom_sizes() if callable(chrom_sizes) else chrom_sizes)
-    if frag_style == "ensembl":
-        chrom_sizes = {_to_ensembl_chrom(k): v for k, v in chrom_sizes.items()}
+    chrom_sizes = {to_frag_chrom(k): v for k, v in chrom_sizes.items()}
+
+    work_dir = Path(tempdir) if tempdir else Path(tempfile.mkdtemp(prefix="cc_frag_"))
+    work_dir.mkdir(parents=True, exist_ok=True)
+
+    # --- promoter windows (TSS ± window) for the cell-cycle genes only, merged
+    #     per gene so a fragment is not counted twice across transcripts
+    tss_df = load_tss_annotation(gtf_path, genome)
+    all_genes = list(dict.fromkeys([*CC_GENES_HUMAN, *G1_GENES, *S_GENES, *G2M_GENES]))
+    regions, region_gene = _promoter_regions_for_genes(
+        tss_df, all_genes, tss_window, to_frag_chrom, set(chrom_sizes))
+    print(f"  {len(regions):,} promoter windows for "
+          f"{len(set(region_gene)):,}/{len(all_genes):,} cell-cycle genes (TSS ± {tss_window} bp)")
+    if not regions:
+        raise RuntimeError("No promoter windows built; check the annotation / gene names.")
 
     # --- import fragments for the cells in adata only
     barcodes = adata.obs_names.astype(str).tolist()
@@ -650,35 +649,39 @@ def annotate_cell_cycle_fragments(
             "adata.obs_names match the fragment barcodes (column 4) and that "
             "chromosome names match chrom_sizes (see log above).")
 
-    # --- promoter-window gene matrix (TSS ± window, no gene body)
-    print(f"  Building gene matrix over TSS ± {tss_window} bp ...")
-    gm_kwargs = dict(upstream=tss_window, downstream=tss_window, id_type="gene")
-    try:
-        gene_mat = snap.pp.make_gene_matrix(frag, str(ann_path), include_gene_body=False, **gm_kwargs)
-    except TypeError:
-        print("  [warn] this snapatac2 has no include_gene_body=; counts will include gene bodies.")
-        gene_mat = snap.pp.make_gene_matrix(frag, str(ann_path), **gm_kwargs)
-    print(f"    {gene_mat.n_obs:,} cells × {gene_mat.n_vars:,} genes")
+    # --- count fragments in each promoter window (cells × regions)
+    print("  Counting fragments in promoter windows ...")
+    region_mat = snap.pp.make_peak_matrix(frag, use_rep=regions)
+    print(f"    {region_mat.n_obs:,} cells × {region_mat.n_vars:,} regions")
 
     if "n_fragment" in frag.obs.columns:
         total = np.asarray(frag.obs["n_fragment"].values, dtype=float)
     else:
-        print("  [warn] frag.obs has no 'n_fragment'; using gene-matrix row sums as denominator.")
-        total = np.asarray(gene_mat.X.sum(axis=1)).ravel().astype(float)
+        raise RuntimeError("frag.obs has no 'n_fragment' column; cannot compute per-cell totals.")
 
-    X = gene_mat.X
+    X = region_mat.X
     X = X.tocsr() if sp.issparse(X) else np.asarray(X)
-    var_names = gene_mat.var_names.astype(str)
-    sym2var = {g: g for g in var_names}
-    var_pos = {v: i for i, v in enumerate(var_names)}
+    # region_mat.var_names follow the order of `regions`; map each column to its gene
+    var_gene = np.asarray(region_gene, dtype=object)
+    if region_mat.n_vars != len(regions):
+        var_gene = np.asarray(
+            [region_gene[regions.index(r)] for r in region_mat.var_names.astype(str)], dtype=object)
+
+    def _set_indices(gene_list, label):
+        wanted = set(gene_list)
+        ix = np.flatnonzero(np.isin(var_gene, list(wanted)))
+        n_genes = len(set(var_gene[ix]))
+        print(f"  {label:15s}  {n_genes:>4}/{len(wanted):>4} genes with promoter windows "
+              f"({len(ix):,} regions)")
+        return ix
 
     print("  Resolving gene sets:")
-    cc_ix  = _gene_indices(CC_GENES_HUMAN, sym2var, var_pos, "cc_genes")
-    g1_ix  = _gene_indices(G1_GENES,       sym2var, var_pos, "G1")
-    s_ix   = _gene_indices(S_GENES,        sym2var, var_pos, "S")
-    g2m_ix = _gene_indices(G2M_GENES,      sym2var, var_pos, "G2M")
+    cc_ix  = _set_indices(CC_GENES_HUMAN, "cc_genes")
+    g1_ix  = _set_indices(G1_GENES,       "G1")
+    s_ix   = _set_indices(S_GENES,        "S")
+    g2m_ix = _set_indices(G2M_GENES,      "G2M")
     if len(cc_ix) == 0:
-        raise RuntimeError("None of the cell-cycle genes found in the gene matrix; "
+        raise RuntimeError("None of the cell-cycle genes have promoter windows; "
                            "check the annotation's gene_name attribute.")
 
     print("  Computing per-cell fractions ...")
@@ -690,7 +693,7 @@ def annotate_cell_cycle_fragments(
     }
 
     # --- align back to adata.obs (cells missing from fragments → NaN)
-    pos_in_adata = pd.Index(adata.obs_names.astype(str)).get_indexer(gene_mat.obs_names.astype(str))
+    pos_in_adata = pd.Index(adata.obs_names.astype(str)).get_indexer(region_mat.obs_names.astype(str))
     keep = pos_in_adata >= 0
     aligned = {}
     for k, v in frac.items():
