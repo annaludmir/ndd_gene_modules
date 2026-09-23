@@ -2,12 +2,12 @@
 #SBATCH --mail-user=annaludmir@mail.tau.ac.il
 #SBATCH --mail-type=END,FAIL
 #SBATCH --job-name=cc_annotation
-#SBATCH --mem=250G
+#SBATCH --mem=500G
 #SBATCH --cpus-per-task=8
 #SBATCH --account=miridan-users_v2
 #SBATCH --output=/miridan-data/annaludmir/jobs_output/%j.out
 #SBATCH --error=/miridan-data/annaludmir/jobs_output/%j.err
-#SBATCH --time=0-04:00:00
+#SBATCH --time=0-24:00:00
 #SBATCH --partition=power-general-public-pool
 #SBATCH --qos=public
 
@@ -36,15 +36,31 @@ FRAGMENTS_PATH="/miridan-storage/annaludmir/atac-seq/49a73aea-76d5-40a1-b5e4-fa6
 FRAG_TEMPDIR="/miridan-storage/annaludmir/atac-seq/tmp_snapatac2"   # scratch for snapatac2 import (large)
 FRAG_N_JOBS="${SLURM_CPUS_PER_TASK:-8}"
 
-# Optional threshold overrides. Leave empty to use module defaults (RNA-cal).
-# ATAC defaults typically need higher values — the pipeline prints a
-# 'Per-cell fraction distribution' table you can use to calibrate.
-CYCLING_THRESHOLD=""    # e.g. 0.05 for ATAC
-G1_THRESHOLD=""         # e.g. 0.005
-S_THRESHOLD=""          # e.g. 0.003
-G2M_THRESHOLD=""        # e.g. 0.005
+# Scoring scheme:
+#   fraction   — share of the cell's total signal in the gene set. Thresholds
+#                are absolute fractions and scale with how many features a set
+#                has, so RNA-calibrated values do not transfer to ATAC.
+#   background — set mean minus the mean of signal-matched control features,
+#                as a z-score. Thresholds are in SDs and comparable across
+#                sets. The run also prints a per-set 'signal' ratio; a value
+#                near 1 means that set carries no real cell-to-cell structure.
+SCORING="background"
+N_BACKGROUND_GENES="5000"   # [background + fragments] size of the control pool
+N_CTRL_PER_REGION="50"      # [background] controls drawn per set feature
+N_BINS="25"                 # [background] signal bins used for matching
+SEED="0"
 
-EXTRA_ARGS=(--modality "$MODALITY")
+# Optional threshold overrides. Leave empty to use the defaults for $SCORING
+# (fraction: 0.004/0.002/0.002/0.03; background: 1.0 SD for all four).
+CYCLING_THRESHOLD=""    # e.g. 1.0 under background
+G1_THRESHOLD=""
+S_THRESHOLD=""
+G2M_THRESHOLD=""
+
+EXTRA_ARGS=(--modality "$MODALITY" --scoring "$SCORING")
+if [[ "$SCORING" == "background" ]]; then
+  EXTRA_ARGS+=(--n-bins "$N_BINS" --n-ctrl-per-region "$N_CTRL_PER_REGION" --seed "$SEED")
+fi
 if [[ "$MODALITY" == "rna" ]]; then
   EXTRA_ARGS+=(--sym-col "$SYM_COL")
 else
@@ -53,6 +69,9 @@ else
   if [[ -n "$FRAGMENTS_PATH" ]]; then
     EXTRA_ARGS+=(--fragments "$FRAGMENTS_PATH" --n-jobs "$FRAG_N_JOBS")
     [[ -n "$FRAG_TEMPDIR" ]] && EXTRA_ARGS+=(--tempdir "$FRAG_TEMPDIR")
+    if [[ "$SCORING" == "background" ]]; then
+      EXTRA_ARGS+=(--n-background-genes "$N_BACKGROUND_GENES")
+    fi
   fi
 fi
 
