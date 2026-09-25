@@ -7,11 +7,7 @@
 #SBATCH --account=miridan-users_v2
 #SBATCH --output=/miridan-data/annaludmir/jobs_output/%j.out
 #SBATCH --error=/miridan-data/annaludmir/jobs_output/%j.err
-<<<<<<< HEAD
-#SBATCH --time=0-24:00:00
-=======
 #SBATCH --time=0-48:00:00
->>>>>>> 52e8d95 (Update notebook and running scripts)
 #SBATCH --partition=power-general-public-pool
 #SBATCH --qos=public
 
@@ -24,7 +20,7 @@ cd /miridan-data/annaludmir/ndd_gene_modules
 # Edit these before submitting.
 MODALITY="atac"   # rna | atac
 H5AD_INPUT="/miridan-storage/annaludmir/atac-seq/e88a34d0-d28a-4d10-a8c5-d59f86ba621a.h5ad"
-H5AD_OUTPUT="/miridan-storage/annaludmir/atac-seq/e88a34d0-d28a-4d10-a8c5-d59f86ba621a_cc_annotated_fragments.h5ad"
+H5AD_OUTPUT="/miridan-storage/annaludmir/atac-seq/e88a34d0-d28a-4d10-a8c5-d59f86ba621a_cc_replication.h5ad"
 
 # RNA-specific
 SYM_COL="Gene"
@@ -40,7 +36,22 @@ FRAGMENTS_PATH="/miridan-storage/annaludmir/atac-seq/49a73aea-76d5-40a1-b5e4-fa6
 FRAG_TEMPDIR="/miridan-storage/annaludmir/atac-seq/tmp_snapatac2"   # scratch for snapatac2 import (large)
 FRAG_N_JOBS="${SLURM_CPUS_PER_TASK:-8}"
 
-# Scoring scheme:
+# ATAC signal:
+#   promoter    — score accessibility over cell-cycle gene promoters (gene sets).
+#   replication — ignore gene sets. S phase from megabase-scale coverage
+#                 overdispersion (a replicating cell has 2 copies of what it has
+#                 copied and 1 of the rest), G2M from DNA content. Needs
+#                 FRAGMENTS_PATH. Set CELL_TYPE_COL: the per-cell-type baseline
+#                 matters for correctness, not just for reporting.
+ATAC_SIGNAL="replication"
+CELL_TYPE_COL="cell_type"
+BIN_SIZE=""             # empty → chosen from the data's median depth
+S_DISPERSION_THRESHOLD=""   # default 0.02 overdispersion above the type baseline
+S_Z_THRESHOLD=""            # default 3 sd of the Poisson null
+G2M_DNA_THRESHOLD=""        # default 0.6 log2 DNA above the type baseline
+FORCE_G2M="false"           # G2M is auto-disabled when capture variation hides it
+
+# Scoring scheme (ATAC_SIGNAL=promoter, or MODALITY=rna):
 #   fraction   — share of the cell's total signal in the gene set. Thresholds
 #                are absolute fractions and scale with how many features a set
 #                has, so RNA-calibrated values do not transfer to ATAC.
@@ -68,8 +79,16 @@ fi
 if [[ "$MODALITY" == "rna" ]]; then
   EXTRA_ARGS+=(--sym-col "$SYM_COL")
 else
-  EXTRA_ARGS+=(--genome "$GENOME" --tss-window "$TSS_WINDOW")
+  EXTRA_ARGS+=(--genome "$GENOME" --tss-window "$TSS_WINDOW" --atac-signal "$ATAC_SIGNAL")
   [[ -n "$GTF_PATH" ]] && EXTRA_ARGS+=(--gtf-path "$GTF_PATH")
+  if [[ "$ATAC_SIGNAL" == "replication" ]]; then
+    [[ -n "$CELL_TYPE_COL"          ]] && EXTRA_ARGS+=(--cell-type-col "$CELL_TYPE_COL")
+    [[ -n "$BIN_SIZE"               ]] && EXTRA_ARGS+=(--bin-size "$BIN_SIZE")
+    [[ -n "$S_DISPERSION_THRESHOLD" ]] && EXTRA_ARGS+=(--s-dispersion-threshold "$S_DISPERSION_THRESHOLD")
+    [[ -n "$S_Z_THRESHOLD"          ]] && EXTRA_ARGS+=(--s-z-threshold "$S_Z_THRESHOLD")
+    [[ -n "$G2M_DNA_THRESHOLD"      ]] && EXTRA_ARGS+=(--g2m-dna-threshold "$G2M_DNA_THRESHOLD")
+    [[ "$FORCE_G2M" == "true"       ]] && EXTRA_ARGS+=(--force-g2m)
+  fi
   if [[ -n "$FRAGMENTS_PATH" ]]; then
     EXTRA_ARGS+=(--fragments "$FRAGMENTS_PATH" --n-jobs "$FRAG_N_JOBS")
     [[ -n "$FRAG_TEMPDIR" ]] && EXTRA_ARGS+=(--tempdir "$FRAG_TEMPDIR")

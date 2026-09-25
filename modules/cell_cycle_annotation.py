@@ -1119,6 +1119,38 @@ def main():
     parser.add_argument("--n-jobs", type=int, default=8,
                         help="[ATAC --fragments] threads for snapatac2 import_data.")
 
+    # ATAC: which signal to score. `promoter` is the gene-set route above;
+    # `replication` ignores gene sets and uses copy-number effects instead.
+    parser.add_argument("--atac-signal", choices=("promoter", "replication"),
+                        default="promoter",
+                        help="promoter: accessibility over cell-cycle gene promoters. "
+                             "replication: S phase from megabase-scale coverage "
+                             "overdispersion (replicating cells carry 2 copies of what "
+                             "they have copied and 1 of the rest) and G2M from DNA "
+                             "content. Requires --fragments.")
+    parser.add_argument("--bin-size", type=int, default=None,
+                        help="[--atac-signal replication] genome bin width in bp. "
+                             "Default: chosen from the data's depth.")
+    parser.add_argument("--min-bin-pct", type=float, default=None,
+                        help="[--atac-signal replication] drop bins below this "
+                             "percentile of population coverage (gaps, centromeres).")
+    parser.add_argument("--cell-type-col", default=None,
+                        help="[--atac-signal replication] obs column with cell-type "
+                             "labels. Baselines become per-cell-type, and the run "
+                             "prints a phase-by-cell-type control table.")
+    parser.add_argument("--s-dispersion-threshold", type=float, default=None,
+                        help="[--atac-signal replication] overdispersion above the "
+                             "cell-type baseline needed for an S call.")
+    parser.add_argument("--s-z-threshold", type=float, default=None,
+                        help="[--atac-signal replication] how many sd of the Poisson "
+                             "null that overdispersion must also clear.")
+    parser.add_argument("--g2m-dna-threshold", type=float, default=None,
+                        help="[--atac-signal replication] log2 DNA content above the "
+                             "cell-type baseline needed for a G2M call.")
+    parser.add_argument("--force-g2m", action="store_true",
+                        help="[--atac-signal replication] make G2M calls even when "
+                             "capture variation is too wide to resolve them.")
+
     # Scoring
     parser.add_argument("--scoring", choices=SCORING_MODES, default="fraction",
                         help="fraction: share of the cell's total signal in the gene set "
@@ -1153,6 +1185,11 @@ def main():
 
     args = parser.parse_args()
 
+    use_replication = (args.modality == "atac" and args.atac_signal == "replication")
+    if use_replication and not args.fragments:
+        parser.error("--atac-signal replication requires --fragments: copy number "
+                     "is read from genome-wide coverage, not from the peak matrix.")
+
     in_path  = Path(args.h5ad_input).resolve()
     out_path = Path(args.h5ad_output).resolve()
 
@@ -1176,7 +1213,31 @@ def main():
         seed=args.seed,
     )
 
-    if args.modality == "rna":
+    if use_replication:
+        from cell_cycle_atac_replication import (
+            annotate_cell_cycle_atac_replication,
+            DEFAULT_MIN_BIN_PCT, DEFAULT_S_THRESHOLD,
+            DEFAULT_S_Z_THRESHOLD, DEFAULT_G2M_THRESHOLD,
+        )
+        annotate_cell_cycle_atac_replication(
+            adata,
+            fragments_path=args.fragments,
+            genome=args.genome,
+            bin_size=args.bin_size,
+            min_bin_pct=(DEFAULT_MIN_BIN_PCT if args.min_bin_pct is None
+                         else args.min_bin_pct),
+            cell_type_col=args.cell_type_col,
+            s_threshold=(DEFAULT_S_THRESHOLD if args.s_dispersion_threshold is None
+                         else args.s_dispersion_threshold),
+            s_z_threshold=(DEFAULT_S_Z_THRESHOLD if args.s_z_threshold is None
+                           else args.s_z_threshold),
+            g2m_threshold=(DEFAULT_G2M_THRESHOLD if args.g2m_dna_threshold is None
+                           else args.g2m_dna_threshold),
+            force_g2m=args.force_g2m,
+            tempdir=args.tempdir,
+            n_jobs=args.n_jobs,
+        )
+    elif args.modality == "rna":
         annotate_cell_cycle(adata, sym_col=args.sym_col, **common)
     elif args.fragments:
         annotate_cell_cycle_fragments(
