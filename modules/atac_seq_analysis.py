@@ -910,10 +910,18 @@ def task_motif_target_validation(
     tss_by_gene = tss_df.set_index("gene_name").to_dict("index")
 
     out_dir.mkdir(parents=True, exist_ok=True)
+    detail_csv  = out_dir / "motif_target_validation_details.csv"
+    summary_csv = out_dir / "motif_target_validation_summary.csv"
+
+    # The set-level scan below runs snap.tl.motif_enrichment once per TF against
+    # the genome fasta, which dominates this task's runtime. When a rerun is
+    # only here to fill in a newly-enabled per-group scoring, reuse the CSVs.
+    set_level_done = (detail_csv.exists() and summary_csv.exists()
+                      and not force_per_pair)
     rows = []
     tf_summary_rows = []
 
-    for tf, tf_group in tf_targets.groupby("TF"):
+    for tf, tf_group in (() if set_level_done else tf_targets.groupby("TF")):
         tf_motifs = _find_motifs_for_tf(str(tf))
         target_genes = tf_group["target"].astype(str).unique().tolist()
 
@@ -1000,14 +1008,14 @@ def task_motif_target_validation(
                 "adjusted_p_value": r["adjusted_p_value"],
             })
 
-    detail_df  = pd.DataFrame(rows)
-    summary_df = pd.DataFrame(tf_summary_rows)
-    detail_csv = out_dir / "motif_target_validation_details.csv"
-    summary_csv = out_dir / "motif_target_validation_summary.csv"
-    detail_df.to_csv(detail_csv, index=False)
-    summary_df.to_csv(summary_csv, index=False)
-    print(f"\n  Saved: {detail_csv.name}   ({len(detail_df):,} rows)")
-    print(f"  Saved: {summary_csv.name}  ({len(summary_df):,} TFs)")
+    if set_level_done:
+        print(f"\n  [skip] set-level motif scan — {detail_csv.name} and "
+              f"{summary_csv.name} already present.")
+    else:
+        pd.DataFrame(rows).to_csv(detail_csv, index=False)
+        pd.DataFrame(tf_summary_rows).to_csv(summary_csv, index=False)
+        print(f"\n  Saved: {detail_csv.name}   ({len(rows):,} rows)")
+        print(f"  Saved: {summary_csv.name}  ({len(tf_summary_rows):,} TFs)")
 
     # ── Per-pair MOODS scan (each (TF, target) gets its own row) ───────────
     if task_cfg.get("per_pair_scoring", True):
@@ -1962,6 +1970,43 @@ def _heatmap(df: pd.DataFrame, out_path: Path, title: str, cmap: str = "viridis"
 TASK_NAMES = ("motif_enrichment", "promoter", "motif_target_validation")
 
 
+def _missing_outputs(task_name: str, run_dir: Path, cfg: dict) -> list[str]:
+    """Outputs a task should have produced but hasn't. Empty list = done.
+
+    The primary output alone is not enough for task 3: enabling a per-group
+    scoring after an earlier run leaves the summary CSV in place while the new
+    per-group directory is absent, and skipping on the summary alone would
+    never produce it.
+    """
+    primary = _primary_output(task_name, run_dir)
+    missing = [] if primary.exists() else [str(primary)]
+
+    if task_name != "motif_target_validation":
+        return missing
+
+    task_cfg = cfg.get("motif_target_validation", {})
+    if not task_cfg.get("per_pair_scoring", True):
+        return missing
+
+    base = run_dir / "3_motif_target_validation"
+    pair_csv = base / "motif_target_pair_scores.csv"
+    if not pair_csv.exists():
+        missing.append(str(pair_csv))
+
+    wanted = []
+    if task_cfg.get("per_cell_type_scoring", False):
+        wanted.append("cell_type")
+    if task_cfg.get("per_cell_cycle_scoring", False):
+        wanted.append("cell_cycle")
+        if task_cfg.get("per_cell_cycle_within_cell_type", False):
+            wanted.append("cell_type_x_cell_cycle")
+    for key in wanted:
+        d = base / GROUPING_PRESETS[key]["subdir"]
+        if not (d.exists() and any(d.iterdir())):
+            missing.append(str(d) + "/")
+    return missing
+
+
 def _primary_output(task_name: str, run_dir: Path) -> Path:
     """Return the file whose existence marks a task as 'done' for skip-if-exists."""
     if task_name == "motif_enrichment":
@@ -2025,14 +2070,19 @@ def run(
 
     enabled = [t for t in requested if _enabled_in_config(t)]
 
-    # Skip-if-exists (unless --force). Task 3 has a secondary output (per-pair
-    # scan) that's checked inside the task function itself.
+    # Skip-if-exists (unless --force). A task runs when ANY of its expected
+    # outputs is missing, so switching on a new per-group scoring backfills it
+    # without --force (which would also redo the expensive per-TF genome scan).
     to_run = []
     for t in enabled:
-        out = _primary_output(t, run_dir)
-        if out.exists() and not force:
-            print(f"[skip] {t}: primary output exists → {out}")
+        missing = _missing_outputs(t, run_dir, cfg)
+        if not missing and not force:
+            print(f"[skip] {t}: all outputs present → {_primary_output(t, run_dir)}")
         else:
+            if missing and not force:
+                print(f"[run]  {t}: missing output(s) —")
+                for m in missing:
+                    print(f"         {m}")
             to_run.append(t)
 
     with _log_to_file(log_path):
