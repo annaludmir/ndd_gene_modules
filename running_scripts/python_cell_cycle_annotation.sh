@@ -13,6 +13,51 @@
 
 set -euo pipefail
 
+# ── End-of-job report ─────────────────────────────────────────────────────────
+# Slurm's own --mail-type mail carries only the job status, never the output.
+# This writes the interesting part of the log to a summary file and, when the
+# compute node can relay mail, sends it too. The summary file is written either
+# way, so a silently-dropped mail does not lose the report.
+MAILTO="annaludmir@mail.tau.ac.il"
+# Compute nodes accept mail (sendmail exits 0) but do not relay it, so this is
+# off: the summary file is the reliable copy. Flip to "true" only if a test
+# message from a compute node actually arrives.
+EMAIL_OUTPUT="false"
+JOBID="${SLURM_JOB_ID:-local}"
+OUTFILE="/miridan-data/annaludmir/jobs_output/${JOBID}.out"
+SUMMARY="/miridan-data/annaludmir/jobs_output/${JOBID}_summary.txt"
+
+send_report() {
+  rc=$?                          # must stay first: anything else overwrites it
+  {
+    echo "job ${JOBID}  host=$(hostname)  exit=${rc}"
+    echo "log: ${OUTFILE}"
+    echo
+    if [[ -f "$OUTFILE" ]] && grep -q 'Per-cell signal distribution' "$OUTFILE"; then
+      # the diagnostics, not a blind tail — a fixed tail would cut the
+      # cell-type table short depending on how many cell types print
+      sed -n '/Per-cell signal distribution/,$p' "$OUTFILE" | head -100
+    elif [[ -f "$OUTFILE" ]]; then
+      echo "(diagnostics not reached — last 40 lines of the log)"
+      echo
+      tail -n 40 "$OUTFILE"
+    else
+      echo "(no log file at ${OUTFILE})"
+    fi
+  } > "$SUMMARY" 2>/dev/null || true
+
+  if [[ "$EMAIL_OUTPUT" == "true" && -x /usr/sbin/sendmail ]]; then
+    {
+      echo "To: ${MAILTO}"
+      echo "Subject: [cc_annotation] job ${JOBID} exit=${rc}"
+      echo "From: ${MAILTO}"
+      echo
+      cat "$SUMMARY"
+    } | /usr/sbin/sendmail -t || true
+  fi
+}
+trap send_report EXIT
+
 module load mamba/mamba-1.5.8
 mamba activate /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new
 cd /miridan-data/annaludmir/ndd_gene_modules
