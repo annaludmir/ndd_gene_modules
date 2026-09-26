@@ -1011,14 +1011,25 @@ def task_motif_target_validation(
 
     # ── Per-pair MOODS scan (each (TF, target) gets its own row) ───────────
     if task_cfg.get("per_pair_scoring", True):
-        pair_out    = out_dir / "motif_target_pair_scores.csv"
-        per_ct_dir  = out_dir / "per_cell_type"
-        want_per_ct = bool(task_cfg.get("per_cell_type_scoring", False))
-        per_ct_done = want_per_ct and per_ct_dir.exists() and any(per_ct_dir.iterdir())
+        pair_out = out_dir / "motif_target_pair_scores.csv"
 
-        # Skip only when the global CSV exists AND (per-CT is disabled OR per-CT
-        # CSVs already exist). Otherwise rerun so missing outputs get filled in.
-        skip_ok = pair_out.exists() and (not want_per_ct or per_ct_done) and not force_per_pair
+        # Skip only when the global CSV exists AND every enabled per-group
+        # scoring already has outputs. Otherwise rerun so a grouping that was
+        # switched on after an earlier run gets filled in.
+        wanted_subdirs = []
+        if task_cfg.get("per_cell_type_scoring", False):
+            wanted_subdirs.append(GROUPING_PRESETS["cell_type"]["subdir"])
+        if task_cfg.get("per_cell_cycle_scoring", False):
+            wanted_subdirs.append(GROUPING_PRESETS["cell_cycle"]["subdir"])
+            if task_cfg.get("per_cell_cycle_within_cell_type", False):
+                wanted_subdirs.append(GROUPING_PRESETS["cell_type_x_cell_cycle"]["subdir"])
+
+        missing = [d for d in wanted_subdirs
+                   if not ((out_dir / d).exists() and any((out_dir / d).iterdir()))]
+        if missing and pair_out.exists():
+            print(f"  [note] per-pair outputs missing for: {', '.join(missing)} — rerunning.")
+
+        skip_ok = pair_out.exists() and not missing and not force_per_pair
         if skip_ok:
             print(f"[skip] per-pair MOODS scan — outputs already present "
                   f"(delete or --force to rerun).")
@@ -1299,14 +1310,91 @@ def _summarize_pair_hits(pair_hits: dict, peaks_by_chrom: dict) -> pd.DataFrame:
     return df.sort_values(["TF", "best_motif_score"], ascending=[True, False])
 
 
-def _top_peaks_ix_per_cell_type(
-    adata, cell_type_col: str, cell_types: list[str], top_peaks_pct: float,
+# Each grouping produces its own directory, cross-group diff CSV and column
+# names. Cell type is the original; the others reuse the same machinery.
+GROUPING_PRESETS = {
+    "cell_type": dict(
+        subdir="per_cell_type",
+        diff_csv="motif_target_pair_scores_cross_ct_diff.csv",
+        count_col="n_cell_types_validated",
+        total_col="n_cell_types_total",
+        list_col="validated_cell_types",
+        label="cell type",
+        label_plural="cell types",
+        short="CT",
+    ),
+    "cell_cycle": dict(
+        subdir="per_cell_cycle",
+        diff_csv="motif_target_pair_scores_cross_phase_diff.csv",
+        count_col="n_phases_validated",
+        total_col="n_phases_total",
+        list_col="validated_phases",
+        label="cell-cycle phase",
+        label_plural="cell-cycle phases",
+        short="phase",
+    ),
+    "cell_type_x_cell_cycle": dict(
+        subdir="per_cell_type_x_cell_cycle",
+        diff_csv="motif_target_pair_scores_cross_ct_phase_diff.csv",
+        count_col="n_groups_validated",
+        total_col="n_groups_total",
+        list_col="validated_groups",
+        label="cell type x phase",
+        label_plural="cell type x phase groups",
+        short="group",
+    ),
+}
+
+MIN_CELLS_PER_GROUP = 50
+
+
+def _resolve_group_labels(adata, col: str, requested=None,
+                          min_cells: int = MIN_CELLS_PER_GROUP):
+    """Return (labels, groups) for splitting cells by `adata.obs[col]`.
+
+    `labels` is a str array aligned to adata.obs; `groups` is the ordered list
+    of values to score. When `requested` is None every value present is used —
+    convenient for cell cycle, where the phase vocabulary depends on which
+    annotation method produced it. A categorical column keeps its category
+    order (so G1 -> S -> G2M reads in cycle order rather than alphabetically).
+
+    Groups under `min_cells` are dropped: the top-peak set is a mean over the
+    group's cells, and a handful of cells makes that mostly noise.
+    """
+    series = adata.obs[col]
+    labels = series.astype(str).to_numpy()
+    na = series.isna().to_numpy()
+    labels = np.where(na, "", labels)
+
+    if requested:
+        groups = [str(g) for g in requested]
+    elif isinstance(series.dtype, pd.CategoricalDtype):
+        present = set(labels[~na])
+        groups = [str(c) for c in series.cat.categories if str(c) in present]
+    else:
+        groups = sorted(set(labels[~na]))
+
+    kept = []
+    for g in groups:
+        n = int((labels == g).sum())
+        if n == 0:
+            print(f"    [warn] '{g}' has 0 cells — skipping.")
+        elif n < min_cells:
+            print(f"    [warn] '{g}' has only {n:,} cells (< {min_cells}) — skipping; "
+                  f"its top-peak set would be mostly noise.")
+        else:
+            kept.append(g)
+    return labels, kept
+
+
+def _top_peaks_ix_per_group(
+    adata, labels: np.ndarray, groups: list[str], top_peaks_pct: float,
+    label: str = "cell type",
 ) -> dict[str, np.ndarray]:
-    """For each cell type, return the row-indices into adata.var of the top
-    `top_peaks_pct` most-accessible peaks (mean over cells of that type).
-    Cell types not present in adata.obs are skipped with a warning.
+    """For each group, return the row-indices into adata.var of the top
+    `top_peaks_pct` most-accessible peaks (mean over that group's cells).
     Also prints a pairwise Jaccard overlap of the top sets — if that's near
-    1.0 across the board, per-cell-type outputs will look nearly identical."""
+    1.0 across the board, per-group outputs will look nearly identical."""
     import scipy.sparse as sp
     X = adata.X
     if sp.issparse(X):
@@ -1315,25 +1403,25 @@ def _top_peaks_ix_per_cell_type(
     out = {}
     n_peaks = adata.n_vars
     n_top   = max(1, int(n_peaks * top_peaks_pct))
-    print(f"    Top-peak set size: {n_top:,} peaks per cell type "
+    print(f"    Top-peak set size: {n_top:,} peaks per {label} "
           f"({top_peaks_pct:.0%} of {n_peaks:,}).")
 
-    for ct in cell_types:
-        mask = (adata.obs[cell_type_col].astype(str) == str(ct)).to_numpy()
-        n_cells_ct = int(mask.sum())
-        if n_cells_ct == 0:
-            print(f"    [warn] cell_type '{ct}' has 0 cells — skipping per-CT slice.")
+    for g in groups:
+        mask = labels == str(g)
+        n_cells_g = int(mask.sum())
+        if n_cells_g == 0:
+            print(f"    [warn] {label} '{g}' has 0 cells — skipping slice.")
             continue
-        ct_mean = np.asarray(X[mask, :].mean(axis=0)).ravel()
-        top_ix  = np.argsort(ct_mean)[::-1][:n_top]
-        out[str(ct)] = top_ix
-        print(f"      {ct:40s}  n_cells={n_cells_ct:>7,}  "
+        g_mean = np.asarray(X[mask, :].mean(axis=0)).ravel()
+        top_ix = np.argsort(g_mean)[::-1][:n_top]
+        out[str(g)] = top_ix
+        print(f"      {str(g)[:40]:40s}  n_cells={n_cells_g:>7,}  "
               f"first_5_top_peak_ix={top_ix[:5].tolist()}")
 
-    # Pairwise Jaccard of the top-peak sets → diagnoses "why are CSVs similar?"
+    # Pairwise Jaccard of the top-peak sets -> diagnoses "why are CSVs similar?"
     names = list(out.keys())
     if len(names) >= 2:
-        sets = {ct: set(ix.tolist()) for ct, ix in out.items()}
+        sets = {g: set(ix.tolist()) for g, ix in out.items()}
         first = names[0]
         overlaps = []
         for other in names[1:]:
@@ -1343,14 +1431,13 @@ def _top_peaks_ix_per_cell_type(
             overlaps.append((other, jacc, inter))
         print(f"    Top-peak overlap vs '{first}':")
         for other, jacc, inter in overlaps:
-            print(f"      {other:40s}  Jaccard={jacc:.3f}  (shared={inter:,}/{n_top:,})")
+            print(f"      {str(other)[:40]:40s}  Jaccard={jacc:.3f}  (shared={inter:,}/{n_top:,})")
         max_jacc = max(j for _, j, _ in overlaps)
         if max_jacc > 0.90:
-            print("    [note] Top-peak sets are nearly identical across cell types "
-                  "(Jaccard > 0.9). Per-CT CSVs will look very similar — mostly "
-                  "constitutively-accessible peaks. Consider using a stricter "
-                  "definition, e.g. lower per_cell_type_top_peaks_pct or a "
-                  "differential-accessibility filter.")
+            print(f"    [note] Top-peak sets are nearly identical across {label}s "
+                  f"(Jaccard > 0.9). Per-{label} CSVs will look very similar — mostly "
+                  f"constitutively-accessible peaks. Consider a stricter definition, "
+                  f"e.g. a lower top_peaks_pct or a differential-accessibility filter.")
 
     return out
 
@@ -1505,97 +1592,181 @@ def _per_pair_motif_scan(
           f"({len(global_df):,} pairs; validated: "
           f"{int(global_df['validated_by_motif_and_accessibility'].sum()):,})")
 
-    # ── Per-cell-type CSVs ────────────────────────────────────────────────
-    per_ct_cfg = task_cfg.get("per_cell_type_scoring", False)
-    if per_ct_cfg:
-        cell_type_col = cfg["atac"].get("cell_type_col", "cell_type")
-        cell_types    = (task_cfg.get("per_cell_type_cell_types")
-                         or cfg.get("motif_enrichment", {}).get("cell_types") or [])
-        cell_types    = [str(c) for c in cell_types]
-        top_pct       = float(task_cfg.get("per_cell_type_top_peaks_pct", 0.10))
-
-        if not cell_types:
-            print("  [warn] per_cell_type_scoring enabled but no cell types resolved "
-                  "(set per_cell_type_cell_types or motif_enrichment.cell_types).")
-        elif cell_type_col not in adata.obs.columns:
-            print(f"  [warn] cell_type_col '{cell_type_col}' not in adata.obs — skipping per-CT scoring.")
-        else:
-            print(f"\n  Per-cell-type scoring: top {top_pct:.0%} peaks per cell type "
-                  f"→ {len(cell_types)} cell type(s)")
-            per_ct_dir = out_dir / "per_cell_type"
-            per_ct_dir.mkdir(exist_ok=True)
-
-            top_ix_per_ct = _top_peaks_ix_per_cell_type(
-                adata, cell_type_col, cell_types, top_pct,
-            )
-
-            # Collect per-CT validation booleans + shared sequence stats for the
-            # cross-CT diff CSV built after the loop.
-            per_ct_validated: dict[str, dict[tuple[str, str], bool]] = {}
-            sequence_stats:   dict[tuple[str, str], tuple[int, float, str]] = {}
-            per_ct_slugs:     dict[str, str] = {}
-
-            for ct, top_ix in top_ix_per_ct.items():
-                ct_peaks_df       = peaks_df.iloc[top_ix].reset_index(drop=True)
-                ct_peaks_by_chrom = _peaks_by_chrom(ct_peaks_df)
-                ct_df   = _summarize_pair_hits(pair_hits, ct_peaks_by_chrom)
-                ct_slug = _sanitize(ct)
-                per_ct_slugs[ct] = ct_slug
-                ct_csv  = per_ct_dir / f"motif_target_pair_scores_{ct_slug}.csv"
-                ct_df.to_csv(ct_csv, index=False)
-                print(f"    {ct}: saved {ct_csv.name}  "
-                      f"({len(ct_df):,} pairs; validated: "
-                      f"{int(ct_df['validated_by_motif_and_accessibility'].sum()):,})")
-
-                validated_map = dict(zip(
-                    zip(ct_df["TF"].astype(str), ct_df["target"].astype(str)),
-                    ct_df["validated_by_motif_and_accessibility"].astype(bool),
-                ))
-                per_ct_validated[ct] = validated_map
-
-                # Populate shared sequence stats once (identical across cell types).
-                if not sequence_stats:
-                    for _, row in ct_df.iterrows():
-                        key = (str(row["TF"]), str(row["target"]))
-                        sequence_stats[key] = (
-                            int(row["n_motif_hits"]),
-                            float(row["best_motif_score"]) if pd.notna(row["best_motif_score"]) else float("nan"),
-                            str(row["best_motif"]),
-                        )
-
-            # ── Cross-CT diff CSV ───────────────────────────────────────────
-            _write_cross_ct_diff_csv(
-                out_dir=per_ct_dir.parent,
-                per_ct_validated=per_ct_validated,
-                per_ct_slugs=per_ct_slugs,
-                sequence_stats=sequence_stats,
-            )
+    # ── Per-group CSVs (cell type, cell cycle, or both) ───────────────────
+    groupings = _resolve_groupings(task_cfg, cfg, adata)
+    for preset_key, group_col, requested, top_pct in groupings:
+        preset = GROUPING_PRESETS[preset_key]
+        print(f"\n  Per-{preset['label']} scoring: top {top_pct:.0%} peaks per "
+              f"{preset['label']}  (obs column '{group_col}')")
+        labels, groups = _resolve_group_labels(adata, group_col, requested)
+        if not groups:
+            print(f"  [warn] no usable {preset['label_plural']} resolved — skipping.")
+            continue
+        _score_pairs_by_group(
+            pair_hits=pair_hits,
+            peaks_df=peaks_df,
+            adata=adata,
+            labels=labels,
+            groups=groups,
+            top_pct=top_pct,
+            out_dir=out_dir,
+            preset=preset,
+        )
 
     return global_csv
 
 
-def _write_cross_ct_diff_csv(
+def _resolve_groupings(task_cfg: dict, cfg: dict, adata) -> list[tuple]:
+    """Which per-group scorings the config asks for.
+
+    Returns (preset_key, obs_column, requested_groups_or_None, top_peaks_pct)
+    for each enabled grouping. A grouping whose obs column is missing is
+    reported and dropped rather than raising, so one misconfigured grouping
+    does not lose the others.
+    """
+    out = []
+
+    if task_cfg.get("per_cell_type_scoring", False):
+        col = cfg["atac"].get("cell_type_col", "cell_type")
+        cell_types = (task_cfg.get("per_cell_type_cell_types")
+                      or cfg.get("motif_enrichment", {}).get("cell_types") or [])
+        cell_types = [str(c) for c in cell_types]
+        if not cell_types:
+            print("  [warn] per_cell_type_scoring enabled but no cell types resolved "
+                  "(set per_cell_type_cell_types or motif_enrichment.cell_types).")
+        else:
+            out.append(("cell_type", col, cell_types,
+                        float(task_cfg.get("per_cell_type_top_peaks_pct", 0.10))))
+
+    if task_cfg.get("per_cell_cycle_scoring", False):
+        col = task_cfg.get("per_cell_cycle_col", "CellCyclePhase")
+        # null/absent -> every phase present in the column, in category order
+        phases = task_cfg.get("per_cell_cycle_phases") or None
+        if phases:
+            phases = [str(p) for p in phases]
+        top_pct = float(task_cfg.get("per_cell_cycle_top_peaks_pct", 0.10))
+        out.append(("cell_cycle", col, phases, top_pct))
+
+        if task_cfg.get("per_cell_cycle_within_cell_type", False):
+            ct_col = cfg["atac"].get("cell_type_col", "cell_type")
+            out.append(("cell_type_x_cell_cycle", (ct_col, col), None, top_pct))
+
+    # drop groupings whose column is missing, naming what is available
+    resolved = []
+    for key, col, requested, top_pct in out:
+        cols = (col,) if isinstance(col, str) else col
+        missing = [c for c in cols if c not in adata.obs.columns]
+        if missing:
+            print(f"  [warn] {GROUPING_PRESETS[key]['label']} scoring: obs column(s) "
+                  f"{missing} not in adata.obs — skipping. "
+                  f"Available: {list(adata.obs.columns)[:15]}")
+            continue
+        if not isinstance(col, str):
+            col = _add_composite_group_column(adata, col)
+        resolved.append((key, col, requested, top_pct))
+    return resolved
+
+
+def _add_composite_group_column(adata, cols: tuple[str, str]) -> str:
+    """Add (and return the name of) an obs column combining two labels.
+
+    Used for cell type x cell cycle. Cells missing either label get NaN so
+    they are dropped rather than forming a bogus 'nan | S' group.
+    """
+    a, b = cols
+    name = f"_{a}_x_{b}"
+    left, right = adata.obs[a], adata.obs[b]
+    combined = left.astype(str) + " | " + right.astype(str)
+    combined[left.isna().to_numpy() | right.isna().to_numpy()] = np.nan
+    adata.obs[name] = combined
+    return name
+
+
+def _score_pairs_by_group(
+    pair_hits, peaks_df, adata, labels, groups, top_pct, out_dir, preset,
+) -> None:
+    """Write one pair-score CSV per group plus the cross-group diff.
+
+    The MOODS sequence scan in `pair_hits` is reused untouched: only the
+    accessibility mask changes between groups, so this costs one interval
+    lookup per group rather than a rescan.
+    """
+    group_dir = out_dir / preset["subdir"]
+    group_dir.mkdir(exist_ok=True, parents=True)
+
+    top_ix_per_group = _top_peaks_ix_per_group(
+        adata, labels, groups, top_pct, label=preset["label"])
+
+    per_group_validated: dict[str, dict[tuple[str, str], bool]] = {}
+    sequence_stats: dict[tuple[str, str], tuple[int, float, str]] = {}
+    per_group_slugs: dict[str, str] = {}
+
+    for g, top_ix in top_ix_per_group.items():
+        g_peaks_df       = peaks_df.iloc[top_ix].reset_index(drop=True)
+        g_peaks_by_chrom = _peaks_by_chrom(g_peaks_df)
+        g_df   = _summarize_pair_hits(pair_hits, g_peaks_by_chrom)
+        g_slug = _sanitize(g)
+        per_group_slugs[g] = g_slug
+        g_csv  = group_dir / f"motif_target_pair_scores_{g_slug}.csv"
+        g_df.to_csv(g_csv, index=False)
+        print(f"    {g}: saved {g_csv.name}  "
+              f"({len(g_df):,} pairs; validated: "
+              f"{int(g_df['validated_by_motif_and_accessibility'].sum()):,})")
+
+        per_group_validated[g] = dict(zip(
+            zip(g_df["TF"].astype(str), g_df["target"].astype(str)),
+            g_df["validated_by_motif_and_accessibility"].astype(bool),
+        ))
+
+        # Sequence stats are identical across groups — populate once.
+        if not sequence_stats:
+            for _, row in g_df.iterrows():
+                key = (str(row["TF"]), str(row["target"]))
+                sequence_stats[key] = (
+                    int(row["n_motif_hits"]),
+                    float(row["best_motif_score"]) if pd.notna(row["best_motif_score"]) else float("nan"),
+                    str(row["best_motif"]),
+                )
+
+    _write_cross_group_diff_csv(
+        out_dir=out_dir,
+        per_group_validated=per_group_validated,
+        per_group_slugs=per_group_slugs,
+        sequence_stats=sequence_stats,
+        preset=preset,
+    )
+
+
+def _write_cross_group_diff_csv(
     out_dir: Path,
-    per_ct_validated: dict[str, dict[tuple[str, str], bool]],
-    per_ct_slugs: dict[str, str],
+    per_group_validated: dict[str, dict[tuple[str, str], bool]],
+    per_group_slugs: dict[str, str],
     sequence_stats: dict[tuple[str, str], tuple[int, float, str]],
+    preset: dict,
 ) -> Path | None:
-    """One row per (TF, target). Aggregates the per-cell-type validation flags
-    into: which cell types validate it, how many, and a specificity score.
-    Sorted so cell-type-specific edges come first."""
-    if not per_ct_validated or not sequence_stats:
+    """One row per (TF, target). Aggregates the per-group validation flags
+    into: which groups validate it, how many, and a specificity score.
+    Sorted so group-specific edges come first.
+
+    `preset` supplies the column and file names, so the cell-type output keeps
+    the names it has always had while cell cycle gets its own.
+    """
+    if not per_group_validated or not sequence_stats:
         return None
 
-    cell_types  = list(per_ct_validated.keys())
-    n_ct_total  = len(cell_types)
+    groups      = list(per_group_validated.keys())
+    n_total     = len(groups)
     all_pairs   = sorted(sequence_stats.keys())
+    count_col   = preset["count_col"]
+    total_col   = preset["total_col"]
+    list_col    = preset["list_col"]
 
     rows = []
     for tf, tgt in all_pairs:
         n_hits, best_score, best_motif = sequence_stats[(tf, tgt)]
-        flags = [bool(per_ct_validated[c].get((tf, tgt), False)) for c in cell_types]
+        flags = [bool(per_group_validated[g].get((tf, tgt), False)) for g in groups]
         n_valid = int(sum(flags))
-        validated_in = [c for c, f in zip(cell_types, flags) if f]
+        validated_in = [g for g, f in zip(groups, flags) if f]
 
         row = {
             "TF": tf,
@@ -1603,47 +1774,56 @@ def _write_cross_ct_diff_csv(
             "n_motif_hits": n_hits,
             "best_motif_score": best_score,
             "best_motif": best_motif,
-            "n_cell_types_validated": n_valid,
-            "n_cell_types_total": n_ct_total,
-            # Higher = more cell-type-specific. 0 = validated in every CT.
+            count_col: n_valid,
+            total_col: n_total,
+            # Higher = more group-specific. 0 = validated in every group.
             # Set to NaN when the pair isn't validated anywhere (undefined).
-            "specificity_score": (1.0 - n_valid / n_ct_total) if n_valid > 0 else float("nan"),
-            "validated_cell_types": ";".join(validated_in),
+            "specificity_score": (1.0 - n_valid / n_total) if n_valid > 0 else float("nan"),
+            list_col: ";".join(validated_in),
         }
-        # Per-CT boolean columns for full drill-down.
-        for c, f in zip(cell_types, flags):
-            row[f"validated_{per_ct_slugs[c]}"] = f
+        # Per-group boolean columns for full drill-down.
+        for g, f in zip(groups, flags):
+            row[f"validated_{per_group_slugs[g]}"] = f
         rows.append(row)
 
     diff_df = pd.DataFrame(rows)
 
-    # Sort: pairs with any validation first (most specific → most ubiquitous),
+    # Sort: pairs with any validation first (most specific -> most ubiquitous),
     # then never-validated pairs at the bottom.
-    diff_df["_has_validation"] = diff_df["n_cell_types_validated"] > 0
+    diff_df["_has_validation"] = diff_df[count_col] > 0
     diff_df = (diff_df
                .sort_values(
-                   ["_has_validation", "n_cell_types_validated", "TF", "target"],
+                   ["_has_validation", count_col, "TF", "target"],
                    ascending=[False, True, True, True],
                )
                .drop(columns=["_has_validation"])
                .reset_index(drop=True))
 
-    out_csv = out_dir / "motif_target_pair_scores_cross_ct_diff.csv"
+    out_csv = out_dir / preset["diff_csv"]
     diff_df.to_csv(out_csv, index=False)
 
     # Human-readable summary of the diff distribution.
-    counts = diff_df["n_cell_types_validated"].value_counts().sort_index()
+    counts = diff_df[count_col].value_counts().sort_index()
     n_pairs = len(diff_df)
-    print(f"\n  Cross-CT diff: {out_csv.name}  ({n_pairs:,} pairs × {n_ct_total} cell types)")
-    print(f"    Validated in 0 CTs:    {int(counts.get(0, 0)):,}  (never)")
-    n_1  = int(counts.get(1, 0))
-    n_23 = int(sum(counts.get(k, 0) for k in (2, 3)))
-    n_4_10 = int(sum(counts.get(k, 0) for k in range(4, 11)))
-    n_11p  = int(sum(counts.get(k, 0) for k in range(11, n_ct_total + 1)))
-    print(f"    Validated in exactly 1 CT: {n_1:,}  (highly cell-type-specific)")
-    print(f"    Validated in 2-3 CTs:      {n_23:,}")
-    print(f"    Validated in 4-10 CTs:     {n_4_10:,}")
-    print(f"    Validated in >10 CTs:      {n_11p:,}  (mostly ubiquitous)")
+    short = preset["short"]
+    print(f"\n  Cross-{short} diff: {out_csv.name}  "
+          f"({n_pairs:,} pairs x {n_total} {preset['label_plural']})")
+    print(f"    Validated in 0 {short}s:    {int(counts.get(0, 0)):,}  (never)")
+    if n_total <= 6:
+        # Few groups (cell cycle): bucketing hides more than it shows.
+        for k in range(1, n_total + 1):
+            note = ("  (specific)" if k == 1 else
+                    "  (ubiquitous)" if k == n_total else "")
+            print(f"    Validated in exactly {k} {short}(s): {int(counts.get(k, 0)):,}{note}")
+    else:
+        n_1    = int(counts.get(1, 0))
+        n_23   = int(sum(counts.get(k, 0) for k in (2, 3)))
+        n_4_10 = int(sum(counts.get(k, 0) for k in range(4, 11)))
+        n_11p  = int(sum(counts.get(k, 0) for k in range(11, n_total + 1)))
+        print(f"    Validated in exactly 1 {short}: {n_1:,}  (highly {preset['label']}-specific)")
+        print(f"    Validated in 2-3 {short}s:      {n_23:,}")
+        print(f"    Validated in 4-10 {short}s:     {n_4_10:,}")
+        print(f"    Validated in >10 {short}s:      {n_11p:,}  (mostly ubiquitous)")
     return out_csv
 
 

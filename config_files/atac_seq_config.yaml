@@ -4,7 +4,7 @@ output_folder: "results/atac_analysis/"
 
 # ── ATAC inputs ───────────────────────────────────────────────────────────────
 atac:
-  h5ad_path: "/miridan-storage/annaludmir/atac-seq/e88a34d0-d28a-4d10-a8c5-d59f86ba621a.h5ad"
+  h5ad_path: "/miridan-storage/annaludmir/atac-seq/e88a34d0-d28a-4d10-a8c5-d59f86ba621a_cc_annotated_fragments.h5ad"
   # fragment.tsv.bgz — only needed for tools that go from fragments (kept for
   # completeness; the current pipeline uses the peak matrix in the h5ad).
   fragment_file: "/miridan-storage/annaludmir/atac-seq/49a73aea-76d5-40a1-b5e4-fa6c0831e164-fragment.tsv.bgz"
@@ -103,3 +103,19 @@ motif_target_validation:
   per_cell_type_scoring: true
   per_cell_type_cell_types: null       # null → reuse motif_enrichment.cell_types
   per_cell_type_top_peaks_pct: 0.10    # top 10% most-accessible peaks per CT
+
+  # Same idea, but slicing cells by cell-cycle phase instead. Writes one CSV per
+  # phase under 3_motif_target_validation/per_cell_cycle/ plus a
+  # motif_target_pair_scores_cross_phase_diff.csv. Needs the phase column that
+  # cell_cycle_annotation.py writes.
+  per_cell_cycle_scoring: true
+  per_cell_cycle_col: "CellCyclePhase"
+  per_cell_cycle_phases: null          # null → every phase present, in cycle order
+  per_cell_cycle_top_peaks_pct: 0.10
+
+  # Phase alone pools every cell type together, and cell type is by far the
+  # larger source of variation in accessibility — so "top peaks in S-phase
+  # cells" partly reports which cell types happen to be cycling. Enabling this
+  # additionally scores each (cell type, phase) combination, which is the
+  # comparison that isolates the cycle. Costs one more slice per combination.
+  per_cell_cycle_within_cell_type: false
