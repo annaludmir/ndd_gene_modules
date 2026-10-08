@@ -28,7 +28,7 @@ ATAC_PER_PHASE_DIR="${ATAC_RUN}/per_cell_cycle"
 # Global per-pair scan: stars unvalidated edges whose motif hit is in an
 # accessible peak when all peaks are considered.
 ATAC_PAIR_SCORES="${ATAC_RUN}/motif_target_pair_scores.csv"
-# <gene_list>_TF_Validation_with_evidence.csv files; tags literature evidence.
+# Literature CSVs, pooled across gene lists; tags direct / plausible evidence.
 LITERATURE_DIR="results/tf_validation/literature_evidence"
 
 # Validation network figures (figures/ in the output dir).

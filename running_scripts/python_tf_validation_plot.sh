@@ -27,8 +27,8 @@ TOP_N_TFS=12
 # Global per-pair scan of the matching ATAC run; stars unvalidated (grey)
 # edges whose motif hit is in an accessible peak (all peaks). Leave empty to skip.
 MOTIF_HITS_CSV="results/atac_analysis/atac_first_trimester_brain_20260816/3_motif_target_validation/motif_target_pair_scores.csv"
-# <gene_list>_TF_Validation_with_evidence.csv files; tags direct / plausible
-# literature evidence. Gene lists without a file are plotted untagged.
+# Literature CSVs, pooled across gene lists: a pair is tagged direct / plausible
+# in every figure it appears in, whatever the CSV is named.
 LITERATURE_DIR="results/tf_validation/literature_evidence"
 
 ARGS=(--validation-dir "$VALIDATION_DIR" --plot-style "$PLOT_STYLE" --top-n-tfs "$TOP_N_TFS")

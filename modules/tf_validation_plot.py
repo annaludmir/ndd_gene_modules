@@ -19,12 +19,14 @@ phase. Coloured edges aren't starred - the per-group peaks are a subset of
 all peaks, so they are always globally validated too.
 
 With --literature-dir, pairs are also tagged from the curated literature
-CSV of their gene list, `<gene_list>_TF_Validation_with_evidence.csv`
-(column "Evidence assessment"), with a diamond 3/4 of the way to the target:
+CSVs in that folder (column "Evidence assessment"), with a diamond 3/4 of the
+way to the target:
   - "Evidence found (direct)"            -> filled diamond
   - "Plausible, no pair-specific ..."    -> hollow diamond
-Other assessments are left untagged. Gene lists without a literature CSV are
-plotted without tags.
+Other assessments are left untagged. Evidence belongs to the (TF, target)
+pair, not to a gene list, so every CSV in the folder is pooled and a pair is
+tagged in every figure it appears in, whatever the CSV is named. If two CSVs
+disagree, direct wins over plausible.
 
 The ATAC cell types are too many to tell apart by colour, so they are folded
 into major classes (CELL_CLASS_OF below); a pair is validated in a class if
@@ -43,7 +45,7 @@ Inputs:
      motif_target_pair_scores.csv from the matching atac_seq_analysis run.
 
   --literature-dir <path>   (optional)
-     Folder of <gene_list>_TF_Validation_with_evidence.csv files, e.g.
+     Folder of literature CSVs (tf, target, "Evidence assessment"), e.g.
      results/tf_validation/literature_evidence.
 
 Output:
@@ -122,7 +124,6 @@ MOTIF_HIT_STYLE = dict(marker="*", markersize=9, color="#111111",
                        markeredgecolor="white", markeredgewidth=0.6, linestyle="none")
 MOTIF_HIT_LABEL = "not validated, accessible motif hit (all peaks)"
 
-LITERATURE_SUFFIX = "_TF_Validation_with_evidence.csv"
 LITERATURE_COL    = "Evidence assessment"
 _LIT_MARKER = dict(marker="D", markersize=6, markeredgecolor="#111111",
                    markeredgewidth=1.0, linestyle="none")
@@ -247,15 +248,6 @@ def _literature_tag(assessment) -> str:
     return ""
 
 
-def find_literature_csv(literature_dir: Path, gene_list: str) -> Path | None:
-    """`<gene_list>_TF_Validation_with_evidence.csv`, matched case-insensitively."""
-    want = f"{gene_list}{LITERATURE_SUFFIX}".lower()
-    for p in literature_dir.glob("*.csv"):
-        if p.name.lower() == want:
-            return p
-    return None
-
-
 def load_literature_tags(path: Path) -> dict[tuple[str, str], str]:
     """{(TF, target) upper-cased: "direct" | "plausible"} from one
     literature CSV. Unrecognized assessments are logged and left untagged."""
@@ -276,6 +268,31 @@ def load_literature_tags(path: Path) -> dict[tuple[str, str], str]:
     return dict(zip(zip(df.loc[keep, tf_col].astype(str).str.upper(),
                         df.loc[keep, target_col].astype(str).str.upper()),
                     tags[keep]))
+
+
+def load_literature_dir(literature_dir: str | Path) -> dict[tuple[str, str], str]:
+    """Pool load_literature_tags over every CSV in `literature_dir`. Files
+    without tf / target / assessment columns are skipped; when two files tag
+    the same pair differently, direct wins over plausible."""
+    literature_dir = Path(literature_dir)
+    csvs = sorted(literature_dir.glob("*.csv"))
+    print(f"\nLiterature evidence: {len(csvs)} CSV(s) in {literature_dir}")
+    pooled: dict[tuple[str, str], str] = {}
+    for path in csvs:
+        try:
+            tags = load_literature_tags(path)
+        except KeyError as e:
+            print(f"  [skip] {path.name}: {e}")
+            continue
+        for pair, tag in tags.items():
+            if pooled.get(pair, tag) != tag:
+                print(f"  [note] {pair[0]}->{pair[1]}: {pooled[pair]} vs {tag} "
+                      f"({path.name}); keeping direct")
+                tag = "direct"
+            pooled[pair] = tag
+    n_direct = sum(t == "direct" for t in pooled.values())
+    print(f"  -> {n_direct} direct, {len(pooled) - n_direct} plausible pairs in total")
+    return pooled
 
 
 def select_top_tfs(df: pd.DataFrame, top_n: int) -> list[str]:
@@ -570,11 +587,11 @@ def plot_validation_run(
     plot_style: str = "connected",
     top_n: int = 8,
     motif_hit_pairs: set[tuple[str, str]] | None = None,
-    literature_dir: str | Path | None = None,
+    literature_tags: dict[tuple[str, str], str] | None = None,
 ) -> None:
     """Plot every tf_targets_*.csv in one tf_validation subfolder.
     `motif_hit_pairs` (from load_accessible_motif_pairs) adds the stars;
-    `literature_dir` adds literature tags for gene lists that have a CSV."""
+    `literature_tags` (from load_literature_dir) adds the literature diamonds."""
     csvs = sorted(run_dir.glob("tf_targets_*.csv"))
     if not csvs:
         print(f"  [skip] no tf_targets_*.csv in {run_dir}")
@@ -606,13 +623,10 @@ def plot_validation_run(
                         df["target"].astype(str).str.upper()))
         if motif_hit_pairs is not None:
             df["_motif_hit"] = [k in motif_hit_pairs for k in keys]
-        if literature_dir:
-            lit_csv = find_literature_csv(Path(literature_dir), gene_list)
-            if lit_csv is None:
-                print(f"  [note] no {gene_list}{LITERATURE_SUFFIX} — no literature tags")
-            else:
-                tags = load_literature_tags(lit_csv)
-                df["_literature"] = [tags.get(k, "") for k in keys]
+        if literature_tags:
+            df["_literature"] = [literature_tags.get(k, "") for k in keys]
+            n_tagged = int((df["_literature"] != "").sum())
+            print(f"  {gene_list}: {n_tagged} pair(s) with literature evidence")
         plot_fn(
             df,
             fig_dir / f"tf_validation_network_{gene_list}.png",
@@ -640,10 +654,11 @@ def run(
         raise FileNotFoundError(f"No tf_targets_*.csv files under {root}")
 
     motif_hit_pairs = load_accessible_motif_pairs(motif_hits_csv) if motif_hits_csv else None
+    literature_tags = load_literature_dir(literature_dir) if literature_dir else None
     for d in run_dirs:
         plot_validation_run(d, plot_style=plot_style, top_n=top_n,
                             motif_hit_pairs=motif_hit_pairs,
-                            literature_dir=literature_dir)
+                            literature_tags=literature_tags)
 
 
 # ---------------------------------------------------------------------------
@@ -671,9 +686,9 @@ def build_arg_parser():
                         "edges whose pair has a motif hit in an accessible "
                         "peak (validated_by_motif_and_accessibility, all peaks).")
     p.add_argument("--literature-dir", default=None,
-                   help="Folder of <gene_list>_TF_Validation_with_evidence.csv "
-                        "files. Tags pairs with direct (filled diamond) or "
-                        "plausible (hollow diamond) literature evidence.")
+                   help="Folder of literature CSVs, pooled across gene lists. "
+                        "Tags pairs with direct (filled diamond) or plausible "
+                        "(hollow diamond) literature evidence.")
     return p
 
 

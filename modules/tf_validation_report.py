@@ -334,12 +334,15 @@ def run(
 
     if plot_style:
         # Imported here: tf_validation_plot imports AXES from this module.
-        from tf_validation_plot import load_accessible_motif_pairs, plot_validation_run
+        from tf_validation_plot import (
+            load_accessible_motif_pairs, load_literature_dir, plot_validation_run,
+        )
         motif_hit_pairs = (load_accessible_motif_pairs(atac_pair_scores_csv)
                            if atac_pair_scores_csv else None)
+        literature_tags = load_literature_dir(literature_dir) if literature_dir else None
         plot_validation_run(output_dir, plot_style=plot_style, top_n=top_n_tfs,
                             motif_hit_pairs=motif_hit_pairs,
-                            literature_dir=literature_dir)
+                            literature_tags=literature_tags)
 
     print(f"\nDone -> {output_dir}")
     return output_dir
@@ -453,9 +456,9 @@ def build_arg_parser():
                         "3_motif_target_validation/. Stars unvalidated edges "
                         "whose motif hit is in an accessible peak (all peaks).")
     p.add_argument("--literature-dir", default=None,
-                   help="Folder of <gene_list>_TF_Validation_with_evidence.csv "
-                        "files; tags direct / plausible literature evidence "
-                        "in the figures of gene lists that have one.")
+                   help="Folder of literature CSVs (tf, target, 'Evidence "
+                        "assessment'), pooled across gene lists; tags direct / "
+                        "plausible literature evidence in the figures.")
     return p
 
 
