@@ -6,13 +6,17 @@ TF selection as tf_network's figures, and the target node colour is still the
 normalized prediction score, but every TF -> target edge is drawn as a bundle
 of parallel lines, one per group in which ATAC-seq validates that pair:
 
-  - cell types   -> solid lines, one colour per cell type
+  - cell types   -> solid lines, one colour per major cell class
   - cell phases  -> dashed lines, one colour per phase
   - not validated anywhere -> a single thin grey dotted line
 
-Group colours are assigned in CSV column order, which is identical across
-every CSV of one tf_validation run, so a cell type / phase keeps its colour
-across all gene-list figures of that run.
+The ATAC cell types are too many to tell apart by colour, so they are folded
+into major classes (CELL_CLASS_OF below); a pair is validated in a class if
+it is validated in any of the class's cell types. Cell types missing from the
+mapping are plotted on their own and reported in the log.
+
+Colours are assigned in a fixed order (CELL_CLASS_ORDER, then phase cycle
+order), so a class / phase keeps its colour across all gene-list figures.
 
 Inputs:
   --validation-dir <path>
@@ -42,8 +46,38 @@ from tf_network import _TF_CMAP
 from tf_validation_report import AXES
 
 
-# Cell types: categorical palette in fixed order; extras (>8 cell types) fall
-# back to the light tab20 variants so every cell type still gets its own colour.
+# Major cell classes the ATAC cell types are folded into, keyed by the
+# sanitized slug used in the CSV column names (matched case-insensitively).
+CELL_CLASS_OF = {
+    "radial_glial_cell":                          "Radial glia / progenitors",
+    "neural_progenitor_cell":                     "Radial glia / progenitors",
+    "progenitor_cell":                            "Radial glia / progenitors",
+    "neuroblast_sensu_nematoda_and_protostomia":  "Neuroblast",
+    "glutamatergic_neuron":                       "Neuron",
+    "interneuron":                                "Neuron",
+    "purkinje_cell":                              "Neuron",
+    "glycinergic_neuron":                         "Neuron",
+    "dopaminergic_neuron":                        "Neuron",
+    "serotonergic_neuron":                        "Neuron",
+    "sensory_neuron_of_dorsal_root_ganglion":     "Neuron",
+    "glioblast":                                  "Glioblast",
+    "oligodendrocyte_precursor_cell":             "Oligodendrocyte lineage",
+    "committed_oligodendrocyte_precursor":        "Oligodendrocyte lineage",
+    "oligodendrocyte":                            "Oligodendrocyte lineage",
+    "schwann_cell":                               "Neural crest",
+    "endothelial_cell":                           "Vascular",
+    "pericyte":                                   "Vascular",
+    "vascular_associated_smooth_muscle_cell":     "Vascular",
+    "vascular_leptomeningeal_cell":               "Vascular",
+    "microglial_cell":                            "Immune",
+}
+CELL_CLASS_ORDER = [
+    "Radial glia / progenitors", "Neuroblast", "Neuron", "Glioblast",
+    "Oligodendrocyte lineage", "Neural crest", "Vascular", "Immune",
+]
+
+# Cell classes: categorical palette in CELL_CLASS_ORDER; unmapped cell types
+# fall back to the light tab20 variants.
 CELL_TYPE_COLORS = [
     "#2a78d6", "#eb6834", "#1baf7a", "#eda100",
     "#e87ba4", "#008300", "#4a3aa7", "#e34948",
@@ -60,7 +94,7 @@ UNVALIDATED_STYLE = dict(color="#bbbbbb", lw=0.7, linestyle=(0, (1, 2)))
 EDGE_LW = 1.1
 
 AXIS_LEGEND_TITLE = {
-    "cell_type": "Validated in cell type",
+    "cell_type": "Validated in cell class",
     "cell_phase": "Validated in cell phase",
 }
 
@@ -69,7 +103,7 @@ AXIS_LEGEND_TITLE = {
 # Reading the annotated CSV
 # ---------------------------------------------------------------------------
 
-def detect_groups(df: pd.DataFrame) -> dict[str, list[str]]:
+def detect_slugs(df: pd.DataFrame) -> dict[str, list[str]]:
     """Return {axis: [group_slug, ...]} from the per-group boolean columns,
     in CSV column order. Axes absent from the CSV are omitted."""
     reserved = {spec[k] for spec in AXES.values()
@@ -88,34 +122,61 @@ def detect_groups(df: pd.DataFrame) -> dict[str, list[str]]:
     return {a: g for a, g in groups.items() if g}
 
 
-def build_line_specs(groups: dict[str, list[str]]) -> dict[tuple[str, str], dict]:
-    """{(axis, slug): {color, linestyle}} for every validation group."""
+def unmapped_cell_types(slugs: dict[str, list[str]]) -> list[str]:
+    return [s for s in slugs.get("cell_type", []) if s.lower() not in CELL_CLASS_OF]
+
+
+def detect_groups(df: pd.DataFrame) -> dict[str, dict[str, list[str]]]:
+    """Return {axis: {legend_label: [group_slug, ...]}}. Cell types are folded
+    into their major class (unmapped ones keep their own entry, after the
+    classes); phases map one-to-one, in cycle order."""
+    slugs  = detect_slugs(df)
+    groups = {}
+    if "cell_type" in slugs:
+        classes: dict[str, list[str]] = {}
+        for c in CELL_CLASS_ORDER:
+            members = [s for s in slugs["cell_type"] if CELL_CLASS_OF.get(s.lower()) == c]
+            if members:
+                classes[c] = members
+        for s in unmapped_cell_types(slugs):
+            classes[s.replace("_", " ")] = [s]
+        groups["cell_type"] = classes
+    if "cell_phase" in slugs:
+        groups["cell_phase"] = {s: [s] for s in slugs["cell_phase"]}
+    return groups
+
+
+def build_line_specs(groups: dict[str, dict[str, list[str]]]) -> dict[tuple[str, str], dict]:
+    """{(axis, label): {color, linestyle}} for every legend entry."""
     palettes = {
         "cell_type": CELL_TYPE_COLORS + CELL_TYPE_FALLBACK,
         "cell_phase": PHASE_COLORS + PHASE_FALLBACK,
     }
     specs = {}
-    for axis, slugs in groups.items():
+    for axis, labels in groups.items():
         palette = palettes[axis]
-        if len(slugs) > len(palette):
+        if len(labels) > len(palette):
             raise ValueError(
-                f"{len(slugs)} {AXES[axis]['label_plural']} but only "
-                f"{len(palette)} colours available."
+                f"{len(labels)} {AXES[axis]['label']} groups but only "
+                f"{len(palette)} colours available - extend CELL_CLASS_OF."
             )
-        for slug, color in zip(slugs, palette):
-            specs[(axis, slug)] = dict(color=color, linestyle=LINESTYLES[axis])
+        for label, color in zip(labels, palette):
+            specs[(axis, label)] = dict(color=color, linestyle=LINESTYLES[axis])
     return specs
 
 
-def edge_groups(df: pd.DataFrame, groups: dict[str, list[str]]) -> list[list[tuple[str, str]]]:
-    """Per row, the (axis, slug) groups that validate the pair - cell types
-    first, then phases, each in column order."""
-    keys, cols = [], []
-    for axis, slugs in groups.items():
-        for slug in slugs:
-            keys.append((axis, slug))
-            cols.append(f"{AXES[axis]['col_prefix']}{slug}")
-    matrix = df[cols].fillna(False).to_numpy(dtype=bool)
+def edge_groups(df: pd.DataFrame, groups: dict[str, dict[str, list[str]]]) -> list[list[tuple[str, str]]]:
+    """Per row, the (axis, label) groups that validate the pair - cell
+    classes first, then phases, each in legend order. A class validates the
+    pair if any of its cell types does."""
+    keys, flags = [], []
+    for axis, labels in groups.items():
+        prefix = AXES[axis]["col_prefix"]
+        for label, members in labels.items():
+            keys.append((axis, label))
+            cols = [f"{prefix}{m}" for m in members]
+            flags.append(df[cols].fillna(False).astype(bool).any(axis=1).to_numpy())
+    matrix = np.column_stack(flags)
     return [[keys[i] for i in np.where(row)[0]] for row in matrix]
 
 
@@ -162,9 +223,9 @@ def _add_legends(fig, groups, line_specs, has_unvalidated):
     """One legend per validation axis, side by side below the figure
     (savefig's tight bbox grows to include them)."""
     entries = []
-    for axis, slugs in groups.items():
-        handles = [Line2D([], [], lw=2.0, **line_specs[(axis, s)]) for s in slugs]
-        labels  = [s.replace("_", " ") for s in slugs]
+    for axis, names in groups.items():
+        handles = [Line2D([], [], lw=2.0, **line_specs[(axis, n)]) for n in names]
+        labels  = [n.replace("_", " ") for n in names]
         entries.append((AXIS_LEGEND_TITLE[axis], handles, labels))
     if has_unvalidated:
         # Appended to the last legend so it doesn't need a box of its own.
@@ -386,6 +447,14 @@ def plot_validation_run(run_dir: Path, plot_style: str = "connected", top_n: int
     plot_fn = PLOT_STYLES[plot_style]
 
     print(f"\nPlotting {len(csvs)} CSV(s) from {run_dir}")
+    # Every CSV of one run has the same columns, so log the folding once.
+    header = pd.read_csv(csvs[0], nrows=0)
+    for label, members in detect_groups(header).get("cell_type", {}).items():
+        print(f"  {label}: {', '.join(members)}")
+    unmapped = unmapped_cell_types(detect_slugs(header))
+    if unmapped:
+        print(f"  [note] not in CELL_CLASS_OF, plotted on their own: {', '.join(unmapped)}")
+
     for csv_path in csvs:
         gene_list = csv_path.stem.removeprefix("tf_targets_")
         df = pd.read_csv(csv_path)
