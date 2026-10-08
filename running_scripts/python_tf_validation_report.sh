@@ -26,7 +26,12 @@ SUBFOLDER_NAME="cortex_v3_20260802_vs_atac_20260816"
 ATAC_PER_CT_DIR="${ATAC_RUN}/per_cell_type"
 ATAC_PER_PHASE_DIR="${ATAC_RUN}/per_cell_cycle"
 
-ARGS=(--tf-network-dir "$TF_NETWORK_DIR" --subfolder-name "$SUBFOLDER_NAME")
+# Validation network figures (figures/ in the output dir).
+PLOT_STYLE="connected"   # connected | hub_spoke | none
+TOP_N_TFS=12
+
+ARGS=(--tf-network-dir "$TF_NETWORK_DIR" --subfolder-name "$SUBFOLDER_NAME"
+      --plot-style "$PLOT_STYLE" --top-n-tfs "$TOP_N_TFS")
 if [[ -n "$ATAC_PER_CT_DIR" && -d "$ATAC_PER_CT_DIR" ]]; then
   ARGS+=(--atac-per-cell-type-dir "$ATAC_PER_CT_DIR")
 else
