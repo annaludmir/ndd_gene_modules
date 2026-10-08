@@ -10,6 +10,22 @@ of parallel lines, one per group in which ATAC-seq validates that pair:
   - cell phases  -> dashed lines, one colour per phase
   - not validated anywhere -> a single thin grey dotted line
 
+With --motif-hits-csv (the ATAC run's global
+`3_motif_target_validation/motif_target_pair_scores.csv`), grey edges whose
+pair has a TF motif hit in an accessible peak of the target's promoter when
+all peaks are considered (validated_by_motif_and_accessibility) get a star at
+the edge midpoint: accessible, but not among the top peaks of any cell type /
+phase. Coloured edges aren't starred - the per-group peaks are a subset of
+all peaks, so they are always globally validated too.
+
+With --literature-dir, pairs are also tagged from the curated literature
+CSV of their gene list, `<gene_list>_TF_Validation_with_evidence.csv`
+(column "Evidence assessment"), with a diamond 3/4 of the way to the target:
+  - "Evidence found (direct)"            -> filled diamond
+  - "Plausible, no pair-specific ..."    -> hollow diamond
+Other assessments are left untagged. Gene lists without a literature CSV are
+plotted without tags.
+
 The ATAC cell types are too many to tell apart by colour, so they are folded
 into major classes (CELL_CLASS_OF below); a pair is validated in a class if
 it is validated in any of the class's cell types. Cell types missing from the
@@ -23,13 +39,21 @@ Inputs:
      A tf_validation subfolder holding `tf_targets_<gene_list>.csv` files, or
      the results/tf_validation root, in which case every subfolder is plotted.
 
+  --motif-hits-csv <path>   (optional)
+     motif_target_pair_scores.csv from the matching atac_seq_analysis run.
+
+  --literature-dir <path>   (optional)
+     Folder of <gene_list>_TF_Validation_with_evidence.csv files, e.g.
+     results/tf_validation/literature_evidence.
+
 Output:
   <subfolder>/figures/tf_validation_network_<gene_list>.png
 
 Usage:
   python modules/tf_validation_plot.py \
     --validation-dir results/tf_validation/cortex_v3_20260802_vs_atac_20260816 \
-    --plot-style connected --top-n-tfs 8
+    --plot-style connected --top-n-tfs 8 \
+    --motif-hits-csv results/atac_analysis/<run>/3_motif_target_validation/motif_target_pair_scores.csv
 """
 
 import argparse
@@ -43,7 +67,9 @@ import numpy as np
 import pandas as pd
 
 from tf_network import _TF_CMAP
-from tf_validation_report import AXES
+from tf_validation_report import (
+    AXES, TARGET_KEY_CANDIDATES, TF_KEY_CANDIDATES, VALIDATED_COL, _pick_col,
+)
 
 
 # Major cell classes the ATAC cell types are folded into, keyed by the
@@ -92,6 +118,22 @@ PHASE_FALLBACK = ["#7f7f7f", "#b5651d", "#5f9ea0"]
 LINESTYLES = {"cell_type": "-", "cell_phase": (0, (4, 2))}
 UNVALIDATED_STYLE = dict(color="#bbbbbb", lw=0.7, linestyle=(0, (1, 2)))
 EDGE_LW = 1.1
+MOTIF_HIT_STYLE = dict(marker="*", markersize=9, color="#111111",
+                       markeredgecolor="white", markeredgewidth=0.6, linestyle="none")
+MOTIF_HIT_LABEL = "not validated, accessible motif hit (all peaks)"
+
+LITERATURE_SUFFIX = "_TF_Validation_with_evidence.csv"
+LITERATURE_COL    = "Evidence assessment"
+_LIT_MARKER = dict(marker="D", markersize=6, markeredgecolor="#111111",
+                   markeredgewidth=1.0, linestyle="none")
+LITERATURE_STYLES = {
+    "direct":    dict(_LIT_MARKER, color="#111111"),
+    "plausible": dict(_LIT_MARKER, color="white"),
+}
+LITERATURE_LABELS = {
+    "direct":    "literature: direct evidence",
+    "plausible": "literature: plausible",
+}
 
 AXIS_LEGEND_TITLE = {
     "cell_type": "Validated in cell class",
@@ -180,6 +222,62 @@ def edge_groups(df: pd.DataFrame, groups: dict[str, dict[str, list[str]]]) -> li
     return [[keys[i] for i in np.where(row)[0]] for row in matrix]
 
 
+def load_accessible_motif_pairs(path: str | Path) -> set[tuple[str, str]]:
+    """(TF, target) pairs, upper-cased, with validated_by_motif_and_accessibility
+    = True in an ATAC run's global motif_target_pair_scores.csv, i.e. >=1
+    motif hit inside an accessible peak (all peaks). Pairs that were never
+    scanned (TF without a motif, promoter not found) are absent."""
+    df = pd.read_csv(path)
+    tf_col     = _pick_col(df, TF_KEY_CANDIDATES)
+    target_col = _pick_col(df, TARGET_KEY_CANDIDATES)
+    hit = df[df[VALIDATED_COL].fillna(False).astype(bool)]
+    print(f"Accessible motif hits: {len(hit):,} / {len(df):,} scanned pairs ({path})")
+    return set(zip(hit[tf_col].astype(str).str.upper(),
+                   hit[target_col].astype(str).str.upper()))
+
+
+def _literature_tag(assessment) -> str:
+    """Map an "Evidence assessment" value to "direct", "plausible" or "".
+    "No direct evidence" must not count as direct, hence the exact prefixes."""
+    a = str(assessment).strip().lower()
+    if a.startswith("evidence found (direct)"):
+        return "direct"
+    if a.startswith("plausible"):
+        return "plausible"
+    return ""
+
+
+def find_literature_csv(literature_dir: Path, gene_list: str) -> Path | None:
+    """`<gene_list>_TF_Validation_with_evidence.csv`, matched case-insensitively."""
+    want = f"{gene_list}{LITERATURE_SUFFIX}".lower()
+    for p in literature_dir.glob("*.csv"):
+        if p.name.lower() == want:
+            return p
+    return None
+
+
+def load_literature_tags(path: Path) -> dict[tuple[str, str], str]:
+    """{(TF, target) upper-cased: "direct" | "plausible"} from one
+    literature CSV. Unrecognized assessments are logged and left untagged."""
+    df = pd.read_csv(path)
+    tf_col     = _pick_col(df, TF_KEY_CANDIDATES)
+    target_col = _pick_col(df, TARGET_KEY_CANDIDATES)
+    tags = df[LITERATURE_COL].map(_literature_tag)
+
+    other = sorted(df.loc[tags == "", LITERATURE_COL].dropna().astype(str).unique())
+    known_untagged = {"no direct evidence"}
+    other = [o for o in other if o.strip().lower() not in known_untagged]
+    if other:
+        print(f"  [note] {path.name}: untagged assessments {other}")
+
+    keep = tags != ""
+    print(f"  Literature ({path.name}): {int((tags == 'direct').sum())} direct, "
+          f"{int((tags == 'plausible').sum())} plausible of {len(df)} pairs")
+    return dict(zip(zip(df.loc[keep, tf_col].astype(str).str.upper(),
+                        df.loc[keep, target_col].astype(str).str.upper()),
+                    tags[keep]))
+
+
 def select_top_tfs(df: pd.DataFrame, top_n: int) -> list[str]:
     """Same ranking as tf_network: most targets, then highest mean score."""
     return (
@@ -195,9 +293,12 @@ def select_top_tfs(df: pd.DataFrame, top_n: int) -> list[str]:
 # Drawing
 # ---------------------------------------------------------------------------
 
-def _draw_validation_edge(ax, start, end, groups, line_specs, node_r):
+def _draw_validation_edge(ax, start, end, groups, line_specs, node_r,
+                          motif_hit=False, literature=""):
     """Draw one TF -> target edge as parallel lines, one per validating group.
-    The bundle is kept narrower than the target node it ends on."""
+    The bundle is kept narrower than the target node it ends on. An
+    unvalidated edge with an accessible motif hit gets a star at its midpoint; a
+    literature tag gets a diamond 3/4 of the way to the target."""
     d    = end - start
     dist = np.linalg.norm(d)
     if dist < 1e-6:
@@ -205,9 +306,16 @@ def _draw_validation_edge(ax, start, end, groups, line_specs, node_r):
     unit = d / dist
     perp = np.array([-unit[1], unit[0]])
 
+    if literature:
+        p = start + 0.75 * d
+        ax.plot(p[0], p[1], zorder=2.5, **LITERATURE_STYLES[literature])
+
     if not groups:
         ax.plot([start[0], end[0]], [start[1], end[1]],
                 zorder=2, solid_capstyle="butt", **UNVALIDATED_STYLE)
+        if motif_hit:
+            mid = (start + end) / 2
+            ax.plot(mid[0], mid[1], zorder=2.5, **MOTIF_HIT_STYLE)
         return
 
     n       = len(groups)
@@ -219,29 +327,41 @@ def _draw_validation_edge(ax, start, end, groups, line_specs, node_r):
                 solid_capstyle="butt", dash_capstyle="butt", **line_specs[g])
 
 
-def _add_legends(fig, groups, line_specs, has_unvalidated):
+def _add_legends(fig, groups, line_specs, has_unvalidated, show_motif_hits=False,
+                 show_literature=False):
     """One legend per validation axis, side by side below the figure
     (savefig's tight bbox grows to include them)."""
     entries = []
     for axis, names in groups.items():
         handles = [Line2D([], [], lw=2.0, **line_specs[(axis, n)]) for n in names]
         labels  = [n.replace("_", " ") for n in names]
-        entries.append((AXIS_LEGEND_TITLE[axis], handles, labels))
+        # Columns are sized by the groups alone, so the edge-mark rows
+        # appended below don't push a short legend into two columns.
+        ncol = 2 if len(names) > 7 else 1
+        entries.append((AXIS_LEGEND_TITLE[axis], handles, labels, ncol))
+    # Edge marks that aren't a group go at the end of the last legend, so
+    # they don't need a box of their own.
     if has_unvalidated:
-        # Appended to the last legend so it doesn't need a box of its own.
         style = dict(UNVALIDATED_STYLE, lw=1.5)
         entries[-1][1].append(Line2D([], [], **style))
         entries[-1][2].append("not validated")
+    if show_motif_hits and has_unvalidated:
+        entries[-1][1].append(Line2D([], [], **MOTIF_HIT_STYLE))
+        entries[-1][2].append(MOTIF_HIT_LABEL)
+    if show_literature:
+        for tag, style in LITERATURE_STYLES.items():
+            entries[-1][1].append(Line2D([], [], **style))
+            entries[-1][2].append(LITERATURE_LABELS[tag])
 
     placements = (
         [("upper center", 0.5)] if len(entries) == 1
         else [("upper right", 0.49), ("upper left", 0.51)]
     )
-    for (title, handles, labels), (loc, x) in zip(entries, placements):
+    for (title, handles, labels, ncol), (loc, x) in zip(entries, placements):
         fig.legend(handles, labels, title=title, loc=loc,
                    bbox_to_anchor=(x, 0.0), fontsize=8, title_fontsize=9,
                    frameon=False, handlelength=3.0,
-                   ncol=2 if len(handles) > 6 else 1)
+                   ncol=ncol)
 
 
 def _add_colorbar(fig, ax, **kw):
@@ -282,7 +402,9 @@ def plot_validation_network_connected(
             target_max_score[tgt] = score
         if tgt not in G:
             G.add_node(tgt, node_type="gene")
-        G.add_edge(row["tf"], tgt, weight=score, groups=row["_groups"])
+        G.add_edge(row["tf"], tgt, weight=score, groups=row["_groups"],
+                   motif_hit=bool(row.get("_motif_hit", False)),
+                   literature=row.get("_literature", ""))
 
     pos = nx.spring_layout(G, seed=42, k=3.0, iterations=150)
 
@@ -305,7 +427,8 @@ def plot_validation_network_connected(
             continue
         unit = d / dist
         _draw_validation_edge(ax, pu + unit * tf_r, pv - unit * gene_r,
-                              data["groups"], line_specs, gene_r)
+                              data["groups"], line_specs, gene_r,
+                              data["motif_hit"], data["literature"])
 
     # ── Gene (target) nodes ──────────────────────────────────────────────────
     for gene in gene_nodes:
@@ -345,7 +468,8 @@ def plot_validation_network_connected(
     has_unvalidated = any(not g for g in plot_df["_groups"])
     fig.suptitle(title, fontsize=12)
     plt.tight_layout()
-    _add_legends(fig, groups, line_specs, has_unvalidated)
+    _add_legends(fig, groups, line_specs, has_unvalidated,
+                 "_motif_hit" in df.columns, "_literature" in df.columns)
     fig.savefig(fig_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"  Saved: {fig_path.name}")
@@ -377,6 +501,10 @@ def plot_validation_network_hub_spoke(
         targets  = sub["target"].tolist()
         scores   = sub["normalized_score"].tolist()
         validity = edge_groups(sub, groups)
+        motif    = (sub["_motif_hit"].tolist() if "_motif_hit" in sub.columns
+                    else [False] * len(sub))
+        lit      = (sub["_literature"].tolist() if "_literature" in sub.columns
+                    else [""] * len(sub))
         has_unvalidated |= any(not g for g in validity)
         n = len(targets)
 
@@ -388,11 +516,12 @@ def plot_validation_network_hub_spoke(
         angles     = np.linspace(0, 2 * np.pi, n, endpoint=False)
         target_pos = center + radius * np.stack([np.cos(angles), np.sin(angles)], axis=1)
 
-        for pos, score, gene, grp in zip(target_pos, scores, targets, validity):
+        for pos, score, gene, grp, hit, tag in zip(
+                target_pos, scores, targets, validity, motif, lit):
             unit = (pos - center) / np.linalg.norm(pos - center)
             _draw_validation_edge(ax, center + unit * hub_radius,
                                   pos - unit * node_radius,
-                                  grp, line_specs, node_radius)
+                                  grp, line_specs, node_radius, hit, tag)
             ax.add_patch(plt.Circle(pos, node_radius, color=_TF_CMAP(score),
                                     ec="none", zorder=3))
             label_pos = center + (radius + node_radius + 0.05) * unit
@@ -419,7 +548,8 @@ def plot_validation_network_hub_spoke(
     # Colorbar after tight_layout, which otherwise lays a subplot over it.
     plt.tight_layout()
     _add_colorbar(fig, axes_flat[:n_tfs].tolist(), shrink=0.35, pad=0.04, aspect=20)
-    _add_legends(fig, groups, line_specs, has_unvalidated)
+    _add_legends(fig, groups, line_specs, has_unvalidated,
+                 "_motif_hit" in df.columns, "_literature" in df.columns)
     fig.savefig(fig_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"  Saved: {fig_path.name}")
@@ -435,8 +565,16 @@ PLOT_STYLES = {
 # Orchestrator
 # ---------------------------------------------------------------------------
 
-def plot_validation_run(run_dir: Path, plot_style: str = "connected", top_n: int = 8) -> None:
-    """Plot every tf_targets_*.csv in one tf_validation subfolder."""
+def plot_validation_run(
+    run_dir: Path,
+    plot_style: str = "connected",
+    top_n: int = 8,
+    motif_hit_pairs: set[tuple[str, str]] | None = None,
+    literature_dir: str | Path | None = None,
+) -> None:
+    """Plot every tf_targets_*.csv in one tf_validation subfolder.
+    `motif_hit_pairs` (from load_accessible_motif_pairs) adds the stars;
+    `literature_dir` adds literature tags for gene lists that have a CSV."""
     csvs = sorted(run_dir.glob("tf_targets_*.csv"))
     if not csvs:
         print(f"  [skip] no tf_targets_*.csv in {run_dir}")
@@ -464,6 +602,17 @@ def plot_validation_run(run_dir: Path, plot_style: str = "connected", top_n: int
         if not detect_groups(df):
             print(f"  [skip] {csv_path.name}: no validated_* columns")
             continue
+        keys = list(zip(df["tf"].astype(str).str.upper(),
+                        df["target"].astype(str).str.upper()))
+        if motif_hit_pairs is not None:
+            df["_motif_hit"] = [k in motif_hit_pairs for k in keys]
+        if literature_dir:
+            lit_csv = find_literature_csv(Path(literature_dir), gene_list)
+            if lit_csv is None:
+                print(f"  [note] no {gene_list}{LITERATURE_SUFFIX} — no literature tags")
+            else:
+                tags = load_literature_tags(lit_csv)
+                df["_literature"] = [tags.get(k, "") for k in keys]
         plot_fn(
             df,
             fig_dir / f"tf_validation_network_{gene_list}.png",
@@ -472,7 +621,13 @@ def plot_validation_run(run_dir: Path, plot_style: str = "connected", top_n: int
         )
 
 
-def run(validation_dir: str, plot_style: str = "connected", top_n: int = 8) -> None:
+def run(
+    validation_dir: str,
+    plot_style: str = "connected",
+    top_n: int = 8,
+    motif_hits_csv: str | None = None,
+    literature_dir: str | None = None,
+) -> None:
     root = Path(validation_dir)
     if not root.is_dir():
         raise FileNotFoundError(f"validation dir not found: {root}")
@@ -484,8 +639,11 @@ def run(validation_dir: str, plot_style: str = "connected", top_n: int = 8) -> N
     if not run_dirs:
         raise FileNotFoundError(f"No tf_targets_*.csv files under {root}")
 
+    motif_hit_pairs = load_accessible_motif_pairs(motif_hits_csv) if motif_hits_csv else None
     for d in run_dirs:
-        plot_validation_run(d, plot_style=plot_style, top_n=top_n)
+        plot_validation_run(d, plot_style=plot_style, top_n=top_n,
+                            motif_hit_pairs=motif_hit_pairs,
+                            literature_dir=literature_dir)
 
 
 # ---------------------------------------------------------------------------
@@ -507,9 +665,19 @@ def build_arg_parser():
                    help="Layout, as tf_network's query.plot_style (default: connected).")
     p.add_argument("--top-n-tfs", type=int, default=8,
                    help="Top N TFs to show, as tf_network's query.top_n_tfs (default: 8).")
+    p.add_argument("--motif-hits-csv", default=None,
+                   help="motif_target_pair_scores.csv from the ATAC run's "
+                        "3_motif_target_validation/. Stars unvalidated (grey) "
+                        "edges whose pair has a motif hit in an accessible "
+                        "peak (validated_by_motif_and_accessibility, all peaks).")
+    p.add_argument("--literature-dir", default=None,
+                   help="Folder of <gene_list>_TF_Validation_with_evidence.csv "
+                        "files. Tags pairs with direct (filled diamond) or "
+                        "plausible (hollow diamond) literature evidence.")
     return p
 
 
 if __name__ == "__main__":
     args = build_arg_parser().parse_args()
-    run(args.validation_dir, plot_style=args.plot_style, top_n=args.top_n_tfs)
+    run(args.validation_dir, plot_style=args.plot_style, top_n=args.top_n_tfs,
+        motif_hits_csv=args.motif_hits_csv, literature_dir=args.literature_dir)

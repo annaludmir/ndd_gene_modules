@@ -25,6 +25,11 @@ SUBFOLDER_NAME="cortex_v3_20260802_vs_atac_20260816"
 # have been enabled in the ATAC config, which produces per_cell_cycle/.
 ATAC_PER_CT_DIR="${ATAC_RUN}/per_cell_type"
 ATAC_PER_PHASE_DIR="${ATAC_RUN}/per_cell_cycle"
+# Global per-pair scan: stars unvalidated edges whose motif hit is in an
+# accessible peak when all peaks are considered.
+ATAC_PAIR_SCORES="${ATAC_RUN}/motif_target_pair_scores.csv"
+# <gene_list>_TF_Validation_with_evidence.csv files; tags literature evidence.
+LITERATURE_DIR="results/tf_validation/literature_evidence"
 
 # Validation network figures (figures/ in the output dir).
 PLOT_STYLE="connected"   # connected | hub_spoke | none
@@ -42,6 +47,16 @@ if [[ -n "$ATAC_PER_PHASE_DIR" && -d "$ATAC_PER_PHASE_DIR" ]]; then
 else
   echo "[note] no per_cell_cycle dir at ${ATAC_PER_PHASE_DIR} — skipping that axis."
   echo "       Run atac_seq_analysis with per_cell_cycle_scoring: true first."
+fi
+if [[ -n "$ATAC_PAIR_SCORES" && -f "$ATAC_PAIR_SCORES" ]]; then
+  ARGS+=(--atac-pair-scores-csv "$ATAC_PAIR_SCORES")
+else
+  echo "[note] no pair scores at ${ATAC_PAIR_SCORES} — figures won't mark accessible motif hits."
+fi
+if [[ -n "$LITERATURE_DIR" && -d "$LITERATURE_DIR" ]]; then
+  ARGS+=(--literature-dir "$LITERATURE_DIR")
+else
+  echo "[note] no literature dir at ${LITERATURE_DIR} — figures won't tag literature evidence."
 fi
 
 mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new \

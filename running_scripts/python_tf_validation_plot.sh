@@ -24,12 +24,23 @@ cd /miridan-data/annaludmir/ndd_gene_modules
 VALIDATION_DIR="results/tf_validation"
 PLOT_STYLE="connected"   # connected | hub_spoke
 TOP_N_TFS=12
+# Global per-pair scan of the matching ATAC run; stars unvalidated (grey)
+# edges whose motif hit is in an accessible peak (all peaks). Leave empty to skip.
+MOTIF_HITS_CSV="results/atac_analysis/atac_first_trimester_brain_20260816/3_motif_target_validation/motif_target_pair_scores.csv"
+# <gene_list>_TF_Validation_with_evidence.csv files; tags direct / plausible
+# literature evidence. Gene lists without a file are plotted untagged.
+LITERATURE_DIR="results/tf_validation/literature_evidence"
+
+ARGS=(--validation-dir "$VALIDATION_DIR" --plot-style "$PLOT_STYLE" --top-n-tfs "$TOP_N_TFS")
+if [[ -n "$MOTIF_HITS_CSV" ]]; then
+  ARGS+=(--motif-hits-csv "$MOTIF_HITS_CSV")
+fi
+if [[ -n "$LITERATURE_DIR" ]]; then
+  ARGS+=(--literature-dir "$LITERATURE_DIR")
+fi
 
 mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new \
-  python -u modules/tf_validation_plot.py \
-    --validation-dir "$VALIDATION_DIR" \
-    --plot-style "$PLOT_STYLE" \
-    --top-n-tfs "$TOP_N_TFS"
+  python -u modules/tf_validation_plot.py "${ARGS[@]}"
 
 rc=$?
 echo "Python exit code: $rc"

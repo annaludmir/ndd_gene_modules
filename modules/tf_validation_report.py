@@ -26,7 +26,11 @@ Either axis may be omitted; supplying both annotates against both.
 
 Per gene list, also draws `figures/tf_validation_network_<gene_list>.png`
 (see tf_validation_plot.py): the tf_network graph with each edge split into
-one line per validating cell type (solid) / cell phase (dashed).
+one line per validating cell class (solid) / cell phase (dashed), and, with
+--atac-pair-scores-csv, a star on unvalidated edges whose motif hit is in an
+accessible peak when all peaks are considered,
+and, with --literature-dir, diamonds on pairs with direct / plausible
+literature evidence.
 
 Also writes a `validation_summary.csv` reporting what percentage of pairs were
 validated on each axis, per input gene list, plus per-group counts.
@@ -258,6 +262,8 @@ def run(
     subfolder_name: str | None = None,
     plot_style: str | None = "connected",
     top_n_tfs: int = 8,
+    atac_pair_scores_csv: str | None = None,
+    literature_dir: str | None = None,
 ) -> Path:
     tf_network_dir = Path(tf_network_dir).resolve()
     output_dir     = Path(output_dir)
@@ -328,8 +334,12 @@ def run(
 
     if plot_style:
         # Imported here: tf_validation_plot imports AXES from this module.
-        from tf_validation_plot import plot_validation_run
-        plot_validation_run(output_dir, plot_style=plot_style, top_n=top_n_tfs)
+        from tf_validation_plot import load_accessible_motif_pairs, plot_validation_run
+        motif_hit_pairs = (load_accessible_motif_pairs(atac_pair_scores_csv)
+                           if atac_pair_scores_csv else None)
+        plot_validation_run(output_dir, plot_style=plot_style, top_n=top_n_tfs,
+                            motif_hit_pairs=motif_hit_pairs,
+                            literature_dir=literature_dir)
 
     print(f"\nDone -> {output_dir}")
     return output_dir
@@ -438,6 +448,14 @@ def build_arg_parser():
                         "'none' skips them. Default: connected.")
     p.add_argument("--top-n-tfs", type=int, default=8,
                    help="Top N TFs shown in each figure (default: 8).")
+    p.add_argument("--atac-pair-scores-csv", default=None,
+                   help="Global motif_target_pair_scores.csv from the ATAC run's "
+                        "3_motif_target_validation/. Stars unvalidated edges "
+                        "whose motif hit is in an accessible peak (all peaks).")
+    p.add_argument("--literature-dir", default=None,
+                   help="Folder of <gene_list>_TF_Validation_with_evidence.csv "
+                        "files; tags direct / plausible literature evidence "
+                        "in the figures of gene lists that have one.")
     return p
 
 
@@ -451,4 +469,6 @@ if __name__ == "__main__":
         subfolder_name=args.subfolder_name,
         plot_style=None if args.plot_style == "none" else args.plot_style,
         top_n_tfs=args.top_n_tfs,
+        atac_pair_scores_csv=args.atac_pair_scores_csv,
+        literature_dir=args.literature_dir,
     )
