@@ -24,6 +24,10 @@ Phase columns are emitted in cell-cycle order (Non-cycling -> G1 -> S -> G2M
 
 Either axis may be omitted; supplying both annotates against both.
 
+Per gene list, also draws `figures/tf_validation_network_<gene_list>.png`
+(see tf_validation_plot.py): the tf_network graph with each edge split into
+one line per validating cell type (solid) / cell phase (dashed).
+
 Also writes a `validation_summary.csv` reporting what percentage of pairs were
 validated on each axis, per input gene list, plus per-group counts.
 
@@ -252,6 +256,8 @@ def run(
     atac_per_cell_cycle_dir: str | None = None,
     output_dir: str = str(DEFAULT_OUTPUT_DIR),
     subfolder_name: str | None = None,
+    plot_style: str | None = "connected",
+    top_n_tfs: int = 8,
 ) -> Path:
     tf_network_dir = Path(tf_network_dir).resolve()
     output_dir     = Path(output_dir)
@@ -319,6 +325,12 @@ def run(
         print(f"  {csv_path.name}: " + "; ".join(parts))
 
     _write_summary(output_dir, all_summaries, axis_validation)
+
+    if plot_style:
+        # Imported here: tf_validation_plot imports AXES from this module.
+        from tf_validation_plot import plot_validation_run
+        plot_validation_run(output_dir, plot_style=plot_style, top_n=top_n_tfs)
+
     print(f"\nDone -> {output_dir}")
     return output_dir
 
@@ -419,6 +431,13 @@ def build_arg_parser():
     p.add_argument("--subfolder-name", default=None,
                    help="Subfolder under --output-dir. Defaults to "
                         "'<tf_net_dir_name>__vs__<atac_run_name>'.")
+    p.add_argument("--plot-style", choices=("connected", "hub_spoke", "none"),
+                   default="connected",
+                   help="Layout of the per-gene-list validation network figures "
+                        "written to figures/ (see tf_validation_plot.py); "
+                        "'none' skips them. Default: connected.")
+    p.add_argument("--top-n-tfs", type=int, default=8,
+                   help="Top N TFs shown in each figure (default: 8).")
     return p
 
 
@@ -430,4 +449,6 @@ if __name__ == "__main__":
         atac_per_cell_cycle_dir=args.atac_per_cell_cycle_dir,
         output_dir=args.output_dir,
         subfolder_name=args.subfolder_name,
+        plot_style=None if args.plot_style == "none" else args.plot_style,
+        top_n_tfs=args.top_n_tfs,
     )
