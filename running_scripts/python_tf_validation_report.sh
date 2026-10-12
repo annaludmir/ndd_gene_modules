@@ -18,8 +18,8 @@ cd /miridan-data/annaludmir/ndd_gene_modules
 
 # Edit these before submitting.
 TF_NETWORK_DIR="results/tf_network/tf_network_cortex_v3_20260802"
-ATAC_RUN="results/atac_analysis/atac_first_trimester_brain_20260816/3_motif_target_validation"
-SUBFOLDER_NAME="cortex_v3_20260802_vs_atac_20260816"
+ATAC_RUN="results/atac_analysis/atac_first_trimester_brain_all_cell_types/3_motif_target_validation"
+SUBFOLDER_NAME="cortex_v3_20260802_vs_atac_all_cell_types"
 
 # Either axis may be left empty. Cell phase needs per_cell_cycle_scoring to
 # have been enabled in the ATAC config, which produces per_cell_cycle/.

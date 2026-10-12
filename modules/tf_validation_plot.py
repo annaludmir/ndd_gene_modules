@@ -4,18 +4,25 @@ tf_validation_plot.py
 Network figures for tf_validation_report's annotated CSVs. Same layouts and
 TF selection as tf_network's figures, and the target node colour is still the
 normalized prediction score, but every TF -> target edge is drawn as a bundle
-of parallel lines, one per group in which ATAC-seq validates that pair:
+of parallel lines, one per cell type in which ATAC-seq validates that pair:
 
-  - cell types   -> solid lines, one colour per major cell class
-  - cell phases  -> dashed lines, one colour per phase
-  - not validated anywhere -> a single thin grey dotted line
+  - one solid line per validating cell type of the chosen cell class
+  - not validated in any of them -> a single thin grey dotted line
+
+Only the cell types of one class from --cell-class-json are drawn (default:
+progenitor_and_stem_cells from config_files/atac_cell_classes.json). The
+class's cell types are matched to the CSV's `validated_<cell_type>` columns by
+the same name sanitizing tf_validation_report uses, and each keeps the colour
+of its position in the JSON list, so colours are stable across figures even
+when a cell type is missing from a run. Cell-phase columns
+(`validated_phase_*`) are ignored.
 
 With --motif-hits-csv (the ATAC run's global
 `3_motif_target_validation/motif_target_pair_scores.csv`), grey edges whose
 pair has a TF motif hit in an accessible peak of the target's promoter when
 all peaks are considered (validated_by_motif_and_accessibility) get a star at
-the edge midpoint: accessible, but not among the top peaks of any cell type /
-phase. Coloured edges aren't starred - the per-group peaks are a subset of
+the edge midpoint: accessible, but not among the top peaks of any drawn cell
+type. Coloured edges aren't starred - the per-cell-type peaks are a subset of
 all peaks, so they are always globally validated too.
 
 With --literature-dir, pairs are also tagged from the curated literature
@@ -28,18 +35,13 @@ pair, not to a gene list, so every CSV in the folder is pooled and a pair is
 tagged in every figure it appears in, whatever the CSV is named. If two CSVs
 disagree, direct wins over plausible.
 
-The ATAC cell types are too many to tell apart by colour, so they are folded
-into major classes (CELL_CLASS_OF below); a pair is validated in a class if
-it is validated in any of the class's cell types. Cell types missing from the
-mapping are plotted on their own and reported in the log.
-
-Colours are assigned in a fixed order (CELL_CLASS_ORDER, then phase cycle
-order), so a class / phase keeps its colour across all gene-list figures.
-
 Inputs:
   --validation-dir <path>
      A tf_validation subfolder holding `tf_targets_<gene_list>.csv` files, or
      the results/tf_validation root, in which case every subfolder is plotted.
+
+  --cell-class-json <path> / --cell-class <name>
+     {class: [ATAC cell type, ...]} and the class to draw.
 
   --motif-hits-csv <path>   (optional)
      motif_target_pair_scores.csv from the matching atac_seq_analysis run.
@@ -55,10 +57,12 @@ Usage:
   python modules/tf_validation_plot.py \
     --validation-dir results/tf_validation/cortex_v3_20260802_vs_atac_20260816 \
     --plot-style connected --top-n-tfs 8 \
+    --cell-class progenitor_and_stem_cells \
     --motif-hits-csv results/atac_analysis/<run>/3_motif_target_validation/motif_target_pair_scores.csv
 """
 
 import argparse
+import json
 from pathlib import Path
 
 import matplotlib
@@ -70,54 +74,22 @@ import pandas as pd
 
 from tf_network import _TF_CMAP
 from tf_validation_report import (
-    AXES, TARGET_KEY_CANDIDATES, TF_KEY_CANDIDATES, VALIDATED_COL, _pick_col,
+    AXES, TARGET_KEY_CANDIDATES, TF_KEY_CANDIDATES, VALIDATED_COL, _pick_col, _sanitize,
 )
 
 
-# Major cell classes the ATAC cell types are folded into, keyed by the
-# sanitized slug used in the CSV column names (matched case-insensitively).
-CELL_CLASS_OF = {
-    "radial_glial_cell":                          "Radial glia / progenitors",
-    "neural_progenitor_cell":                     "Radial glia / progenitors",
-    "progenitor_cell":                            "Radial glia / progenitors",
-    "neuroblast_sensu_nematoda_and_protostomia":  "Neuroblast",
-    "glutamatergic_neuron":                       "Neuron",
-    "interneuron":                                "Neuron",
-    "purkinje_cell":                              "Neuron",
-    "glycinergic_neuron":                         "Neuron",
-    "dopaminergic_neuron":                        "Neuron",
-    "serotonergic_neuron":                        "Neuron",
-    "sensory_neuron_of_dorsal_root_ganglion":     "Neuron",
-    "glioblast":                                  "Glioblast",
-    "oligodendrocyte_precursor_cell":             "Oligodendrocyte lineage",
-    "committed_oligodendrocyte_precursor":        "Oligodendrocyte lineage",
-    "oligodendrocyte":                            "Oligodendrocyte lineage",
-    "schwann_cell":                               "Neural crest",
-    "endothelial_cell":                           "Vascular",
-    "pericyte":                                   "Vascular",
-    "vascular_associated_smooth_muscle_cell":     "Vascular",
-    "vascular_leptomeningeal_cell":               "Vascular",
-    "microglial_cell":                            "Immune",
-}
-CELL_CLASS_ORDER = [
-    "Radial glia / progenitors", "Neuroblast", "Neuron", "Glioblast",
-    "Oligodendrocyte lineage", "Neural crest", "Vascular", "Immune",
-]
+DEFAULT_CELL_CLASS_JSON = (Path(__file__).resolve().parent.parent
+                           / "config_files" / "atac_cell_classes.json")
+DEFAULT_CELL_CLASS = "progenitor_and_stem_cells"
 
-# Cell classes: categorical palette in CELL_CLASS_ORDER; unmapped cell types
-# fall back to the light tab20 variants.
+# Categorical palette, assigned by position in the class's JSON list; classes
+# longer than 8 fall back to the light tab20 variants.
 CELL_TYPE_COLORS = [
     "#2a78d6", "#eb6834", "#1baf7a", "#eda100",
     "#e87ba4", "#008300", "#4a3aa7", "#e34948",
 ]
 CELL_TYPE_FALLBACK = [matplotlib.colormaps["tab20"](i) for i in range(1, 20, 2)]
 
-# Cell phases: a separate set of hues that don't repeat the cell-type ones,
-# in cycle order (Non-cycling -> G1 -> S -> G2M -> Post-M).
-PHASE_COLORS = ["#222222", "#17becf", "#8c564b", "#bcbd22", "#1f3b73"]
-PHASE_FALLBACK = ["#7f7f7f", "#b5651d", "#5f9ea0"]
-
-LINESTYLES = {"cell_type": "-", "cell_phase": (0, (4, 2))}
 UNVALIDATED_STYLE = dict(color="#bbbbbb", lw=0.7, linestyle=(0, (1, 2)))
 EDGE_LW = 1.1
 MOTIF_HIT_STYLE = dict(marker="*", markersize=9, color="#111111",
@@ -136,91 +108,58 @@ LITERATURE_LABELS = {
     "plausible": "literature: plausible",
 }
 
-AXIS_LEGEND_TITLE = {
-    "cell_type": "Validated in cell class",
-    "cell_phase": "Validated in cell phase",
-}
-
 
 # ---------------------------------------------------------------------------
-# Reading the annotated CSV
+# Cell class and the annotated CSV
 # ---------------------------------------------------------------------------
 
-def detect_slugs(df: pd.DataFrame) -> dict[str, list[str]]:
-    """Return {axis: [group_slug, ...]} from the per-group boolean columns,
-    in CSV column order. Axes absent from the CSV are omitted."""
+def load_cell_class(json_path: str | Path, cell_class: str) -> list[str]:
+    """The ATAC cell types of `cell_class` in a {class: [cell type, ...]} JSON."""
+    with open(json_path) as f:
+        classes = json.load(f)
+    if cell_class not in classes:
+        raise KeyError(f"cell class '{cell_class}' not in {json_path}; "
+                       f"available: {list(classes)}")
+    return [str(c) for c in classes[cell_class]]
+
+
+def cell_type_columns(df: pd.DataFrame) -> list[str]:
+    """The CSV's per-cell-type `validated_<slug>` columns (phase and summary
+    columns excluded)."""
     reserved = {spec[k] for spec in AXES.values()
                 for k in ("any_col", "count_col", "list_col")}
     phase_prefix = AXES["cell_phase"]["col_prefix"]
     ct_prefix    = AXES["cell_type"]["col_prefix"]
-
-    groups = {"cell_type": [], "cell_phase": []}
-    for c in df.columns:
-        if c in reserved:
-            continue
-        if c.startswith(phase_prefix):
-            groups["cell_phase"].append(c[len(phase_prefix):])
-        elif c.startswith(ct_prefix):
-            groups["cell_type"].append(c[len(ct_prefix):])
-    return {a: g for a, g in groups.items() if g}
+    return [c for c in df.columns
+            if c.startswith(ct_prefix) and not c.startswith(phase_prefix)
+            and c not in reserved]
 
 
-def unmapped_cell_types(slugs: dict[str, list[str]]) -> list[str]:
-    return [s for s in slugs.get("cell_type", []) if s.lower() not in CELL_CLASS_OF]
+def detect_groups(df: pd.DataFrame, cell_types: list[str]) -> dict[str, str]:
+    """{cell type: CSV column} for the class's cell types present in the CSV,
+    in class order."""
+    present = set(cell_type_columns(df))
+    prefix  = AXES["cell_type"]["col_prefix"]
+    cols    = {ct: f"{prefix}{_sanitize(ct)}" for ct in cell_types}
+    return {ct: col for ct, col in cols.items() if col in present}
 
 
-def detect_groups(df: pd.DataFrame) -> dict[str, dict[str, list[str]]]:
-    """Return {axis: {legend_label: [group_slug, ...]}}. Cell types are folded
-    into their major class (unmapped ones keep their own entry, after the
-    classes); phases map one-to-one, in cycle order."""
-    slugs  = detect_slugs(df)
-    groups = {}
-    if "cell_type" in slugs:
-        classes: dict[str, list[str]] = {}
-        for c in CELL_CLASS_ORDER:
-            members = [s for s in slugs["cell_type"] if CELL_CLASS_OF.get(s.lower()) == c]
-            if members:
-                classes[c] = members
-        for s in unmapped_cell_types(slugs):
-            classes[s.replace("_", " ")] = [s]
-        groups["cell_type"] = classes
-    if "cell_phase" in slugs:
-        groups["cell_phase"] = {s: [s] for s in slugs["cell_phase"]}
-    return groups
+def build_line_specs(cell_types: list[str]) -> dict[str, dict]:
+    """{cell type: line style}, coloured by position in the class list."""
+    palette = CELL_TYPE_COLORS + CELL_TYPE_FALLBACK
+    if len(cell_types) > len(palette):
+        raise ValueError(f"{len(cell_types)} cell types but only "
+                         f"{len(palette)} colours available.")
+    return {ct: dict(color=c, linestyle="-") for ct, c in zip(cell_types, palette)}
 
 
-def build_line_specs(groups: dict[str, dict[str, list[str]]]) -> dict[tuple[str, str], dict]:
-    """{(axis, label): {color, linestyle}} for every legend entry."""
-    palettes = {
-        "cell_type": CELL_TYPE_COLORS + CELL_TYPE_FALLBACK,
-        "cell_phase": PHASE_COLORS + PHASE_FALLBACK,
-    }
-    specs = {}
-    for axis, labels in groups.items():
-        palette = palettes[axis]
-        if len(labels) > len(palette):
-            raise ValueError(
-                f"{len(labels)} {AXES[axis]['label']} groups but only "
-                f"{len(palette)} colours available - extend CELL_CLASS_OF."
-            )
-        for label, color in zip(labels, palette):
-            specs[(axis, label)] = dict(color=color, linestyle=LINESTYLES[axis])
-    return specs
-
-
-def edge_groups(df: pd.DataFrame, groups: dict[str, dict[str, list[str]]]) -> list[list[tuple[str, str]]]:
-    """Per row, the (axis, label) groups that validate the pair - cell
-    classes first, then phases, each in legend order. A class validates the
-    pair if any of its cell types does."""
-    keys, flags = [], []
-    for axis, labels in groups.items():
-        prefix = AXES[axis]["col_prefix"]
-        for label, members in labels.items():
-            keys.append((axis, label))
-            cols = [f"{prefix}{m}" for m in members]
-            flags.append(df[cols].fillna(False).astype(bool).any(axis=1).to_numpy())
-    matrix = np.column_stack(flags)
-    return [[keys[i] for i in np.where(row)[0]] for row in matrix]
+def edge_groups(df: pd.DataFrame, groups: dict[str, str]) -> list[list[str]]:
+    """Per row, the cell types (in class order) that validate the pair."""
+    if not groups:
+        return [[] for _ in range(len(df))]
+    names  = list(groups)
+    matrix = df[list(groups.values())].fillna(False).astype(bool).to_numpy()
+    return [[names[i] for i in np.where(row)[0]] for row in matrix]
 
 
 def load_accessible_motif_pairs(path: str | Path) -> set[tuple[str, str]]:
@@ -344,41 +283,25 @@ def _draw_validation_edge(ax, start, end, groups, line_specs, node_r,
                 solid_capstyle="butt", dash_capstyle="butt", **line_specs[g])
 
 
-def _add_legends(fig, groups, line_specs, has_unvalidated, show_motif_hits=False,
-                 show_literature=False):
-    """One legend per validation axis, side by side below the figure
-    (savefig's tight bbox grows to include them)."""
-    entries = []
-    for axis, names in groups.items():
-        handles = [Line2D([], [], lw=2.0, **line_specs[(axis, n)]) for n in names]
-        labels  = [n.replace("_", " ") for n in names]
-        # Columns are sized by the groups alone, so the edge-mark rows
-        # appended below don't push a short legend into two columns.
-        ncol = 2 if len(names) > 7 else 1
-        entries.append((AXIS_LEGEND_TITLE[axis], handles, labels, ncol))
-    # Edge marks that aren't a group go at the end of the last legend, so
-    # they don't need a box of their own.
+def _add_legends(fig, groups, line_specs, has_unvalidated, title,
+                 show_motif_hits=False, show_literature=False):
+    """One legend below the figure (savefig's tight bbox grows to include
+    it): the drawn cell types, then the edge marks."""
+    handles = [Line2D([], [], lw=2.0, **line_specs[ct]) for ct in groups]
+    labels  = list(groups)
     if has_unvalidated:
-        style = dict(UNVALIDATED_STYLE, lw=1.5)
-        entries[-1][1].append(Line2D([], [], **style))
-        entries[-1][2].append("not validated")
+        handles.append(Line2D([], [], **dict(UNVALIDATED_STYLE, lw=1.5)))
+        labels.append("not validated")
     if show_motif_hits and has_unvalidated:
-        entries[-1][1].append(Line2D([], [], **MOTIF_HIT_STYLE))
-        entries[-1][2].append(MOTIF_HIT_LABEL)
+        handles.append(Line2D([], [], **MOTIF_HIT_STYLE))
+        labels.append(MOTIF_HIT_LABEL)
     if show_literature:
         for tag, style in LITERATURE_STYLES.items():
-            entries[-1][1].append(Line2D([], [], **style))
-            entries[-1][2].append(LITERATURE_LABELS[tag])
-
-    placements = (
-        [("upper center", 0.5)] if len(entries) == 1
-        else [("upper right", 0.49), ("upper left", 0.51)]
-    )
-    for (title, handles, labels, ncol), (loc, x) in zip(entries, placements):
-        fig.legend(handles, labels, title=title, loc=loc,
-                   bbox_to_anchor=(x, 0.0), fontsize=8, title_fontsize=9,
-                   frameon=False, handlelength=3.0,
-                   ncol=ncol)
+            handles.append(Line2D([], [], **style))
+            labels.append(LITERATURE_LABELS[tag])
+    fig.legend(handles, labels, title=title, loc="upper center",
+               bbox_to_anchor=(0.5, 0.0), fontsize=8, title_fontsize=9,
+               frameon=False, handlelength=3.0, ncol=2 if len(handles) > 6 else 1)
 
 
 def _add_colorbar(fig, ax, **kw):
@@ -394,14 +317,16 @@ def plot_validation_network_connected(
     fig_path: Path,
     top_n: int = 8,
     title: str = "TF Regulatory Networks",
+    cell_types: list[str] | None = None,
+    legend_title: str = "Validated in cell type",
 ) -> None:
     """Single connected graph (shared targets appear once), mirroring
     tf_network.plot_tf_network_connected - same node insertion order and
     spring-layout seed, so node positions match the original figure."""
     import networkx as nx
 
-    groups     = detect_groups(df)
-    line_specs = build_line_specs(groups)
+    groups     = detect_groups(df, cell_types or [])
+    line_specs = build_line_specs(cell_types or [])
 
     top_tfs = select_top_tfs(df, top_n)
     plot_df = df[df["tf"].isin(top_tfs)].copy()
@@ -485,7 +410,7 @@ def plot_validation_network_connected(
     has_unvalidated = any(not g for g in plot_df["_groups"])
     fig.suptitle(title, fontsize=12)
     plt.tight_layout()
-    _add_legends(fig, groups, line_specs, has_unvalidated,
+    _add_legends(fig, groups, line_specs, has_unvalidated, legend_title,
                  "_motif_hit" in df.columns, "_literature" in df.columns)
     fig.savefig(fig_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
@@ -497,10 +422,12 @@ def plot_validation_network_hub_spoke(
     fig_path: Path,
     top_n: int = 8,
     title: str = "TF Regulatory Networks",
+    cell_types: list[str] | None = None,
+    legend_title: str = "Validated in cell type",
 ) -> None:
     """One hub-and-spoke subplot per TF, mirroring tf_network.plot_tf_network."""
-    groups     = detect_groups(df)
-    line_specs = build_line_specs(groups)
+    groups     = detect_groups(df, cell_types or [])
+    line_specs = build_line_specs(cell_types or [])
 
     top_tfs = select_top_tfs(df, top_n)
     n_tfs   = len(top_tfs)
@@ -565,7 +492,7 @@ def plot_validation_network_hub_spoke(
     # Colorbar after tight_layout, which otherwise lays a subplot over it.
     plt.tight_layout()
     _add_colorbar(fig, axes_flat[:n_tfs].tolist(), shrink=0.35, pad=0.04, aspect=20)
-    _add_legends(fig, groups, line_specs, has_unvalidated,
+    _add_legends(fig, groups, line_specs, has_unvalidated, legend_title,
                  "_motif_hit" in df.columns, "_literature" in df.columns)
     fig.savefig(fig_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
@@ -588,10 +515,13 @@ def plot_validation_run(
     top_n: int = 8,
     motif_hit_pairs: set[tuple[str, str]] | None = None,
     literature_tags: dict[tuple[str, str], str] | None = None,
+    cell_class_json: str | Path = DEFAULT_CELL_CLASS_JSON,
+    cell_class: str = DEFAULT_CELL_CLASS,
 ) -> None:
-    """Plot every tf_targets_*.csv in one tf_validation subfolder.
-    `motif_hit_pairs` (from load_accessible_motif_pairs) adds the stars;
-    `literature_tags` (from load_literature_dir) adds the literature diamonds."""
+    """Plot every tf_targets_*.csv in one tf_validation subfolder, drawing the
+    cell types of `cell_class`. `motif_hit_pairs` (from
+    load_accessible_motif_pairs) adds the stars; `literature_tags` (from
+    load_literature_dir) adds the literature diamonds."""
     csvs = sorted(run_dir.glob("tf_targets_*.csv"))
     if not csvs:
         print(f"  [skip] no tf_targets_*.csv in {run_dir}")
@@ -601,14 +531,19 @@ def plot_validation_run(
     fig_dir.mkdir(exist_ok=True)
     plot_fn = PLOT_STYLES[plot_style]
 
+    cell_types   = load_cell_class(cell_class_json, cell_class)
+    legend_title = f"Validated in {cell_class.replace('_', ' ')}"
+
     print(f"\nPlotting {len(csvs)} CSV(s) from {run_dir}")
-    # Every CSV of one run has the same columns, so log the folding once.
-    header = pd.read_csv(csvs[0], nrows=0)
-    for label, members in detect_groups(header).get("cell_type", {}).items():
-        print(f"  {label}: {', '.join(members)}")
-    unmapped = unmapped_cell_types(detect_slugs(header))
-    if unmapped:
-        print(f"  [note] not in CELL_CLASS_OF, plotted on their own: {', '.join(unmapped)}")
+    # Every CSV of one run has the same columns, so log the matching once.
+    header  = pd.read_csv(csvs[0], nrows=0)
+    groups  = detect_groups(header, cell_types)
+    missing = [ct for ct in cell_types if ct not in groups]
+    print(f"  {cell_class}: drawing {len(groups)}/{len(cell_types)} cell types "
+          f"({', '.join(groups) or 'none'})")
+    if missing:
+        print(f"  [note] no validated_* column for: {', '.join(missing)} "
+              f"(not scored in the ATAC run, or < 50 cells)")
 
     for csv_path in csvs:
         gene_list = csv_path.stem.removeprefix("tf_targets_")
@@ -616,8 +551,9 @@ def plot_validation_run(
         if df.empty:
             print(f"  [skip] {csv_path.name}: empty")
             continue
-        if not detect_groups(df):
-            print(f"  [skip] {csv_path.name}: no validated_* columns")
+        if not detect_groups(df, cell_types):
+            print(f"  [skip] {csv_path.name}: none of the {cell_class} cell types "
+                  f"has a validated_* column")
             continue
         keys = list(zip(df["tf"].astype(str).str.upper(),
                         df["target"].astype(str).str.upper()))
@@ -632,6 +568,8 @@ def plot_validation_run(
             fig_dir / f"tf_validation_network_{gene_list}.png",
             top_n=top_n,
             title=f"TF Regulatory Networks — {gene_list} (ATAC validation)",
+            cell_types=cell_types,
+            legend_title=legend_title,
         )
 
 
@@ -641,6 +579,8 @@ def run(
     top_n: int = 8,
     motif_hits_csv: str | None = None,
     literature_dir: str | None = None,
+    cell_class_json: str | Path = DEFAULT_CELL_CLASS_JSON,
+    cell_class: str = DEFAULT_CELL_CLASS,
 ) -> None:
     root = Path(validation_dir)
     if not root.is_dir():
@@ -658,7 +598,8 @@ def run(
     for d in run_dirs:
         plot_validation_run(d, plot_style=plot_style, top_n=top_n,
                             motif_hit_pairs=motif_hit_pairs,
-                            literature_tags=literature_tags)
+                            literature_tags=literature_tags,
+                            cell_class_json=cell_class_json, cell_class=cell_class)
 
 
 # ---------------------------------------------------------------------------
@@ -669,8 +610,8 @@ def build_arg_parser():
     p = argparse.ArgumentParser(
         description=(
             "Plot tf_validation_report's annotated CSVs as TF networks whose "
-            "edges show the cell types (solid) and cell phases (dashed) that "
-            "validate each TF-target pair."
+            "edges show the cell types of one cell class that validate each "
+            "TF-target pair."
         )
     )
     p.add_argument("--validation-dir", default="results/tf_validation",
@@ -689,10 +630,16 @@ def build_arg_parser():
                    help="Folder of literature CSVs, pooled across gene lists. "
                         "Tags pairs with direct (filled diamond) or plausible "
                         "(hollow diamond) literature evidence.")
+    p.add_argument("--cell-class-json", default=str(DEFAULT_CELL_CLASS_JSON),
+                   help="JSON of {cell class: [ATAC cell type, ...]} "
+                        "(default: config_files/atac_cell_classes.json).")
+    p.add_argument("--cell-class", default=DEFAULT_CELL_CLASS,
+                   help=f"Class whose cell types are drawn (default: {DEFAULT_CELL_CLASS}).")
     return p
 
 
 if __name__ == "__main__":
     args = build_arg_parser().parse_args()
     run(args.validation_dir, plot_style=args.plot_style, top_n=args.top_n_tfs,
-        motif_hits_csv=args.motif_hits_csv, literature_dir=args.literature_dir)
+        motif_hits_csv=args.motif_hits_csv, literature_dir=args.literature_dir,
+        cell_class_json=args.cell_class_json, cell_class=args.cell_class)

@@ -1636,15 +1636,21 @@ def _resolve_groupings(task_cfg: dict, cfg: dict, adata) -> list[tuple]:
 
     if task_cfg.get("per_cell_type_scoring", False):
         col = cfg["atac"].get("cell_type_col", "cell_type")
-        cell_types = (task_cfg.get("per_cell_type_cell_types")
-                      or cfg.get("motif_enrichment", {}).get("cell_types") or [])
-        cell_types = [str(c) for c in cell_types]
-        if not cell_types:
-            print("  [warn] per_cell_type_scoring enabled but no cell types resolved "
-                  "(set per_cell_type_cell_types or motif_enrichment.cell_types).")
+        top_pct = float(task_cfg.get("per_cell_type_top_peaks_pct", 0.10))
+        requested = task_cfg.get("per_cell_type_cell_types")
+        if isinstance(requested, str) and requested.strip().lower() == "all":
+            # Every cell type present in the column (as for cell cycle);
+            # groups under MIN_CELLS_PER_GROUP are still dropped.
+            out.append(("cell_type", col, None, top_pct))
         else:
-            out.append(("cell_type", col, cell_types,
-                        float(task_cfg.get("per_cell_type_top_peaks_pct", 0.10))))
+            cell_types = (requested
+                          or cfg.get("motif_enrichment", {}).get("cell_types") or [])
+            cell_types = [str(c) for c in cell_types]
+            if not cell_types:
+                print("  [warn] per_cell_type_scoring enabled but no cell types resolved "
+                      "(set per_cell_type_cell_types or motif_enrichment.cell_types).")
+            else:
+                out.append(("cell_type", col, cell_types, top_pct))
 
     if task_cfg.get("per_cell_cycle_scoring", False):
         col = task_cfg.get("per_cell_cycle_col", "CellCyclePhase")

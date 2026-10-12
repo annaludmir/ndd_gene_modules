@@ -21,17 +21,21 @@ cd /miridan-data/annaludmir/ndd_gene_modules
 
 # Edit these before submitting.
 # A single tf_validation subfolder, or results/tf_validation to plot them all.
-VALIDATION_DIR="results/tf_validation"
+VALIDATION_DIR="results/tf_validation/cortex_v3_20260802_vs_atac_all_cell_types"
 PLOT_STYLE="connected"   # connected | hub_spoke
 TOP_N_TFS=12
 # Global per-pair scan of the matching ATAC run; stars unvalidated (grey)
 # edges whose motif hit is in an accessible peak (all peaks). Leave empty to skip.
-MOTIF_HITS_CSV="results/atac_analysis/atac_first_trimester_brain_20260816/3_motif_target_validation/motif_target_pair_scores.csv"
+MOTIF_HITS_CSV="results/atac_analysis/atac_first_trimester_brain_all_cell_types/3_motif_target_validation/motif_target_pair_scores.csv"
 # Literature CSVs, pooled across gene lists: a pair is tagged direct / plausible
 # in every figure it appears in, whatever the CSV is named.
 LITERATURE_DIR="results/tf_validation/literature_evidence"
+# Only this class's cell types are drawn (one line each); phases aren't drawn.
+CELL_CLASS_JSON="config_files/atac_cell_classes.json"
+CELL_CLASS="progenitor_and_stem_cells"
 
-ARGS=(--validation-dir "$VALIDATION_DIR" --plot-style "$PLOT_STYLE" --top-n-tfs "$TOP_N_TFS")
+ARGS=(--validation-dir "$VALIDATION_DIR" --plot-style "$PLOT_STYLE" --top-n-tfs "$TOP_N_TFS"
+      --cell-class-json "$CELL_CLASS_JSON" --cell-class "$CELL_CLASS")
 if [[ -n "$MOTIF_HITS_CSV" ]]; then
   ARGS+=(--motif-hits-csv "$MOTIF_HITS_CSV")
 fi

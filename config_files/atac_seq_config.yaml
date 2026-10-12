@@ -101,7 +101,9 @@ motif_target_validation:
   # "peak is in the top X% most-accessible peaks in that cell type". The MOODS
   # sequence scan runs once and is reused for every cell type — cheap add-on.
   per_cell_type_scoring: true
-  per_cell_type_cell_types: null       # null → reuse motif_enrichment.cell_types
+  # "all" → every cell type in cell_type_col (incl. "unknown"; types with
+  # < 50 cells are still dropped); null → reuse motif_enrichment.cell_types.
+  per_cell_type_cell_types: "all"
   per_cell_type_top_peaks_pct: 0.10    # top 10% most-accessible peaks per CT
 
   # Same idea, but slicing cells by cell-cycle phase instead. Writes one CSV per

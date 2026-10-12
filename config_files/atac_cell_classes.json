@@ -1,0 +1,42 @@
+{
+  "neurons": [
+    "glutamatergic neuron",
+    "GABAergic neuron",
+    "glycinergic neuron",
+    "dopaminergic neuron",
+    "serotonergic neuron",
+    "Purkinje cell",
+    "sensory neuron of dorsal root ganglion",
+    "interneuron",
+    "neuron"
+  ],
+  "progenitor_and_stem_cells": [
+    "neuroblast (sensu Vertebrata)",
+    "neuroblast (sensu Nematoda and Protostomia)",
+    "radial glial cell",
+    "glioblast",
+    "oligodendrocyte precursor cell",
+    "committed oligodendrocyte precursor",
+    "progenitor cell",
+    "neural progenitor cell"
+  ],
+  "glial_cells": [
+    "oligodendrocyte",
+    "microglial cell",
+    "Schwann cell"
+  ],
+  "vascular_and_stromal_cells": [
+    "endothelial cell",
+    "pericyte",
+    "vascular associated smooth muscle cell",
+    "vascular leptomeningeal cell"
+  ],
+  "immune_cells": [
+    "perivascular macrophage",
+    "leukocyte",
+    "immature T cell"
+  ],
+  "unassigned": [
+    "unknown"
+  ]
+}

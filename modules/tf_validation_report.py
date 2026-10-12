@@ -26,11 +26,11 @@ Either axis may be omitted; supplying both annotates against both.
 
 Per gene list, also draws `figures/tf_validation_network_<gene_list>.png`
 (see tf_validation_plot.py): the tf_network graph with each edge split into
-one line per validating cell class (solid) / cell phase (dashed), and, with
---atac-pair-scores-csv, a star on unvalidated edges whose motif hit is in an
-accessible peak when all peaks are considered,
-and, with --literature-dir, diamonds on pairs with direct / plausible
-literature evidence.
+one line per validating progenitor / stem cell type (phases aren't drawn),
+and, with --atac-pair-scores-csv, a star on unvalidated edges whose motif hit
+is in an accessible peak when all peaks are considered, and, with
+--literature-dir, diamonds on pairs with direct / plausible literature
+evidence.
 
 Also writes a `validation_summary.csv` reporting what percentage of pairs were
 validated on each axis, per input gene list, plus per-group counts.
