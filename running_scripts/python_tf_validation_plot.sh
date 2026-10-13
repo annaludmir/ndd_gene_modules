@@ -33,6 +33,9 @@ LITERATURE_DIR="results/tf_validation/literature_evidence"
 # Only this class's cell types are drawn (one line each); phases aren't drawn.
 CELL_CLASS_JSON="config_files/atac_cell_classes.json"
 CELL_CLASS="progenitor_and_stem_cells"
+# TFs / targets without an edge validated in that class are dropped; set to
+# true to keep them.
+SHOW_UNVALIDATED_NODES=false
 
 ARGS=(--validation-dir "$VALIDATION_DIR" --plot-style "$PLOT_STYLE" --top-n-tfs "$TOP_N_TFS"
       --cell-class-json "$CELL_CLASS_JSON" --cell-class "$CELL_CLASS")
@@ -41,6 +44,9 @@ if [[ -n "$MOTIF_HITS_CSV" ]]; then
 fi
 if [[ -n "$LITERATURE_DIR" ]]; then
   ARGS+=(--literature-dir "$LITERATURE_DIR")
+fi
+if [[ "$SHOW_UNVALIDATED_NODES" == "true" ]]; then
+  ARGS+=(--show-unvalidated-nodes)
 fi
 
 mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new \

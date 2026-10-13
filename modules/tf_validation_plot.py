@@ -9,6 +9,11 @@ of parallel lines, one per cell type in which ATAC-seq validates that pair:
   - one solid line per validating cell type of the chosen cell class
   - not validated in any of them -> a single thin grey dotted line
 
+By default only validated nodes are shown: TFs without a single edge
+validated in the drawn cell types are dropped before the top-N TFs are picked,
+and targets without a validated edge to a shown TF are dropped. Grey edges
+between the remaining nodes stay. --show-unvalidated-nodes keeps everything.
+
 Only the cell types of one class from --cell-class-json are drawn (default:
 progenitor_and_stem_cells from config_files/atac_cell_classes.json). The
 class's cell types are matched to the CSV's `validated_<cell_type>` columns by
@@ -245,6 +250,26 @@ def select_top_tfs(df: pd.DataFrame, top_n: int) -> list[str]:
     )
 
 
+def select_plot_pairs(
+    df: pd.DataFrame, groups: dict[str, str], top_n: int, validated_only: bool,
+) -> tuple[pd.DataFrame, list[str]]:
+    """The rows to draw (with a `_groups` column) and the top TFs.
+
+    With `validated_only`, TFs without a validated edge are dropped before
+    ranking, so the figure still gets up to `top_n` TFs, and then targets
+    without a validated edge to one of those TFs are dropped. Unvalidated
+    edges between remaining nodes are kept."""
+    df = df.assign(_groups=edge_groups(df, groups))
+    validated = df["_groups"].map(bool)
+    if validated_only:
+        df = df[df["tf"].isin(set(df.loc[validated, "tf"]))]
+    top_tfs = select_top_tfs(df, top_n)
+    df = df[df["tf"].isin(top_tfs)]
+    if validated_only:
+        df = df[df["target"].isin(set(df.loc[df["_groups"].map(bool), "target"]))]
+    return df.copy(), top_tfs
+
+
 # ---------------------------------------------------------------------------
 # Drawing
 # ---------------------------------------------------------------------------
@@ -319,6 +344,7 @@ def plot_validation_network_connected(
     title: str = "TF Regulatory Networks",
     cell_types: list[str] | None = None,
     legend_title: str = "Validated in cell type",
+    validated_only: bool = True,
 ) -> None:
     """Single connected graph (shared targets appear once), mirroring
     tf_network.plot_tf_network_connected - same node insertion order and
@@ -328,9 +354,10 @@ def plot_validation_network_connected(
     groups     = detect_groups(df, cell_types or [])
     line_specs = build_line_specs(cell_types or [])
 
-    top_tfs = select_top_tfs(df, top_n)
-    plot_df = df[df["tf"].isin(top_tfs)].copy()
-    plot_df["_groups"] = edge_groups(plot_df, groups)
+    plot_df, top_tfs = select_plot_pairs(df, groups, top_n, validated_only)
+    if plot_df.empty:
+        print(f"  [skip] {fig_path.name}: no validated pairs to draw")
+        return
 
     G = nx.DiGraph()
     for tf in top_tfs:
@@ -424,12 +451,16 @@ def plot_validation_network_hub_spoke(
     title: str = "TF Regulatory Networks",
     cell_types: list[str] | None = None,
     legend_title: str = "Validated in cell type",
+    validated_only: bool = True,
 ) -> None:
     """One hub-and-spoke subplot per TF, mirroring tf_network.plot_tf_network."""
     groups     = detect_groups(df, cell_types or [])
     line_specs = build_line_specs(cell_types or [])
 
-    top_tfs = select_top_tfs(df, top_n)
+    plot_df, top_tfs = select_plot_pairs(df, groups, top_n, validated_only)
+    if plot_df.empty:
+        print(f"  [skip] {fig_path.name}: no validated pairs to draw")
+        return
     n_tfs   = len(top_tfs)
     ncols   = min(3, n_tfs)
     nrows   = (n_tfs + ncols - 1) // ncols
@@ -441,10 +472,10 @@ def plot_validation_network_hub_spoke(
     has_unvalidated = False
     for idx, tf in enumerate(top_tfs):
         ax  = axes_flat[idx]
-        sub = df[df["tf"] == tf].sort_values("normalized_score", ascending=False)
+        sub = plot_df[plot_df["tf"] == tf].sort_values("normalized_score", ascending=False)
         targets  = sub["target"].tolist()
         scores   = sub["normalized_score"].tolist()
-        validity = edge_groups(sub, groups)
+        validity = sub["_groups"].tolist()
         motif    = (sub["_motif_hit"].tolist() if "_motif_hit" in sub.columns
                     else [False] * len(sub))
         lit      = (sub["_literature"].tolist() if "_literature" in sub.columns
@@ -517,6 +548,7 @@ def plot_validation_run(
     literature_tags: dict[tuple[str, str], str] | None = None,
     cell_class_json: str | Path = DEFAULT_CELL_CLASS_JSON,
     cell_class: str = DEFAULT_CELL_CLASS,
+    validated_only: bool = True,
 ) -> None:
     """Plot every tf_targets_*.csv in one tf_validation subfolder, drawing the
     cell types of `cell_class`. `motif_hit_pairs` (from
@@ -570,6 +602,7 @@ def plot_validation_run(
             title=f"TF Regulatory Networks — {gene_list} (ATAC validation)",
             cell_types=cell_types,
             legend_title=legend_title,
+            validated_only=validated_only,
         )
 
 
@@ -581,6 +614,7 @@ def run(
     literature_dir: str | None = None,
     cell_class_json: str | Path = DEFAULT_CELL_CLASS_JSON,
     cell_class: str = DEFAULT_CELL_CLASS,
+    validated_only: bool = True,
 ) -> None:
     root = Path(validation_dir)
     if not root.is_dir():
@@ -599,7 +633,8 @@ def run(
         plot_validation_run(d, plot_style=plot_style, top_n=top_n,
                             motif_hit_pairs=motif_hit_pairs,
                             literature_tags=literature_tags,
-                            cell_class_json=cell_class_json, cell_class=cell_class)
+                            cell_class_json=cell_class_json, cell_class=cell_class,
+                            validated_only=validated_only)
 
 
 # ---------------------------------------------------------------------------
@@ -635,6 +670,9 @@ def build_arg_parser():
                         "(default: config_files/atac_cell_classes.json).")
     p.add_argument("--cell-class", default=DEFAULT_CELL_CLASS,
                    help=f"Class whose cell types are drawn (default: {DEFAULT_CELL_CLASS}).")
+    p.add_argument("--show-unvalidated-nodes", action="store_true",
+                   help="Keep TFs and targets without a validated edge (by "
+                        "default they are dropped).")
     return p
 
 
@@ -642,4 +680,5 @@ if __name__ == "__main__":
     args = build_arg_parser().parse_args()
     run(args.validation_dir, plot_style=args.plot_style, top_n=args.top_n_tfs,
         motif_hits_csv=args.motif_hits_csv, literature_dir=args.literature_dir,
-        cell_class_json=args.cell_class_json, cell_class=args.cell_class)
+        cell_class_json=args.cell_class_json, cell_class=args.cell_class,
+        validated_only=not args.show_unvalidated_nodes)
