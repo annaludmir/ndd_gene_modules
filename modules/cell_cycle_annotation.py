@@ -1,22 +1,23 @@
 """
 cell_cycle_annotation.py
 
-Annotate an h5ad with per-cell cell-cycle information. Adds two obs columns:
+Annotate an h5ad with per-cell cell-cycle information. Adds a
+`CellCyclePhase` obs column (categorical str), one of:
 
-  - cycling_score  (float in [0, 1]) — fraction of UMIs contributed by
-    cc_genes_human across the cell's total UMI count.
-  - CellCyclePhase (categorical str)  — one of:
-        Non-cycling  if cycling_score < 0.4%
-        G1 / S / G2M if cycling_score >= 0.4% and the phase-specific UMI
-                     fraction passes its threshold (highest ratio to
-                     threshold wins when multiple phases pass)
-        Post-M       if cycling_score >= 0.4% but no phase passes
+        Non-cycling  if cell_cycle_score <= 0.004
+        G1 / S / G2M if cell_cycle_score >  0.004 and the phase-specific
+                     score passes its threshold (priority G2M > S > G1)
+        Post-M       if cell_cycle_score >  0.004 but no phase passes
 
-Thresholds (from the spec):
-    cycling_score        > 0.4%   (0.004)
-    G1 gene UMI fraction > 0.2% (0.0002)
-    S  gene UMI fraction > 0.2% (0.002)
-    G2M gene UMI fraction > 3% (0.03)
+Whether a cell is cycling comes from the dataset's own `cell_cycle_score`
+obs column (--cell-cycle-score-col), used as is: this module does not compute
+a cycling score. The 0.004 cutoff applies under every --scoring mode. Only
+the G1 / S / G2M scores are computed here (obs cc_score_g1/_s/_g2m).
+
+Phase thresholds under --scoring fraction (from the spec):
+    G1 gene UMI fraction  > 0.2% (0.002)
+    S  gene UMI fraction  > 0.2% (0.002)
+    G2M gene UMI fraction > 3%   (0.03)
 
 Usage:
   python modules/cell_cycle_annotation.py \
@@ -203,15 +204,18 @@ G2M_GENES = [
     "G2E3", "GAS2L3", "CBX5", "CENPA",
 ]
 
-# Thresholds for --scoring fraction (fractions, not percentages).
-CYCLING_THRESHOLD = 0.004     # 0.4%
+# Cycling vs Non-cycling: the dataset's own cell_cycle_score obs column, used
+# as is, with one cutoff under every --scoring mode.
+CELL_CYCLE_SCORE_COL = "cell_cycle_score"
+CYCLING_THRESHOLD    = 0.004
+
+# Phase thresholds for --scoring fraction (fractions, not percentages).
 G1_THRESHOLD      = 0.002   # 0.2%
 S_THRESHOLD       = 0.002   # 0.2%
 G2M_THRESHOLD     = 0.03    # 3%
 
-# Thresholds for --scoring background, in standard deviations of the
+# Phase thresholds for --scoring background, in standard deviations of the
 # background-normalized score. Comparable across gene sets by construction.
-BG_CYCLING_THRESHOLD = 1.0
 BG_G1_THRESHOLD      = 1.0
 BG_S_THRESHOLD       = 1.0
 BG_G2M_THRESHOLD     = 1.0
@@ -468,9 +472,10 @@ def _background_mask_from_sets(n_features: int, set_indices: dict) -> np.ndarray
 
 def _resolve_thresholds(scoring: str, cycling, g1, s, g2m) -> dict[str, float]:
     """Map the four threshold arguments onto the score names, filling in the
-    defaults for `scoring` where an argument is None."""
+    defaults where an argument is None. The cycling cutoff applies to the
+    dataset's cell_cycle_score, so it does not depend on `scoring`."""
     defaults = (
-        (BG_CYCLING_THRESHOLD, BG_G1_THRESHOLD, BG_S_THRESHOLD, BG_G2M_THRESHOLD)
+        (CYCLING_THRESHOLD, BG_G1_THRESHOLD, BG_S_THRESHOLD, BG_G2M_THRESHOLD)
         if scoring == "background" else
         (CYCLING_THRESHOLD, G1_THRESHOLD, S_THRESHOLD, G2M_THRESHOLD)
     )
@@ -504,11 +509,34 @@ def _score_sets(X, total, set_indices: dict, scoring: str, thresholds: dict,
     return {n: res["z"] for n, res in scores.items()}
 
 
-def _write_score_obs(adata, scoring: str, values: dict, tss_window=None):
-    """Write the score columns. `cycling_score` keeps its name in both modes —
-    a fraction under `fraction`, a z-score under `background` — and uns records
-    which, so downstream code can tell them apart."""
-    adata.obs["cycling_score"] = np.asarray(values["cycling_score"], dtype=np.float32)
+def _cycling_score_from_obs(adata, col: str, threshold: float) -> np.ndarray:
+    """The dataset's own per-cell cycling score, `adata.obs[col]`, as is.
+    Prints its distribution and how many cells clear `threshold`."""
+    if col not in adata.obs.columns:
+        raise KeyError(
+            f"obs column '{col}' not found; the cycling / Non-cycling call needs the "
+            f"dataset's cell-cycle score (set --cell-cycle-score-col). "
+            f"Available: {list(adata.obs.columns)}")
+    score = pd.to_numeric(adata.obs[col], errors="coerce").to_numpy(dtype=float)
+    valid = ~np.isnan(score)
+    n_cyc = int((score[valid] > threshold).sum())
+    q = np.nanpercentile(score, [10, 50, 90]) if valid.any() else [np.nan] * 3
+    print(f"  Cycling from obs['{col}'] (as is): p10={q[0]:.4g}  median={q[1]:.4g}  "
+          f"p90={q[2]:.4g}  |  > {threshold:g}: {n_cyc:,}/{int(valid.sum()):,} cells")
+    if (~valid).any():
+        print(f"    [note] {int((~valid).sum()):,} cells have no {col} → no phase")
+    return score
+
+
+def _write_score_obs(adata, scoring: str, values: dict, tss_window=None,
+                     cycling_col: str = CELL_CYCLE_SCORE_COL,
+                     cycling_threshold: float = CYCLING_THRESHOLD):
+    """Write the phase score columns and record in uns how they were made.
+    The cycling score is the dataset's own `cycling_col`, left untouched; a
+    `cycling_score` column from an earlier run of this module is dropped so it
+    can't be mistaken for it."""
+    if "cycling_score" in adata.obs.columns:
+        adata.obs = adata.obs.drop(columns="cycling_score")
     for key, col in (("g1_frac", "cc_score_g1"),
                      ("s_frac",  "cc_score_s"),
                      ("g2m_frac", "cc_score_g2m")):
@@ -516,6 +544,8 @@ def _write_score_obs(adata, scoring: str, values: dict, tss_window=None):
     adata.uns["cell_cycle_scoring"] = {
         "scoring": scoring,
         "score_units": "z-score" if scoring == "background" else "fraction of total signal",
+        "cycling_from": cycling_col,
+        "cycling_threshold": float(cycling_threshold),
     }
     if tss_window is not None:
         adata.uns["cell_cycle_scoring"]["tss_window"] = int(tss_window)
@@ -547,12 +577,14 @@ def annotate_cell_cycle(
     n_bins: int = BG_N_BINS,
     n_ctrl_per_region: int = BG_N_CTRL_PER_REGION,
     seed: int = BG_SEED,
+    cell_cycle_score_col: str = CELL_CYCLE_SCORE_COL,
 ):
-    """Add `cycling_score` and `CellCyclePhase` columns to adata.obs (in place).
+    """Add `CellCyclePhase` (and the phase scores) to adata.obs (in place).
+    Cycling vs Non-cycling comes from obs[`cell_cycle_score_col`].
 
-    Under `scoring="background"` each gene set is scored against expression-
-    matched control genes instead of as a share of the cell's UMIs, and the
-    thresholds are in standard deviations. See the module docstring.
+    Under `scoring="background"` each phase gene set is scored against
+    expression-matched control genes instead of as a share of the cell's UMIs,
+    and the phase thresholds are in standard deviations. See the module docstring.
     """
     import scipy.sparse as sp
 
@@ -579,21 +611,26 @@ def annotate_cell_cycle(
     if sp.issparse(X):
         X = X.tocsr()
 
+    cycling = _cycling_score_from_obs(adata, cell_cycle_score_col,
+                                      thresholds["cycling_score"])
+
     print("  Computing UMI totals ...")
     total_umi   = np.asarray(X.sum(axis=1)).ravel()
-    set_indices = {"cycling_score": cc_ix, "g1_frac": g1_ix,
-                   "s_frac": s_ix, "g2m_frac": g2m_ix}
+    set_indices = {"g1_frac": g1_ix, "s_frac": s_ix, "g2m_frac": g2m_ix}
+    # cc genes stay out of the control pool even though they aren't scored
+    background_mask = _background_mask_from_sets(X.shape[1], {**set_indices, "cc": cc_ix})
     values = _score_sets(X, total_umi, set_indices, scoring, thresholds,
-                         n_bins=n_bins, n_ctrl_per_region=n_ctrl_per_region,
-                         seed=seed)
+                         background_mask=background_mask, n_bins=n_bins,
+                         n_ctrl_per_region=n_ctrl_per_region, seed=seed)
 
     phases = _classify_phases(
-        values["cycling_score"], values["g1_frac"], values["s_frac"],
+        cycling, values["g1_frac"], values["s_frac"],
         values["g2m_frac"], thresholds["cycling_score"], thresholds["g1_frac"],
         thresholds["s_frac"], thresholds["g2m_frac"],
     )
 
-    _write_score_obs(adata, scoring, values)
+    _write_score_obs(adata, scoring, values, cycling_col=cell_cycle_score_col,
+                     cycling_threshold=thresholds["cycling_score"])
     adata.obs["CellCyclePhase"] = pd.Categorical(
         phases, categories=PHASE_ORDER, ordered=False,
     )
@@ -661,14 +698,16 @@ def annotate_cell_cycle_atac(
     n_bins: int = BG_N_BINS,
     n_ctrl_per_region: int = BG_N_CTRL_PER_REGION,
     seed: int = BG_SEED,
+    cell_cycle_score_col: str = CELL_CYCLE_SCORE_COL,
 ):
-    """Add `cycling_score` and `CellCyclePhase` obs columns to an ATAC h5ad.
+    """Add `CellCyclePhase` (and the phase scores) obs columns to an ATAC h5ad.
+    Cycling vs Non-cycling comes from obs[`cell_cycle_score_col`].
 
-    For each cell-cycle gene set, finds every ATAC peak overlapping a
+    For each phase gene set, finds every ATAC peak overlapping a
     (TSS ± tss_window) promoter of a gene in the set. Under `scoring="fraction"`
-    the "cycling score" is the total accessibility of those peaks divided by
-    the cell's total ATAC signal; under `scoring="background"` it is the set's
-    mean accessibility minus that of accessibility-matched control peaks, as a
+    a phase score is the total accessibility of those peaks divided by the
+    cell's total ATAC signal; under `scoring="background"` it is the set's mean
+    accessibility minus that of accessibility-matched control peaks, as a
     z-score. Same priority ordering (G2M > S > G1 > Post-M) as the RNA path.
     """
     import scipy.sparse as sp
@@ -703,20 +742,26 @@ def annotate_cell_cycle_atac(
     if sp.issparse(X):
         X = X.tocsr()
 
+    cycling = _cycling_score_from_obs(adata, cell_cycle_score_col,
+                                      thresholds["cycling_score"])
+
     total = np.asarray(X.sum(axis=1)).ravel()
-    set_indices = {"cycling_score": cc_ix, "g1_frac": g1_ix,
-                   "s_frac": s_ix, "g2m_frac": g2m_ix}
+    set_indices = {"g1_frac": g1_ix, "s_frac": s_ix, "g2m_frac": g2m_ix}
+    # cc-gene peaks stay out of the control pool even though they aren't scored
+    background_mask = _background_mask_from_sets(X.shape[1], {**set_indices, "cc": cc_ix})
     values = _score_sets(X, total, set_indices, scoring, thresholds,
-                         n_bins=n_bins, n_ctrl_per_region=n_ctrl_per_region,
-                         seed=seed)
+                         background_mask=background_mask, n_bins=n_bins,
+                         n_ctrl_per_region=n_ctrl_per_region, seed=seed)
 
     phases = _classify_phases(
-        values["cycling_score"], values["g1_frac"], values["s_frac"],
+        cycling, values["g1_frac"], values["s_frac"],
         values["g2m_frac"], thresholds["cycling_score"], thresholds["g1_frac"],
         thresholds["s_frac"], thresholds["g2m_frac"],
     )
 
-    _write_score_obs(adata, scoring, values, tss_window=tss_window)
+    _write_score_obs(adata, scoring, values, tss_window=tss_window,
+                     cycling_col=cell_cycle_score_col,
+                     cycling_threshold=thresholds["cycling_score"])
     adata.obs["CellCyclePhase"] = pd.Categorical(
         phases, categories=PHASE_ORDER, ordered=False,
     )
@@ -846,11 +891,14 @@ def _drop_regions_overlapping(regions, region_gene, blocked_regions):
 
 
 def _classify_phases(cycling_score, g1_frac, s_frac, g2m_frac,
-                     cycling_threshold, g1_threshold, s_threshold, g2m_threshold):
-    """Same rule as the RNA / peak paths (priority: G2M > S > G1 > Post-M).
-    NaN scores (cells without data) get None."""
+                     cycling_threshold, g1_threshold, s_threshold, g2m_threshold,
+                     has_data=None):
+    """Same rule for every path (priority: G2M > S > G1 > Post-M). Cells with
+    a NaN cycling score, or outside `has_data` (no phase scores), get None."""
     n = len(cycling_score)
     valid = ~np.isnan(cycling_score)
+    if has_data is not None:
+        valid &= np.asarray(has_data, dtype=bool)
     is_cycling = valid & (cycling_score > cycling_threshold)
     passes_g1  = np.nan_to_num(g1_frac)  > g1_threshold
     passes_s   = np.nan_to_num(s_frac)   > s_threshold
@@ -893,15 +941,17 @@ def annotate_cell_cycle_fragments(
     seed: int = BG_SEED,
     tempdir: str | Path | None = None,
     n_jobs: int = 8,
+    cell_cycle_score_col: str = CELL_CYCLE_SCORE_COL,
 ):
-    """Add `cycling_score` and `CellCyclePhase` obs columns to an ATAC h5ad
-    using a fragments file instead of the peak matrix.
+    """Add `CellCyclePhase` (and the phase scores) obs columns to an ATAC h5ad
+    using a fragments file instead of the peak matrix. Cycling vs Non-cycling
+    comes from obs[`cell_cycle_score_col`].
 
     Steps: snapatac2 import_data (restricted to adata.obs_names) → count
     fragments in TSS ± tss_window windows of the cell-cycle genes
     (make_peak_matrix on explicit regions, so it works across snapatac2
     versions) → per-set score → same priority as the other paths. Cells absent
-    from the fragments file get NaN score and a NaN phase.
+    from the fragments file get NaN phase scores and a NaN phase.
 
     Under `scoring="background"` the same promoter windows are also built for
     `n_background_genes` randomly chosen non-cell-cycle genes and counted in the
@@ -916,6 +966,9 @@ def annotate_cell_cycle_fragments(
 
     thresholds = _resolve_thresholds(
         scoring, cycling_threshold, g1_threshold, s_threshold, g2m_threshold)
+    # read before the long fragment import, so a missing column fails fast
+    cycling = _cycling_score_from_obs(adata, cell_cycle_score_col,
+                                      thresholds["cycling_score"])
 
     fragments_path = Path(fragments_path)
     if not fragments_path.exists():
@@ -1033,13 +1086,12 @@ def annotate_cell_cycle_fragments(
 
     print("  Resolving gene sets:")
     set_indices = {
-        "cycling_score": _set_indices(CC_GENES_HUMAN, "cc_genes"),
-        "g1_frac":       _set_indices(G1_GENES,       "G1"),
-        "s_frac":        _set_indices(S_GENES,        "S"),
-        "g2m_frac":      _set_indices(G2M_GENES,      "G2M"),
+        "g1_frac":  _set_indices(G1_GENES,  "G1"),
+        "s_frac":   _set_indices(S_GENES,   "S"),
+        "g2m_frac": _set_indices(G2M_GENES, "G2M"),
     }
-    if len(set_indices["cycling_score"]) == 0:
-        raise RuntimeError("None of the cell-cycle genes have promoter windows; "
+    if all(len(ix) == 0 for ix in set_indices.values()):
+        raise RuntimeError("None of the phase genes have promoter windows; "
                            "check the annotation's gene_name attribute.")
 
     # Controls are the background-gene windows only: any window whose gene is
@@ -1059,17 +1111,22 @@ def annotate_cell_cycle_fragments(
         arr = np.full(adata.n_obs, np.nan)
         arr[pos_in_adata[keep]] = v[keep]
         aligned[k] = arr
-    n_missing = int(np.isnan(aligned["cycling_score"]).sum())
+    has_frag  = np.zeros(adata.n_obs, dtype=bool)
+    has_frag[pos_in_adata[keep]] = True
+    n_missing = int((~has_frag).sum())
     if n_missing:
         print(f"  [note] {n_missing:,} cells in adata have no fragments → NaN score / NaN phase")
 
     phases = _classify_phases(
-        aligned["cycling_score"], aligned["g1_frac"], aligned["s_frac"], aligned["g2m_frac"],
+        cycling, aligned["g1_frac"], aligned["s_frac"], aligned["g2m_frac"],
         thresholds["cycling_score"], thresholds["g1_frac"],
         thresholds["s_frac"], thresholds["g2m_frac"],
+        has_data=has_frag,
     )
 
-    _write_score_obs(adata, scoring, aligned, tss_window=tss_window)
+    _write_score_obs(adata, scoring, aligned, tss_window=tss_window,
+                     cycling_col=cell_cycle_score_col,
+                     cycling_threshold=thresholds["cycling_score"])
     adata.obs["CellCyclePhase"] = pd.Categorical(
         phases, categories=PHASE_ORDER, ordered=False,
     )
@@ -1088,7 +1145,7 @@ def annotate_cell_cycle_fragments(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Annotate an h5ad with cycling_score + CellCyclePhase obs columns."
+        description="Annotate an h5ad with a CellCyclePhase obs column."
     )
     parser.add_argument("--h5ad-input",  required=True, help="Input .h5ad path.")
     parser.add_argument("--h5ad-output", required=True,
@@ -1169,13 +1226,18 @@ def main():
     parser.add_argument("--seed", type=int, default=BG_SEED,
                         help=f"[--scoring background] seed for control sampling. Default {BG_SEED}.")
 
-    # Thresholds — unset means "the default for --scoring". Under `fraction`
-    # those defaults are RNA-calibrated and do not transfer to ATAC; check the
-    # distribution table printed at run time and tune. Under `background` they
-    # are in SDs, so 1.0 means "1 SD above this dataset's mean".
+    # Cycling vs Non-cycling: the dataset's own score, used as is.
+    parser.add_argument("--cell-cycle-score-col", default=CELL_CYCLE_SCORE_COL,
+                        help=f"obs column with the dataset's per-cell cycling score, "
+                             f"used as is. Default '{CELL_CYCLE_SCORE_COL}'.")
     parser.add_argument("--cycling-threshold", type=float, default=None,
-                        help=f"cycling_score > this = cycling. Default "
-                             f"{CYCLING_THRESHOLD} (fraction) / {BG_CYCLING_THRESHOLD} (background).")
+                        help=f"--cell-cycle-score-col > this = cycling, else Non-cycling. "
+                             f"Default {CYCLING_THRESHOLD}, under every --scoring mode.")
+
+    # Phase thresholds — unset means "the default for --scoring". Under
+    # `fraction` those defaults are RNA-calibrated and do not transfer to ATAC;
+    # check the distribution table printed at run time and tune. Under
+    # `background` they are in SDs, so 1.0 means "1 SD above this dataset's mean".
     parser.add_argument("--g1-threshold",  type=float, default=None,
                         help=f"G1 cutoff. Default {G1_THRESHOLD} / {BG_G1_THRESHOLD}.")
     parser.add_argument("--s-threshold",   type=float, default=None,
@@ -1211,6 +1273,7 @@ def main():
         n_bins=args.n_bins,
         n_ctrl_per_region=args.n_ctrl_per_region,
         seed=args.seed,
+        cell_cycle_score_col=args.cell_cycle_score_col,
     )
 
     if use_replication:

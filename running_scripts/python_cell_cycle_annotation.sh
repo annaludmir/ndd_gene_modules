@@ -63,9 +63,9 @@ mamba activate /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new
 cd /miridan-data/annaludmir/ndd_gene_modules
 
 # Edit these before submitting.
-MODALITY="atac"   # rna | atac
-H5AD_INPUT="/miridan-storage/annaludmir/atac-seq/e88a34d0-d28a-4d10-a8c5-d59f86ba621a.h5ad"
-H5AD_OUTPUT="/miridan-storage/annaludmir/atac-seq/e88a34d0-d28a-4d10-a8c5-d59f86ba621a_cc_replication.h5ad"
+MODALITY="rna"   # rna | atac
+H5AD_INPUT="/miridan-data/annaludmir/ndd_gene_modules/data/human_dev_without_week_5.h5ad"
+H5AD_OUTPUT="/miridan-data/annaludmir/ndd_gene_modules/data/human_dev_without_week_5_cc_annotated.h5ad"
 
 # RNA-specific
 SYM_COL="Gene"
@@ -110,9 +110,14 @@ N_CTRL_PER_REGION="50"      # [background] controls drawn per set feature
 N_BINS="25"                 # [background] signal bins used for matching
 SEED="0"
 
-# Optional threshold overrides. Leave empty to use the defaults for $SCORING
-# (fraction: 0.004/0.002/0.002/0.03; background: 1.0 SD for all four).
-CYCLING_THRESHOLD=""    # e.g. 1.0 under background
+# Cycling vs Non-cycling (promoter path / RNA): the dataset's own cycling score
+# obs column, used as is; cells at or below CYCLING_THRESHOLD (default 0.004,
+# under every SCORING mode) are Non-cycling.
+CELL_CYCLE_SCORE_COL="cell_cycle_score"
+CYCLING_THRESHOLD=""
+
+# Optional phase threshold overrides. Leave empty to use the defaults for
+# $SCORING (fraction: 0.002/0.002/0.03; background: 1.0 SD for all three).
 G1_THRESHOLD=""
 S_THRESHOLD=""
 G2M_THRESHOLD=""
@@ -143,6 +148,7 @@ else
   fi
 fi
 
+EXTRA_ARGS+=(--cell-cycle-score-col "$CELL_CYCLE_SCORE_COL")
 [[ -n "$CYCLING_THRESHOLD" ]] && EXTRA_ARGS+=(--cycling-threshold "$CYCLING_THRESHOLD")
 [[ -n "$G1_THRESHOLD"      ]] && EXTRA_ARGS+=(--g1-threshold      "$G1_THRESHOLD")
 [[ -n "$S_THRESHOLD"       ]] && EXTRA_ARGS+=(--s-threshold       "$S_THRESHOLD")
