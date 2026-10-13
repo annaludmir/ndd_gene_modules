@@ -24,7 +24,8 @@ Phase columns are emitted in cell-cycle order (Non-cycling -> G1 -> S -> G2M
 
 Either axis may be omitted; supplying both annotates against both.
 
-Per gene list, also draws `figures/tf_validation_network_<gene_list>.png`
+Per gene list, also draws `figures/tf_validation_network_<gene_list>.png`,
+split into `..._part<i>of<n>.png` of 2-3 TFs when more than 5 TFs are shown
 (see tf_validation_plot.py): the tf_network graph with each edge split into
 one line per validating progenitor / stem cell type (phases aren't drawn;
 TFs and targets without a validated edge are left out),

@@ -14,6 +14,11 @@ validated in the drawn cell types are dropped before the top-N TFs are picked,
 and targets without a validated edge to a shown TF are dropped. Grey edges
 between the remaining nodes stay. --show-unvalidated-nodes keeps everything.
 
+A gene list with more than MAX_TFS_PER_FIGURE (5) TFs to show is split, in
+TF rank order, into the fewest figures of 2-3 TFs each (sizes as even as
+possible), saved as `..._part<i>of<n>.png`; within each figure, targets need
+a validated edge to one of that figure's TFs.
+
 Only the cell types of one class from --cell-class-json are drawn (default:
 progenitor_and_stem_cells from config_files/atac_cell_classes.json). The
 class's cell types are matched to the CSV's `validated_<cell_type>` columns by
@@ -56,7 +61,8 @@ Inputs:
      results/tf_validation/literature_evidence.
 
 Output:
-  <subfolder>/figures/tf_validation_network_<gene_list>.png
+  <subfolder>/figures/tf_validation_network_<gene_list>.png, or
+  <subfolder>/figures/tf_validation_network_<gene_list>_part<i>of<n>.png
 
 Usage:
   python modules/tf_validation_plot.py \
@@ -270,6 +276,29 @@ def select_plot_pairs(
     return df.copy(), top_tfs
 
 
+MAX_TFS_PER_FIGURE = 5
+TFS_PER_PART       = 3
+
+
+def split_tfs(tfs: list[str]) -> list[list[str]]:
+    """Keep up to MAX_TFS_PER_FIGURE TFs in one figure; otherwise split them,
+    in rank order, into the fewest parts of at most TFS_PER_PART with sizes as
+    even as possible (12 -> 3+3+3+3, 7 -> 3+2+2)."""
+    if len(tfs) <= MAX_TFS_PER_FIGURE:
+        return [list(tfs)]
+    n_parts = -(-len(tfs) // TFS_PER_PART)
+    return [[str(t) for t in part] for part in np.array_split(tfs, n_parts)]
+
+
+def restrict_to_tfs(plot_df: pd.DataFrame, tfs: list[str], validated_only: bool) -> pd.DataFrame:
+    """Rows of `plot_df` for `tfs`; with `validated_only`, also drop targets
+    without a validated edge to one of these TFs."""
+    sub = plot_df[plot_df["tf"].isin(tfs)]
+    if validated_only:
+        sub = sub[sub["target"].isin(set(sub.loc[sub["_groups"].map(bool), "target"]))]
+    return sub
+
+
 # ---------------------------------------------------------------------------
 # Drawing
 # ---------------------------------------------------------------------------
@@ -338,26 +367,19 @@ def _add_colorbar(fig, ax, **kw):
 
 
 def plot_validation_network_connected(
-    df: pd.DataFrame,
+    plot_df: pd.DataFrame,
+    top_tfs: list[str],
     fig_path: Path,
-    top_n: int = 8,
-    title: str = "TF Regulatory Networks",
-    cell_types: list[str] | None = None,
-    legend_title: str = "Validated in cell type",
-    validated_only: bool = True,
+    title: str,
+    groups: dict[str, str],
+    line_specs: dict[str, dict],
+    legend_title: str,
 ) -> None:
-    """Single connected graph (shared targets appear once), mirroring
+    """Single connected graph (shared targets appear once) of `top_tfs` and
+    the rows of `plot_df` (from select_plot_pairs), mirroring
     tf_network.plot_tf_network_connected - same node insertion order and
-    spring-layout seed, so node positions match the original figure."""
+    spring-layout seed."""
     import networkx as nx
-
-    groups     = detect_groups(df, cell_types or [])
-    line_specs = build_line_specs(cell_types or [])
-
-    plot_df, top_tfs = select_plot_pairs(df, groups, top_n, validated_only)
-    if plot_df.empty:
-        print(f"  [skip] {fig_path.name}: no validated pairs to draw")
-        return
 
     G = nx.DiGraph()
     for tf in top_tfs:
@@ -438,29 +460,23 @@ def plot_validation_network_connected(
     fig.suptitle(title, fontsize=12)
     plt.tight_layout()
     _add_legends(fig, groups, line_specs, has_unvalidated, legend_title,
-                 "_motif_hit" in df.columns, "_literature" in df.columns)
+                 "_motif_hit" in plot_df.columns, "_literature" in plot_df.columns)
     fig.savefig(fig_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"  Saved: {fig_path.name}")
 
 
 def plot_validation_network_hub_spoke(
-    df: pd.DataFrame,
+    plot_df: pd.DataFrame,
+    top_tfs: list[str],
     fig_path: Path,
-    top_n: int = 8,
-    title: str = "TF Regulatory Networks",
-    cell_types: list[str] | None = None,
-    legend_title: str = "Validated in cell type",
-    validated_only: bool = True,
+    title: str,
+    groups: dict[str, str],
+    line_specs: dict[str, dict],
+    legend_title: str,
 ) -> None:
-    """One hub-and-spoke subplot per TF, mirroring tf_network.plot_tf_network."""
-    groups     = detect_groups(df, cell_types or [])
-    line_specs = build_line_specs(cell_types or [])
-
-    plot_df, top_tfs = select_plot_pairs(df, groups, top_n, validated_only)
-    if plot_df.empty:
-        print(f"  [skip] {fig_path.name}: no validated pairs to draw")
-        return
+    """One hub-and-spoke subplot per TF in `top_tfs`, with the rows of
+    `plot_df` (from select_plot_pairs), mirroring tf_network.plot_tf_network."""
     n_tfs   = len(top_tfs)
     ncols   = min(3, n_tfs)
     nrows   = (n_tfs + ncols - 1) // ncols
@@ -524,7 +540,7 @@ def plot_validation_network_hub_spoke(
     plt.tight_layout()
     _add_colorbar(fig, axes_flat[:n_tfs].tolist(), shrink=0.35, pad=0.04, aspect=20)
     _add_legends(fig, groups, line_specs, has_unvalidated, legend_title,
-                 "_motif_hit" in df.columns, "_literature" in df.columns)
+                 "_motif_hit" in plot_df.columns, "_literature" in plot_df.columns)
     fig.savefig(fig_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"  Saved: {fig_path.name}")
@@ -564,6 +580,7 @@ def plot_validation_run(
     plot_fn = PLOT_STYLES[plot_style]
 
     cell_types   = load_cell_class(cell_class_json, cell_class)
+    line_specs   = build_line_specs(cell_types)
     legend_title = f"Validated in {cell_class.replace('_', ' ')}"
 
     print(f"\nPlotting {len(csvs)} CSV(s) from {run_dir}")
@@ -595,15 +612,38 @@ def plot_validation_run(
             df["_literature"] = [literature_tags.get(k, "") for k in keys]
             n_tagged = int((df["_literature"] != "").sum())
             print(f"  {gene_list}: {n_tagged} pair(s) with literature evidence")
-        plot_fn(
-            df,
-            fig_dir / f"tf_validation_network_{gene_list}.png",
-            top_n=top_n,
-            title=f"TF Regulatory Networks — {gene_list} (ATAC validation)",
-            cell_types=cell_types,
-            legend_title=legend_title,
-            validated_only=validated_only,
-        )
+        groups = detect_groups(df, cell_types)
+        plot_df, top_tfs = select_plot_pairs(df, groups, top_n, validated_only)
+
+        # Clear this gene list's figures from earlier runs, so a split that
+        # changed size doesn't leave stale parts next to the new ones.
+        for old in fig_dir.glob(f"tf_validation_network_{gene_list}.png"):
+            old.unlink()
+        for old in fig_dir.glob(f"tf_validation_network_{gene_list}_part*of*.png"):
+            old.unlink()
+
+        if plot_df.empty:
+            print(f"  [skip] {gene_list}: no validated pairs to draw")
+            continue
+
+        parts = split_tfs(top_tfs)
+        title = f"TF Regulatory Networks — {gene_list} (ATAC validation)"
+        if len(parts) > 1:
+            print(f"  {gene_list}: {len(top_tfs)} TFs -> {len(parts)} figures "
+                  f"({'+'.join(str(len(p)) for p in parts)})")
+        for i, part in enumerate(parts, 1):
+            suffix   = f"_part{i}of{len(parts)}" if len(parts) > 1 else ""
+            part_ttl = (f"{title}\npart {i}/{len(parts)}: {', '.join(part)}"
+                        if len(parts) > 1 else title)
+            plot_fn(
+                restrict_to_tfs(plot_df, part, validated_only),
+                part,
+                fig_dir / f"tf_validation_network_{gene_list}{suffix}.png",
+                title=part_ttl,
+                groups=groups,
+                line_specs=line_specs,
+                legend_title=legend_title,
+            )
 
 
 def run(
