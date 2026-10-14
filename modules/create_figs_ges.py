@@ -6,6 +6,8 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
+from create_figs_ges_for_presentation import fit_labels_in_view
+
 def plot_bar_chart(ges_results_df, output_file, gene_list_name, comparison):
     # ---- Find q-value column robustly ----
     q_candidates = [
@@ -62,7 +64,10 @@ def plot_bar_chart(ges_results_df, output_file, gene_list_name, comparison):
     ax.set_title(f"GSEA enrichment results for {gene_list_name} - {comparison}", pad=14, fontsize=11)
     ax.set_ylabel("NES Score", fontsize=10)
 
-    max_q_text_y = -np.inf
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+
+    q_texts = []
 
     # ---- Add q-value annotations per bar (black if significant, gray otherwise) ----
     if q_col is not None:
@@ -76,7 +81,7 @@ def plot_bar_chart(ges_results_df, output_file, gene_list_name, comparison):
           qv = q_series[i] if i < len(q_series) else np.nan
       
           if np.isfinite(qv):
-              q_txt = "q≈0" if qv == 0.0 else f"q={qv:.2e}"
+              q_txt = f"q={qv:.2e}"
               sig = (qv < 0.05)
           else:
               q_txt = "q=NA"
@@ -92,28 +97,21 @@ def plot_bar_chart(ges_results_df, output_file, gene_list_name, comparison):
               y = 2 * offset
               va = "top"
       
-          # Track highest label
-          if y > max_q_text_y:
-              max_q_text_y = y
-      
-          ax.text(
+          q_texts.append(ax.text(
               x, y, q_txt,
               ha="center", va=va,
               fontsize=8,
               color=txt_color,
               fontweight="bold" if sig else "normal",
               clip_on=False
-          )
+          ))
 
     else:
         print("⚠️ Could not find q-value column. Skipping q-value annotations.")
 
-    # Ensure q-labels never touch the top border
-    if max_q_text_y > ymax:
-        padding = 0.05 * (ymax - ymin)
-        ax.set_ylim(ymin, max_q_text_y + padding)
-  
     plt.tight_layout()
+    # Expand ylim so the q labels fit inside the plot
+    fit_labels_in_view(fig, ax, q_texts)
     plt.savefig(output_file, dpi=300, bbox_inches="tight")
     plt.close(fig)
 

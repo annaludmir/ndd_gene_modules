@@ -3,6 +3,25 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
+def fit_labels_in_view(fig, ax, texts, pad_frac: float = 0.02) -> None:
+    """Raise the top y-limit until every text in `texts` is drawn inside the
+    axes, with a gap of `pad_frac` of the axes height. Measures the rendered
+    text, so a label's full height counts, not just its anchor point."""
+    texts = [t for t in texts if t is not None]
+    if not texts:
+        return
+    for _ in range(5):      # each raise rescales the axis, so re-measure
+        fig.canvas.draw()
+        renderer = fig.canvas.get_renderer()
+        ax_box   = ax.get_window_extent(renderer)
+        text_top = max(t.get_window_extent(renderer).y1 for t in texts)
+        overflow = text_top - (ax_box.y1 - pad_frac * ax_box.height)
+        if overflow <= 0:
+            return
+        ymin, ymax = ax.get_ylim()
+        ax.set_ylim(ymin, ymax + overflow * (ymax - ymin) / ax_box.height)
+
+
 def plot_bar_chart(
     ges_results_df: pd.DataFrame,
     output_file: str,
@@ -120,7 +139,7 @@ def plot_bar_chart(
     ax.tick_params(top=False, right=False)
 
     # ---- annotate significant FDR only (FDR < fdr_sig), always above bar ----
-    max_text_y = -np.inf
+    q_texts = []
     if fdr_col is not None:
         fdr_vals = pd.to_numeric(ges_results_df[fdr_col], errors="coerce").to_numpy()
 
@@ -140,25 +159,20 @@ def plot_bar_chart(
             # - for negative bars: just above y=0 (still above the bar)
             y = (bar_h + offset) if (np.isfinite(bar_h) and bar_h >= 0) else (0 + offset)
 
-            max_text_y = max(max_text_y, y)
-
-            ax.text(
-                x, y, f"q≈0" if fdr == 0.0 else f"q={fdr:.2e}",
+            q_texts.append(ax.text(
+                x, y, f"q={fdr:.2e}",
                 ha="center", va="bottom",
                 fontsize=8,
                 color="black",
                 fontweight="bold",
                 clip_on=False,
-            )
+            ))
     else:
         print("⚠️ Could not find an FDR/q-value column. Skipping FDR annotations.")
 
-    # ---- expand ylim if needed so text doesn't touch border ----
-    if np.isfinite(max_text_y) and max_text_y > ymax:
-        padding = 0.06 * (ymax - ymin)
-        ax.set_ylim(ymin, max_text_y + padding)
-
     plt.tight_layout()
+    # ---- expand ylim so the q labels fit inside the plot ----
+    fit_labels_in_view(fig, ax, q_texts)
     plt.savefig(output_file, dpi=300, bbox_inches="tight")
     plt.close(fig)
 

@@ -43,7 +43,7 @@ def plot_enhanced_gsea(gsea_res, term, cell_type, output_dir, low_ges_warning=Fa
     ax1.set_ylabel('Enrichment Score', fontsize=12)
     ax1.set_title(
         f"{term} enrichment in {cell_type} ges scores\n"
-        f"NES={enrichment_results.get('nes'):.3f}  FDR={enrichment_results.get('fdr'):.3e}",
+        f"NES={enrichment_results.get('nes'):.3f}  FDR={enrichment_results.get('fdr'):.2e}",
         fontsize=14, fontweight='bold'
     )
     ax1.grid(alpha=0.3)
