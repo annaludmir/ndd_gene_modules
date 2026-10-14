@@ -17,8 +17,8 @@ mamba activate /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new
 cd /miridan-data/annaludmir/ndd_gene_modules
 
 # Edit these before submitting.
-H5AD_INPUT="/miridan-data/annaludmir/ndd_gene_modules/data/human_dev_without_week_5.h5ad"
-H5AD_OUTPUT="/miridan-data/annaludmir/ndd_gene_modules/data/human_dev_without_week_5_neuron_type.h5ad"
+H5AD_INPUT="/miridan-data/annaludmir/ndd_gene_modules/data/human_dev_without_week_5_cc_annotated.h5ad"
+H5AD_OUTPUT="/miridan-data/annaludmir/ndd_gene_modules/data/human_dev_without_week_5_cc_annotated_neuron_type.h5ad"
 SYM_COL="Gene"
 CELL_CLASS_COL="CellClass"   # only cells with this == NEURON_CLASS are classified
 NEURON_CLASS="Neuron"
