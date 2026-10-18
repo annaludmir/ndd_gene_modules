@@ -24,9 +24,20 @@ module load mamba/mamba-1.5.8
 mamba activate /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new
 cd /miridan-data/annaludmir/ndd_gene_modules
 
+# Usage:
+#   sbatch running_scripts/python_ges_score.sh [config_yaml]
+# e.g.
+#   sbatch running_scripts/python_ges_score.sh config_files/ges_score_all_layers_neuron_type_config.yaml
+CONFIG="${1:-config_files/ges_score_all_layers_cell_phase_config.yaml}"
+
+if [[ ! -f "$CONFIG" ]]; then
+  echo "Error: config file not found: $CONFIG"
+  exit 1
+fi
+echo "GES config: $CONFIG"
+
 mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new \
-  python -u modules/specificity_score_calculations.py \
-  config_files/ges_score_all_layers_cell_phase_config.yaml
+  python -u modules/specificity_score_calculations.py "$CONFIG"
 
 rc=$?
 echo "Python exit code: $rc"
