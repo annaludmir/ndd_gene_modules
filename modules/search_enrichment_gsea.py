@@ -7,6 +7,8 @@ import shutil
 import gseapy as gp
 import statsmodels.stats.multitest as smm
 import matplotlib.pyplot as plt
+
+from create_figs_ges_for_presentation import DEFAULT_PERMUTATION_NUM, format_q, q_label
 from pathlib import Path
 
 
@@ -41,9 +43,11 @@ def plot_enhanced_gsea(gsea_res, term, cell_type, output_dir, low_ges_warning=Fa
     ax1.plot(enrichment_results.get('RES'), color='forestgreen', linewidth=2)
     ax1.axhline(y=0, color='gray', linestyle='--', alpha=0.7)
     ax1.set_ylabel('Enrichment Score', fontsize=12)
+    n_perm = int(getattr(gsea_res, "permutation_num", DEFAULT_PERMUTATION_NUM) or DEFAULT_PERMUTATION_NUM)
     ax1.set_title(
         f"{term} enrichment in {cell_type} ges scores\n"
-        f"NES={enrichment_results.get('nes'):.3f}  FDR={enrichment_results.get('fdr'):.2e}",
+        f"NES={enrichment_results.get('nes'):.3f}  "
+        f"{q_label(enrichment_results.get('fdr'), n_perm, name='FDR')}",
         fontsize=14, fontweight='bold'
     )
     ax1.grid(alpha=0.3)
@@ -165,6 +169,7 @@ def run_gsea(ges_score_path,
                   outdir=str(raw_dir),      # keep GSEApy default raw output
                   min_size=2,
                   max_size=2500,
+                  permutation_num=DEFAULT_PERMUTATION_NUM,
                   seed=6,
                   verbose=True
               )
@@ -191,7 +196,8 @@ def run_gsea(ges_score_path,
                   "FWER p-val": top["FWER p-val"],
                   "Tag %": top["Tag %"],
                   "Gene %": top["Gene %"],
-                  "Lead_genes": top["Lead_genes"]
+                  "Lead_genes": top["Lead_genes"],
+                  "permutation_num": DEFAULT_PERMUTATION_NUM,
               })
 
               # When no GES threshold was applied, warn if all leading genes have GES < 1
@@ -233,6 +239,10 @@ def run_gsea(ges_score_path,
         )[:2]
 
         final_summary["FDR q-val (BH corrected)"] = pvals_corr
+        # Text version for reading: q == 0 is reported as < 1/permutation_num.
+        # The numeric column above is left as is for filtering.
+        final_summary["FDR q-val (BH corrected) reported"] = [
+            format_q(q, DEFAULT_PERMUTATION_NUM) for q in pvals_corr]
 
         final_summary_path = results_folder / "GSEA_final_summary.csv"
         _fmt_pvals(final_summary).to_csv(final_summary_path, index=False)

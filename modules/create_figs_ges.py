@@ -6,7 +6,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
-from create_figs_ges_for_presentation import fit_labels_in_view
+from create_figs_ges_for_presentation import fit_labels_in_view, permutation_num_of, q_label
 
 def plot_bar_chart(ges_results_df, output_file, gene_list_name, comparison):
     # ---- Find q-value column robustly ----
@@ -75,13 +75,14 @@ def plot_bar_chart(ges_results_df, output_file, gene_list_name, comparison):
         offset = 0.03 * y_range
 
         q_series = pd.to_numeric(ges_results_df[q_col], errors="coerce").to_numpy()
+        n_perm   = permutation_num_of(ges_results_df)
 
         for i, rect in enumerate(bars):
           nes = float(rect.get_height())
           qv = q_series[i] if i < len(q_series) else np.nan
       
           if np.isfinite(qv):
-              q_txt = f"q={qv:.2e}"
+              q_txt = q_label(qv, n_perm)
               sig = (qv < 0.05)
           else:
               q_txt = "q=NA"

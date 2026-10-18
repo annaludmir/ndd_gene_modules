@@ -35,6 +35,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import numpy as np
 import pandas as pd
 
+from create_figs_ges_for_presentation import format_q, permutation_num_of
 from enrichment_cal_lists_loop import (
     _conditions_compared_to,
     _find_nes_column,
@@ -83,6 +84,7 @@ def build_rows_from_run_dir(run_dir: Path) -> list[dict]:
     df      = pd.read_csv(summary_path)
     nes_col = _find_nes_column(df)
     q_col   = _find_qval_column(df)
+    n_perm  = permutation_num_of(df)
     if "column" not in df.columns or "condition" not in df.columns or nes_col is None:
         print(f"  [skip] required columns missing in {summary_path}")
         return []
@@ -115,6 +117,8 @@ def build_rows_from_run_dir(run_dir: Path) -> list[dict]:
             "condition_compared_to": ";".join(_conditions_compared_to(cfg, col_name, cond_val)),
             "NES": nes_val,
             "FDR_qval_BH": q_val,
+            # q == 0 is below what the permutations resolve: "<1/permutation_num"
+            "FDR_qval_BH_reported": format_q(q_val, n_perm),
             "is_significant": is_sig,
             "lead_genes": lead_genes,
             "num_of_lead_genes": num_lead,

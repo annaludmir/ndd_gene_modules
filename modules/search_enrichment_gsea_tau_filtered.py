@@ -39,6 +39,7 @@ def _fmt_pvals(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 from search_enrichment_gsea import plot_enhanced_gsea
+from create_figs_ges_for_presentation import DEFAULT_PERMUTATION_NUM, format_q
 
 
 @contextlib.contextmanager
@@ -281,9 +282,9 @@ def run_gsea_tau_filtered(
                     outdir=str(raw_dir),
                     min_size=2,
                     max_size=2500,
+                    permutation_num=DEFAULT_PERMUTATION_NUM,
                     seed=6,
                     verbose=True,
-                    
                 )
             except LookupError:
                 print("  ⚠️ Not enough genes overlap with gene sets — skipping.")
@@ -308,6 +309,7 @@ def run_gsea_tau_filtered(
                 "Tag %": top["Tag %"],
                 "Gene %": top["Gene %"],
                 "Lead_genes": top["Lead_genes"],
+                "permutation_num": DEFAULT_PERMUTATION_NUM,
                 "tau_filter_mode":       "score"      if tau_score_cutoff is not None else "percentile",
                 "tau_score_cutoff":      tau_score_cutoff,
                 "tau_percentile_cutoff": None         if tau_score_cutoff is not None else tau_percentile,
@@ -354,6 +356,9 @@ def run_gsea_tau_filtered(
         final_summary["FDR q-val"].astype(float), method="fdr_bh"
     )[:2]
     final_summary["FDR q-val (BH corrected)"] = pvals_corr
+    # Text version for reading: q == 0 is reported as < 1/permutation_num.
+    final_summary["FDR q-val (BH corrected) reported"] = [
+        format_q(q, DEFAULT_PERMUTATION_NUM) for q in pvals_corr]
 
     summary_path = results_folder / "GSEA_tau_filtered_summary.csv"
     _fmt_pvals(final_summary).to_csv(summary_path, index=False)

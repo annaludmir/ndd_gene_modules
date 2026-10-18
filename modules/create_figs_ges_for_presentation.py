@@ -3,6 +3,42 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
+# GSEApy's prerank default; the pipeline passes it explicitly and records it in
+# the summary CSV ("permutation_num") so q-values can be reported against it.
+DEFAULT_PERMUTATION_NUM = 1000
+
+
+def format_q(q, permutation_num: int = DEFAULT_PERMUTATION_NUM) -> str:
+    """A GSEA q-value as text with 2 decimals. q is estimated by permutation,
+    so q == 0 means no permutation was as extreme: the true value is below
+    1/permutation_num, and is reported as that bound ("<1.00e-03")."""
+    try:
+        q = float(q)
+    except (TypeError, ValueError):
+        return "NA"
+    if not np.isfinite(q):
+        return "NA"
+    if q == 0:
+        return f"<{1.0 / permutation_num:.2e}"
+    return f"{q:.2e}"
+
+
+def q_label(q, permutation_num: int = DEFAULT_PERMUTATION_NUM, name: str = "q") -> str:
+    """format_q as a label: "q=1.23e-02", or "q<1.00e-03" for a zero q."""
+    s = format_q(q, permutation_num)
+    return f"{name}{s}" if s.startswith("<") else f"{name}={s}"
+
+
+def permutation_num_of(df: pd.DataFrame) -> int:
+    """The permutation count recorded in a GSEA summary; the GSEApy default
+    for summaries written before it was recorded."""
+    if "permutation_num" in df.columns:
+        n = pd.to_numeric(df["permutation_num"], errors="coerce").dropna()
+        if len(n):
+            return int(n.iloc[0])
+    return DEFAULT_PERMUTATION_NUM
+
+
 def fit_labels_in_view(fig, ax, texts, pad_frac: float = 0.02) -> None:
     """Raise the top y-limit until every text in `texts` is drawn inside the
     axes, with a gap of `pad_frac` of the axes height. Measures the rendered
@@ -142,6 +178,7 @@ def plot_bar_chart(
     q_texts = []
     if fdr_col is not None:
         fdr_vals = pd.to_numeric(ges_results_df[fdr_col], errors="coerce").to_numpy()
+        n_perm   = permutation_num_of(ges_results_df)
 
         y_range = max(1e-9, (ymax - ymin))
         offset = 0.04 * y_range
@@ -160,7 +197,7 @@ def plot_bar_chart(
             y = (bar_h + offset) if (np.isfinite(bar_h) and bar_h >= 0) else (0 + offset)
 
             q_texts.append(ax.text(
-                x, y, f"q={fdr:.2e}",
+                x, y, q_label(fdr, n_perm),
                 ha="center", va="bottom",
                 fontsize=8,
                 color="black",
