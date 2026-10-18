@@ -60,6 +60,10 @@ def load_config(config_path: str):
     config["gmt_folder"] = resolve(config["gmt_folder"])
     config["gene_list_path"] = resolve(config["gene_list_path"])
     config["ges_results_folder"] = resolve(config["ges_results_folder"])
+    if not config["ges_results_folder"].is_dir():
+        raise FileNotFoundError(
+            f"ges_results_folder not found: {config['ges_results_folder']} — set it to "
+            f"an existing (dated) GES run folder under results/ges_score_results/.")
 
     if config["deseq"].get("enabled", False):
         config["deseq"]["pseudobulk_folder"] = resolve(config["deseq"]["pseudobulk_folder"])
