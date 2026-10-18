@@ -1,0 +1,20 @@
+name_of_run: "ges_score_for_all_layers_neuron_type_v2"
+ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules/"
+data_path: "data/human_dev_without_week_5_cc_annotated_neuron_type.h5ad"
+output_folder: "results/ges_score_results/"
+
+# Excitatory vs inhibitory neurons only: every other cell (non-neurons, and
+# Mixed / Unassigned neurons) is dropped, so each type's background is the
+# other type alone.
+cell_filter: "NeuronType in ['Excitatory', 'Inhibitory']"
+
+column_conditions:
+  NeuronType:
+    - "Excitatory"
+    - "Inhibitory"
+
+expression_threshold: 0.05
+normalize_data: true
+chemistry: "v2"
+permutations: false
+# n_permutations: 500  # optional

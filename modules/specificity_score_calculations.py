@@ -39,6 +39,11 @@ def load_config(config_path: str) -> dict:
         - data_path          (relative or absolute)
         - output_folder      (relative or absolute)
         - column_conditions  (mapping: column -> spec)
+
+    Optional:
+        - cell_filter        obs expression (pandas eval syntax, may use
+                             derived columns); only matching cells are kept,
+                             so they alone form each target's background
     """
     config_path = Path(config_path).expanduser().resolve()
 
@@ -345,6 +350,26 @@ def apply_derived_columns(adata: sc.AnnData, column_conditions: dict) -> None:
             out = np.select(masks, labels, default=None)
             adata.obs[col_name] = out
             continue
+
+def apply_cell_filter(adata: sc.AnnData, expr: Optional[str]) -> sc.AnnData:
+    """Keep only cells matching the obs expression `expr` (no-op if None).
+
+    GES compares each target against every other cell that has a value in the
+    column, so this is how to choose the background: e.g.
+    "NeuronType in ['Excitatory', 'Inhibitory']" compares the two neuron types
+    only with each other. Cells left without a label by derived rules would
+    otherwise form their own "None" group and enter the background."""
+    if not expr:
+        return adata
+    mask = adata.obs.eval(expr)
+    mask = pd.Series(mask, index=adata.obs_names).fillna(False).astype(bool).to_numpy()
+    n_keep = int(mask.sum())
+    print(f"Cell filter: {expr}")
+    print(f"  {adata.n_obs:,} → {n_keep:,} cells")
+    if n_keep == 0:
+        raise ValueError(f"cell_filter keeps 0 cells: {expr}")
+    return adata[mask, :].copy()
+
 
 # -------------------------------------------------------------------
 # Core tau functions
@@ -724,6 +749,7 @@ def run_ges_pipeline(config_path: str):
 
     normalize_data = bool(config.get("normalize_data", True))
     chemistry = config.get("chemistry", None)
+    cell_filter = config.get("cell_filter", None)
     expression_threshold = float(config.get("expression_threshold", 0.05))
     permutations = bool(config.get("permutations", False))
     n_permutations = int(config.get("n_permutations", 500))
@@ -758,6 +784,7 @@ def run_ges_pipeline(config_path: str):
     print(f"• Run directory:        {run_dir}")
     print(f"• Normalize data:       {normalize_data}")
     print(f"• Chemistry:            {chemistry}")
+    print(f"• Cell filter:          {cell_filter}")
     print(f"• Expression threshold: {expression_threshold}")
     print(f"• Permutations:         {permutations}")
     if permutations:
@@ -778,6 +805,9 @@ def run_ges_pipeline(config_path: str):
 
     # Apply derived columns FIRST (so they exist for GES calculation and for saving edited_adata)
     apply_derived_columns(adata, column_conditions)
+
+    # Then the cell filter, so it can refer to derived columns too
+    adata = apply_cell_filter(adata, cell_filter)
 
     # Save edited adata (with derived columns) into metadata
     print("\nSaving edited adata file with derived columns → metadata/edited_adata.h5ad")

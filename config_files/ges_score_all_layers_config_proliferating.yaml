@@ -3,6 +3,10 @@ ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules"
 data_path: "data/human_dev_without_week_5.h5ad"
 output_folder: "results/ges_score_results/"
 
+# Keep only cells matching one of the rules below. Without it, non-proliferating
+# cells (no rule matches) form a "None" group that enters every background.
+cell_filter: "ProliferatingRegions in ['Forebrain', 'Hindbrain', 'Midbrain']"
+
 column_conditions:
   ProliferatingRegions:
     derived:
