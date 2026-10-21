@@ -1,0 +1,44 @@
+name_of_run: "ges_score_for_cortex"
+ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules/"
+data_path: "data/Cortex_EMX1_louvain3_passedQC_PostM_rev1.h5ad"
+output_folder: "results/ges_score_results/"
+
+column_conditions:
+  CellClass:
+    - "Radial glia"
+    - "Neuronal IPC"
+    - "Neuron"
+    - "Glioblast"
+    - "Neuroblast"
+
+  NeuronType:
+    - "Excitatory"
+    - "Inhibitory"
+    - "Mixed"
+    - "Unassigned"
+    
+  NPCs:
+    derived:
+      boolean_expr: "CellClass in ['Radial glia', 'Neuronal IPC']"
+    conditions:
+      - True
+      - False
+
+  Proliferation_CellCycle:
+    derived:
+      rules:
+        Proliferating_Cycling: "(CellClass in ['Radial glia', 'Neuronal IPC', 'Glioblast']) and (CellCycleFraction > 0.004)"
+        Differentiating_Cycling: "(CellClass in ['Neuroblast', 'Neuron']) and (CellCycleFraction > 0.004)"
+        Proliferating_NonCycling: "(CellClass in ['Radial glia', 'Neuronal IPC', 'Glioblast']) and (CellCycleFraction <= 0.004)"
+        Differentiating_NonCycling: "(CellClass in ['Neuroblast', 'Neuron']) and (CellCycleFraction <= 0.004)"
+    conditions: ["Proliferating_Cycling", "Differentiating_Cycling", "Proliferating_NonCycling", "Differentiating_NonCycling"]
+      
+expression_threshold: 0.05
+normalize_data: true
+chemistry: "v3"
+permutations: false
+# n_permutations: 500  # optional
+per_age_analysis: true
+age_column: "Age"
+age_values: [5.0,5.5,6.0,6.599999904632568,6.699999809265137,6.900000095367432,7.0,7.5,8.0,8.100000381469727,8.5,9.199999809265137,9.5,10.0,11.5,12.0,13.0,14.0]        # or a list, e.g. ["5", "5.5", "6"]
+min_cells_per_age: 100
