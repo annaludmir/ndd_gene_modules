@@ -6,9 +6,18 @@ expression, and save the result as a new h5ad. Adds one obs column,
 `NeuronType` (categorical), for cells whose `CellClass` is "Neuron"; every
 other cell is left empty (NaN).
 
-Per neuron, the UMIs of each marker set are summed:
-  excitatory: SLC17A7 (VGLUT1), SLC17A6 (VGLUT2), SLC17A8 (VGLUT3)
-  inhibitory: GAD1, GAD2, SLC32A1 (VGAT)
+Per neuron, the UMIs of each marker set are summed. Each set has the
+neurotransmitter machinery, plus lineage transcription factors that switch on
+earlier, so immature neurons (common in fetal tissue) are not left unassigned:
+  excitatory: SLC17A7 (VGLUT1), SLC17A6 (VGLUT2), SLC17A8 (VGLUT3);
+              NEUROD2, NEUROD6, TBR1 (pallial glutamatergic);
+              EOMES, NEUROG2, NEUROD1 (glutamatergic lineage commitment)
+  inhibitory: GAD1, GAD2, SLC32A1 (VGAT), SLC6A5 (GlyT2, glycinergic);
+              DLX1, DLX2, DLX5, DLX6, LHX6 (forebrain GABAergic),
+              PAX2 (mid/hindbrain GABAergic);
+              ASCL1, GSX2, NKX2-1, PTF1A (GABAergic lineage commitment)
+The lineage-commitment genes are progenitor markers that newborn neurons
+still carry. Only neurons are classified either way.
 
 and the cell is called
   Excitatory  if only excitatory markers are detected, or excitatory UMIs are
@@ -35,8 +44,17 @@ import pandas as pd
 from cell_cycle_annotation import _gene_indices, _symbol_to_var_map
 
 
-EXCITATORY_MARKERS = ["SLC17A7", "SLC17A6", "SLC17A8"]
-INHIBITORY_MARKERS = ["GAD1", "GAD2", "SLC32A1"]
+EXCITATORY_MARKERS = [
+    "SLC17A7", "SLC17A6", "SLC17A8",          # neurotransmitter: VGLUT1/2/3
+    "NEUROD2", "NEUROD6", "TBR1",             # lineage TFs: pallial glutamatergic
+    "EOMES", "NEUROG2", "NEUROD1",            # progenitor commitment: glutamatergic
+]
+INHIBITORY_MARKERS = [
+    "GAD1", "GAD2", "SLC32A1", "SLC6A5",      # neurotransmitter: GAD67/65, VGAT, GlyT2
+    "DLX1", "DLX2", "DLX5", "DLX6", "LHX6",   # lineage TFs: forebrain GABAergic
+    "PAX2",                                   # lineage TF: mid/hindbrain GABAergic
+    "ASCL1", "GSX2", "NKX2-1", "PTF1A",       # progenitor commitment: GABAergic
+]
 
 NEURON_TYPE_COL   = "NeuronType"
 NEURON_TYPE_ORDER = ["Excitatory", "Inhibitory", "Mixed", "Unassigned"]
