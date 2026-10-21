@@ -6,7 +6,9 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
-from create_figs_ges_for_presentation import fit_labels_in_view, permutation_num_of, q_label
+from create_figs_ges_for_presentation import (
+    Q_LABEL_FONTSIZE, add_q_note, fit_labels_in_view, format_q, permutation_num_of,
+)
 
 def plot_bar_chart(ges_results_df, output_file, gene_list_name, comparison):
     # ---- Find q-value column robustly ----
@@ -82,10 +84,10 @@ def plot_bar_chart(ges_results_df, output_file, gene_list_name, comparison):
           qv = q_series[i] if i < len(q_series) else np.nan
       
           if np.isfinite(qv):
-              q_txt = q_label(qv, n_perm)
+              q_txt = format_q(qv, n_perm)
               sig = (qv < 0.05)
           else:
-              q_txt = "q=NA"
+              q_txt = "NA"
               sig = False
       
           txt_color = "black" if sig else "#7a7a7a"
@@ -101,7 +103,7 @@ def plot_bar_chart(ges_results_df, output_file, gene_list_name, comparison):
           q_texts.append(ax.text(
               x, y, q_txt,
               ha="center", va=va,
-              fontsize=8,
+              fontsize=Q_LABEL_FONTSIZE,
               color=txt_color,
               fontweight="bold" if sig else "normal",
               clip_on=False
@@ -110,6 +112,8 @@ def plot_bar_chart(ges_results_df, output_file, gene_list_name, comparison):
     else:
         print("⚠️ Could not find q-value column. Skipping q-value annotations.")
 
+    if q_texts:
+        add_q_note(ax)
     plt.tight_layout()
     # Expand ylim so the q labels fit inside the plot
     fit_labels_in_view(fig, ax, q_texts)

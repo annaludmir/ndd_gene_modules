@@ -29,6 +29,16 @@ def q_label(q, permutation_num: int = DEFAULT_PERMUTATION_NUM, name: str = "q") 
     return f"{name}{s}" if s.startswith("<") else f"{name}={s}"
 
 
+Q_LABEL_FONTSIZE = 7
+
+
+def add_q_note(ax) -> None:
+    """Small note under the title saying what the bar labels are, since they
+    are printed without a "q=" prefix."""
+    ax.text(0.0, 1.01, "numbers above bars: FDR q-value", transform=ax.transAxes,
+            ha="left", va="bottom", fontsize=Q_LABEL_FONTSIZE, color="#555555")
+
+
 def permutation_num_of(df: pd.DataFrame) -> int:
     """The permutation count recorded in a GSEA summary; the GSEApy default
     for summaries written before it was recorded."""
@@ -197,9 +207,9 @@ def plot_bar_chart(
             y = (bar_h + offset) if (np.isfinite(bar_h) and bar_h >= 0) else (0 + offset)
 
             q_texts.append(ax.text(
-                x, y, q_label(fdr, n_perm),
+                x, y, format_q(fdr, n_perm),
                 ha="center", va="bottom",
-                fontsize=8,
+                fontsize=Q_LABEL_FONTSIZE,
                 color="black",
                 fontweight="bold",
                 clip_on=False,
@@ -207,6 +217,8 @@ def plot_bar_chart(
     else:
         print("⚠️ Could not find an FDR/q-value column. Skipping FDR annotations.")
 
+    if q_texts:
+        add_q_note(ax)
     plt.tight_layout()
     # ---- expand ylim so the q labels fit inside the plot ----
     fit_labels_in_view(fig, ax, q_texts)
