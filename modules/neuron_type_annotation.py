@@ -29,6 +29,19 @@ and the cell is called
 adata.X is taken as UMI counts, as in cell_cycle_annotation.py. Both sets'
 UMIs come from the same cell, so library size cancels out of the comparison.
 
+A second column, `NeuronMaturity`, calls the same neurons Immature (young),
+Mature, Intermediate or Unassigned from two more marker sets:
+  immature: DCX, SOX11, SOX4, DPYSL3, CD24, NNAT (newborn / migrating neurons)
+  mature:   RBFOX3 (NeuN), SYP, SYT1, SNAP25, NEFL, NEFM (synaptic, neurofilament)
+These genes differ widely in expression level (SNAP25 dwarfs most immature
+markers), so raw sums would not compare. Per neuron, each marker is depth-
+normalized (counts per 10k) and divided by its mean over all neurons, so every
+gene weighs the same; a set's score is the mean over its genes. Then
+  neuron_maturity_score = log2((mature + eps) / (immature + eps))
+and Mature if score >= log2(--maturity-min-ratio), Immature if <= -that,
+Intermediate in between, Unassigned if no marker of either set is detected.
+Development is a continuum, so Intermediate is expected to be common.
+
 Usage:
   python modules/neuron_type_annotation.py \
     --h5ad-input  data/human_dev_without_week_5.h5ad \
@@ -56,6 +69,14 @@ INHIBITORY_MARKERS = [
     "ASCL1", "GSX2", "NKX2-1", "PTF1A",       # progenitor commitment: GABAergic
 ]
 
+IMMATURE_MARKERS = ["DCX", "SOX11", "SOX4", "DPYSL3", "CD24", "NNAT"]
+MATURE_MARKERS   = ["RBFOX3", "SYP", "SYT1", "SNAP25", "NEFL", "NEFM"]
+
+MATURITY_COL           = "NeuronMaturity"
+MATURITY_SCORE_COL     = "neuron_maturity_score"
+MATURITY_ORDER         = ["Immature", "Intermediate", "Mature", "Unassigned"]
+DEFAULT_MATURITY_RATIO = 1.5
+
 NEURON_TYPE_COL   = "NeuronType"
 NEURON_TYPE_ORDER = ["Excitatory", "Inhibitory", "Mixed", "Unassigned"]
 
@@ -67,6 +88,39 @@ DEFAULT_MIN_RATIO      = 2.0
 def _set_umis(X, rows: np.ndarray, gene_ix: np.ndarray) -> np.ndarray:
     """Per-cell sum of X[rows, gene_ix] (X sparse or dense)."""
     return np.asarray(X[rows][:, gene_ix].sum(axis=1)).ravel()
+
+
+def _neuron_rows(adata, cell_class_col: str, neuron_class: str) -> np.ndarray:
+    """Row indices of cells with obs[cell_class_col] == neuron_class."""
+    if cell_class_col not in adata.obs.columns:
+        raise KeyError(f"obs column '{cell_class_col}' not found; set --cell-class-col. "
+                       f"Available: {list(adata.obs.columns)}")
+    rows = np.flatnonzero((adata.obs[cell_class_col].astype(str) == str(neuron_class)).to_numpy())
+    print(f"  {len(rows):,}/{adata.n_obs:,} cells with {cell_class_col} == '{neuron_class}'")
+    if len(rows) == 0:
+        raise ValueError(f"No cells with {cell_class_col} == '{neuron_class}'. Values: "
+                         f"{sorted(adata.obs[cell_class_col].astype(str).unique())[:20]}")
+    return rows
+
+
+def _marker_sets(adata, sym_col: str, sets: dict[str, list[str]]) -> dict[str, np.ndarray]:
+    """{name: var indices} for each marker set; an entirely missing set is an error."""
+    print(f"  Resolving marker genes (sym_col='{sym_col}'):")
+    sym2var = _symbol_to_var_map(adata, sym_col)
+    var_pos = {v: i for i, v in enumerate(adata.var_names.astype(str))}
+    out = {name: _gene_indices(genes, sym2var, var_pos, name) for name, genes in sets.items()}
+    if any(len(ix) == 0 for ix in out.values()):
+        raise RuntimeError("An entire marker set is missing from adata.var; check --sym-col "
+                           "and the gene naming convention in the h5ad.")
+    return out
+
+
+def _report(labels, order, col: str) -> None:
+    counts = pd.Series(labels).value_counts()
+    print(f"\n  {col} among {len(labels):,} neurons:")
+    for label in order:
+        n = int(counts.get(label, 0))
+        print(f"    {label:12s}  {n:>10,}  ({100.0 * n / len(labels):5.2f}%)")
 
 
 def classify_neurons(exc: np.ndarray, inh: np.ndarray, min_ratio: float) -> np.ndarray:
@@ -90,24 +144,10 @@ def annotate_neuron_type(
 ):
     """Add `NeuronType` to adata.obs (in place) for cells whose
     obs[cell_class_col] == neuron_class; other cells get NaN."""
-    if cell_class_col not in adata.obs.columns:
-        raise KeyError(f"obs column '{cell_class_col}' not found; set --cell-class-col. "
-                       f"Available: {list(adata.obs.columns)}")
-    is_neuron = (adata.obs[cell_class_col].astype(str) == str(neuron_class)).to_numpy()
-    rows = np.flatnonzero(is_neuron)
-    print(f"  {len(rows):,}/{adata.n_obs:,} cells with {cell_class_col} == '{neuron_class}'")
-    if len(rows) == 0:
-        raise ValueError(f"No cells with {cell_class_col} == '{neuron_class}'. Values: "
-                         f"{sorted(adata.obs[cell_class_col].astype(str).unique())[:20]}")
-
-    print(f"  Resolving marker genes (sym_col='{sym_col}'):")
-    sym2var = _symbol_to_var_map(adata, sym_col)
-    var_pos = {v: i for i, v in enumerate(adata.var_names.astype(str))}
-    exc_ix  = _gene_indices(EXCITATORY_MARKERS, sym2var, var_pos, "excitatory")
-    inh_ix  = _gene_indices(INHIBITORY_MARKERS, sym2var, var_pos, "inhibitory")
-    if len(exc_ix) == 0 or len(inh_ix) == 0:
-        raise RuntimeError("An entire marker set is missing from adata.var; check --sym-col "
-                           "and the gene naming convention in the h5ad.")
+    rows = _neuron_rows(adata, cell_class_col, neuron_class)
+    ix = _marker_sets(adata, sym_col, {"excitatory": EXCITATORY_MARKERS,
+                                       "inhibitory": INHIBITORY_MARKERS})
+    exc_ix, inh_ix = ix["excitatory"], ix["inhibitory"]
 
     import scipy.sparse as sp
     X = adata.X.tocsr() if sp.issparse(adata.X) else adata.X
@@ -126,17 +166,73 @@ def annotate_neuron_type(
         "min_ratio": float(min_ratio),
     }
 
-    counts = pd.Series(labels).value_counts()
-    print(f"\n  {NEURON_TYPE_COL} among {len(rows):,} neurons:")
-    for label in NEURON_TYPE_ORDER:
-        n = int(counts.get(label, 0))
-        print(f"    {label:11s}  {n:>10,}  ({100.0 * n / len(rows):5.2f}%)")
+    _report(labels, NEURON_TYPE_ORDER, NEURON_TYPE_COL)
+    return adata
+
+
+def annotate_neuron_maturity(
+    adata,
+    sym_col: str = "Gene",
+    cell_class_col: str = DEFAULT_CELL_CLASS_COL,
+    neuron_class: str = DEFAULT_NEURON_CLASS,
+    min_ratio: float = DEFAULT_MATURITY_RATIO,
+):
+    """Add `NeuronMaturity` and `neuron_maturity_score` to adata.obs (in
+    place) for neurons; other cells get NaN. See the module docstring."""
+    import scipy.sparse as sp
+    rows = _neuron_rows(adata, cell_class_col, neuron_class)
+    ix = _marker_sets(adata, sym_col, {"immature": IMMATURE_MARKERS, "mature": MATURE_MARKERS})
+
+    X = adata.X.tocsr() if sp.issparse(adata.X) else adata.X
+    total = np.asarray(X[rows].sum(axis=1)).ravel()
+    scale = 1e4 / np.where(total > 0, total, 1.0)
+
+    def set_score(gene_ix):
+        sub = X[rows][:, gene_ix]
+        sub = sub.toarray() if sp.issparse(sub) else np.asarray(sub)
+        cp10k = sub * scale[:, None]
+        gene_mean = cp10k.mean(axis=0)
+        keep = gene_mean > 0                      # genes never seen in neurons carry no weight
+        rel = cp10k[:, keep] / gene_mean[keep]
+        detected = (sub[:, keep] > 0).any(axis=1)
+        return (rel.mean(axis=1) if keep.any() else np.zeros(len(rows))), detected
+
+    imm, imm_det = set_score(ix["immature"])
+    mat, mat_det = set_score(ix["mature"])
+    eps = 1e-3
+    score = np.log2((mat + eps) / (imm + eps))
+    cut = np.log2(min_ratio)
+
+    labels = np.full(len(rows), "Intermediate", dtype=object)
+    labels[score >= cut]  = "Mature"
+    labels[score <= -cut] = "Immature"
+    none = ~imm_det & ~mat_det
+    labels[none] = "Unassigned"
+    score[none] = np.nan
+
+    col = np.full(adata.n_obs, None, dtype=object); col[rows] = labels
+    adata.obs[MATURITY_COL] = pd.Categorical(col, categories=MATURITY_ORDER)
+    sc_all = np.full(adata.n_obs, np.nan, dtype=np.float32); sc_all[rows] = score
+    adata.obs[MATURITY_SCORE_COL] = sc_all
+    adata.uns["neuron_maturity_annotation"] = {
+        "immature_markers": [str(g) for g in IMMATURE_MARKERS],
+        "mature_markers":   [str(g) for g in MATURE_MARKERS],
+        "cell_class_col": cell_class_col,
+        "neuron_class": str(neuron_class),
+        "min_ratio": float(min_ratio),
+    }
+
+    q = np.nanpercentile(score, [10, 25, 50, 75, 90])
+    print(f"  {MATURITY_SCORE_COL} (log2 mature/immature) p10/25/50/75/90: "
+          + " / ".join(f"{v:.2f}" for v in q) + f"   cutoffs: ±{cut:.2f}")
+    _report(labels, MATURITY_ORDER, MATURITY_COL)
     return adata
 
 
 def main():
     p = argparse.ArgumentParser(
-        description="Add an excitatory / inhibitory NeuronType obs column to an h5ad.")
+        description="Add excitatory / inhibitory NeuronType and Immature / Mature "
+                    "NeuronMaturity obs columns to an h5ad.")
     p.add_argument("--h5ad-input", required=True, help="Input .h5ad path.")
     p.add_argument("--h5ad-output", default=None,
                    help="Output .h5ad path. Default: <input>_neuron_type.h5ad next to the input.")
@@ -150,6 +246,10 @@ def main():
                    help=f"When both marker sets are detected, one must have at least this "
                         f"many times the other's UMIs to win; otherwise 'Mixed'. "
                         f"Default {DEFAULT_MIN_RATIO}.")
+    p.add_argument("--maturity-min-ratio", type=float, default=DEFAULT_MATURITY_RATIO,
+                   help=f"Mature / Immature when one set's normalized score is at least this "
+                        f"many times the other's; otherwise 'Intermediate'. "
+                        f"Default {DEFAULT_MATURITY_RATIO}.")
     args = p.parse_args()
 
     in_path  = Path(args.h5ad_input).resolve()
@@ -165,6 +265,9 @@ def main():
 
     annotate_neuron_type(adata, sym_col=args.sym_col, cell_class_col=args.cell_class_col,
                          neuron_class=args.neuron_class, min_ratio=args.min_ratio)
+    annotate_neuron_maturity(adata, sym_col=args.sym_col, cell_class_col=args.cell_class_col,
+                             neuron_class=args.neuron_class,
+                             min_ratio=args.maturity_min_ratio)
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     print(f"\nSaving: {out_path}")

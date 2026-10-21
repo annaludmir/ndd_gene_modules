@@ -23,6 +23,7 @@ SYM_COL="Gene"
 CELL_CLASS_COL="CellClass"   # only cells with this == NEURON_CLASS are classified
 NEURON_CLASS="Neuron"
 MIN_RATIO="2"                # both marker sets detected: winner needs >= this x the other's UMIs
+MATURITY_MIN_RATIO="1.5"     # Mature / Immature: one set's normalized score >= this x the other's
 
 mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new \
   python -u modules/neuron_type_annotation.py \
@@ -31,7 +32,8 @@ mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new \
     --sym-col "$SYM_COL" \
     --cell-class-col "$CELL_CLASS_COL" \
     --neuron-class "$NEURON_CLASS" \
-    --min-ratio "$MIN_RATIO"
+    --min-ratio "$MIN_RATIO" \
+    --maturity-min-ratio "$MATURITY_MIN_RATIO"
 
 rc=$?
 echo "Python exit code: $rc"
