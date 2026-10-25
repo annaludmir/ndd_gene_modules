@@ -104,7 +104,7 @@ FORCE_G2M="false"           # G2M is auto-disabled when capture variation hides 
 #                as a z-score. Thresholds are in SDs and comparable across
 #                sets. The run also prints a per-set 'signal' ratio; a value
 #                near 1 means that set carries no real cell-to-cell structure.
-SCORING="background"
+SCORING="fraction"
 N_BACKGROUND_GENES="5000"   # [background + fragments] size of the control pool
 N_CTRL_PER_REGION="50"      # [background] controls drawn per set feature
 N_BINS="25"                 # [background] signal bins used for matching
