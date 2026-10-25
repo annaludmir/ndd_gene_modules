@@ -1,0 +1,20 @@
+name_of_run: "ges_score_for_cortex_neuron_maturity_v2"
+ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules/"
+data_path: "data/Cortex_EMX1_louvain3_passedQC_PostM_rev1_neuron_type.h5ad"
+output_folder: "results/ges_score_results/"
+
+# Neurons with a maturity call only: non-neurons and Unassigned neurons are
+# dropped, so each maturity group's background is the other two groups.
+cell_filter: "NeuronMaturity in ['Immature', 'Intermediate', 'Mature']"
+
+column_conditions:
+  NeuronMaturity:
+    - "Immature"
+    - "Intermediate"
+    - "Mature"
+
+expression_threshold: 0.05
+normalize_data: true
+chemistry: "v2"
+permutations: false
+# n_permutations: 500  # optional
