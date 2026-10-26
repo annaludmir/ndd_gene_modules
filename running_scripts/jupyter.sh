@@ -3,7 +3,7 @@
 #SBATCH --mem=500G
 #SBATCH --account=miridan-users_v2  
 # # SBATCH --account=public-users_v2
-# # SBATCH --partition=power-general-public-pool
+# # SBATCH --partition=power-general-shared-pool
 # #SBATCH --qos=public
 #SBATCH --partition=gpu-miridan-pool 
 #SBATCH --qos=owner

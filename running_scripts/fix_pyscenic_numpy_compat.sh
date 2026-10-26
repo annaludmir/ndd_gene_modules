@@ -8,7 +8,7 @@
 #SBATCH --error=/miridan-data/annaludmir/jobs_output/%j.err
 #SBATCH --time=0-00:10:00
 #SBATCH --qos=public
-#SBATCH --partition=power-general-public-pool
+#SBATCH --partition=power-general-shared-pool
 #SBATCH --qos=public
 #SBATCH --cpus-per-task=8
 

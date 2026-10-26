@@ -8,7 +8,7 @@
 #SBATCH --error=/miridan-data/annaludmir/jobs_output/%j.err
 #SBATCH --time=0-06:00:00
 # # public
-# #SBATCH --partition=power-general-public-pool
+# #SBATCH --partition=power-general-shared-pool
 # #SBATCH --qos=public
 # # miris partition
 #SBATCH --partition=gpu-miridan-pool
