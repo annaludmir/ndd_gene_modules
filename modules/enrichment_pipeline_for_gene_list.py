@@ -64,6 +64,9 @@ def load_config(config_path: str):
         raise FileNotFoundError(
             f"ges_results_folder not found: {config['ges_results_folder']} — set it to "
             f"an existing (dated) GES run folder under results/ges_score_results/.")
+    # Columns from their own GES run carry their own ges_results_folder
+    from enrichment_columns import resolve_column_ges_folders
+    resolve_column_ges_folders(config.get("column_conditions_for_gsea", {}), root)
 
     if config["deseq"].get("enabled", False):
         config["deseq"]["pseudobulk_folder"] = resolve(config["deseq"]["pseudobulk_folder"])

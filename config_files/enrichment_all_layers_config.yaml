@@ -46,5 +46,20 @@ column_conditions_for_gsea:
     - "Midbrain_General"
     - "Hindbrain_General"
 
+  NeuronType:
+    # scored in its own GES run
+    ges_results_folder: "results/ges_score_results/ges_score_for_all_layers_neuron_type_20261026"
+    conditions:
+      - "Excitatory"
+      - "Inhibitory"
+
+  NeuronMaturity:
+    # scored in its own GES run
+    ges_results_folder: "results/ges_score_results/ges_score_for_all_layers_neuron_maturity_20261030"
+    conditions:
+      - "Immature"
+      - "Intermediate"
+      - "Mature"
+
 keep_only_significant: false
 nes_keep_threshold: 1.5

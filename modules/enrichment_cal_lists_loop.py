@@ -64,8 +64,9 @@ def _conditions_compared_to(base_cfg: dict, column: str, condition_value: str) -
     """
     From base config (column_conditions_for_gsea), return other condition values for this column.
     """
+    from enrichment_columns import column_conditions
     cc = base_cfg.get("column_conditions_for_gsea", {})
-    vals = cc.get(column, [])
+    vals = column_conditions(cc.get(column, []))
     # normalize to strings for stable comparisons
     vals = [str(v) for v in vals]
     cond = str(condition_value)

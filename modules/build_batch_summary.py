@@ -36,6 +36,7 @@ import numpy as np
 import pandas as pd
 
 from create_figs_ges_for_presentation import format_q, permutation_num_of
+from enrichment_columns import column_ges_folder
 from enrichment_cal_lists_loop import (
     _conditions_compared_to,
     _find_nes_column,
@@ -73,8 +74,17 @@ def build_rows_from_run_dir(run_dir: Path) -> list[dict]:
         if gene_list_path.exists() else np.nan
     )
 
-    ges_folder   = _resolve_relative(cfg.get("ges_results_folder", ""), root)
-    ges_cfg_path = _locate_ges_config_in_folder(ges_folder)
+    # Columns may come from their own GES run, so the GES config is per column
+    col_specs = cfg.get("column_conditions_for_gsea", {}) or {}
+    default_ges = cfg.get("ges_results_folder", "")
+    ges_cfg_by_col: dict[str, str | None] = {}
+
+    def ges_cfg_for(column: str):
+        if column not in ges_cfg_by_col:
+            folder = column_ges_folder(col_specs.get(column), default_ges)
+            ges_cfg_by_col[column] = _locate_ges_config_in_folder(
+                _resolve_relative(folder, root))
+        return ges_cfg_by_col[column]
 
     summary_path = run_dir / "data" / "enrichment_results" / "GSEA" / "GSEA_final_summary.csv"
     if not summary_path.exists():
@@ -109,7 +119,7 @@ def build_rows_from_run_dir(run_dir: Path) -> list[dict]:
         rows.append({
             "run_name": run_name,
             "enrichment_config_path": str(cfg_path),
-            "ges_config_path": ges_cfg_path,
+            "ges_config_path": ges_cfg_for(col_name),
             "gene_list_file_name": gene_list_path.name,
             "num_genes_in_gene_list": gene_list_n,
             "column_condition_title": col_name,

@@ -40,6 +40,7 @@ def _fmt_pvals(df: pd.DataFrame) -> pd.DataFrame:
 
 from search_enrichment_gsea import plot_enhanced_gsea
 from create_figs_ges_for_presentation import DEFAULT_PERMUTATION_NUM, format_q
+from enrichment_columns import column_conditions as _conditions_of, column_ges_folder
 
 
 @contextlib.contextmanager
@@ -195,7 +196,9 @@ def run_gsea_tau_filtered(
 
     summary_rows = []
 
-    for column, condition_list in column_conditions.items():
+    for column, spec in column_conditions.items():
+        condition_list  = _conditions_of(spec)
+        column_ges_path = column_ges_folder(spec, ges_score_path)
         if column not in tau_cache:
             tau_df = load_tau_scores(tau_scores_dir, column)
             if tau_df is None:
@@ -231,7 +234,7 @@ def run_gsea_tau_filtered(
         for condition in condition_list:
             print(f"\nRunning Tau-filtered GSEA: {column} → {condition}")
 
-            ges_path = Path(ges_score_path) / "data" / f"ges_spec_{column}_{condition}.csv"
+            ges_path = Path(column_ges_path) / "data" / f"ges_spec_{column}_{condition}.csv"
             if not ges_path.exists():
                 print(f"  ⚠️ Missing GES file: {ges_path} — skipping.")
                 continue

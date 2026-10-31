@@ -9,6 +9,7 @@ import statsmodels.stats.multitest as smm
 import matplotlib.pyplot as plt
 
 from create_figs_ges_for_presentation import DEFAULT_PERMUTATION_NUM, format_q, q_label
+from enrichment_columns import column_conditions as _conditions_of, column_ges_folder
 from pathlib import Path
 
 
@@ -131,13 +132,15 @@ def run_gsea(ges_score_path,
     # --------------------------
     # Run GSEA per column + condition
     # --------------------------
-    for column, condition_list in column_conditions.items():
+    for column, spec in column_conditions.items():
+        # A column may come from its own GES run (see enrichment_columns.py)
+        column_ges_path = column_ges_folder(spec, ges_score_path)
 
-        for condition in condition_list:
+        for condition in _conditions_of(spec):
             print(f"\nRunning GSEA for {column} → {condition}")
 
             # locate the matching GES CSV file
-            ges_path = Path(ges_score_path) / "data" / f"ges_spec_{column}_{condition}.csv"
+            ges_path = Path(column_ges_path) / "data" / f"ges_spec_{column}_{condition}.csv"
             if not ges_path.exists():
                 print(f"⚠️ Missing GES file for {column}/{condition}, skipping.")
                 continue

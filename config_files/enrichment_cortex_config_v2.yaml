@@ -9,7 +9,7 @@ gmt_folder: "data/genes/"
 analysis_mode: "gsea"     # or "deseq" or "both"
 
 gsea:
-  min_ges_score_threshold: 1
+  min_ges_score_threshold: 0
 
 deseq:
   pseudobulk_folder: "data/.../psb/"
@@ -32,6 +32,21 @@ column_conditions_for_gsea:
     - Differentiating_Cycling
     - Proliferating_NonCycling
     - Differentiating_NonCycling
+
+  NeuronType:
+    # scored in its own GES run
+    ges_results_folder: "results/ges_score_results/ges_score_for_cortex_neuron_type_v2_20261030"
+    conditions:
+      - "Excitatory"
+      - "Inhibitory"
+
+  NeuronMaturity:
+    # scored in its own GES run
+    ges_results_folder: "results/ges_score_results/ges_score_for_cortex_neuron_maturity_v2_20261030"
+    conditions:
+      - "Immature"
+      - "Intermediate"
+      - "Mature"
 
 keep_only_significant: false
 nes_keep_threshold: 1.5

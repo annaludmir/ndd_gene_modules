@@ -90,7 +90,8 @@ def _find_qval_column(df: pd.DataFrame) -> str | None:
 
 
 def _conditions_compared_to(cfg: dict, column: str, condition_value: str) -> list[str]:
-    vals = [str(v) for v in cfg.get("column_conditions_for_gsea", {}).get(column, [])]
+    from enrichment_columns import column_conditions
+    vals = [str(v) for v in column_conditions(cfg.get("column_conditions_for_gsea", {}).get(column, []))]
     return [v for v in vals if v != str(condition_value)]
 
 
