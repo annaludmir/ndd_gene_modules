@@ -65,7 +65,7 @@ cd /miridan-data/annaludmir/ndd_gene_modules
 # Edit these before submitting.
 MODALITY="rna"   # rna | atac
 H5AD_INPUT="/miridan-data/annaludmir/ndd_gene_modules/data/human_dev_without_week_5.h5ad"
-H5AD_OUTPUT="/miridan-data/annaludmir/ndd_gene_modules/data/human_dev_without_week_5_cc_annotated.h5ad"
+H5AD_OUTPUT="/miridan-data/annaludmir/ndd_gene_modules/data/human_dev_without_week_5_cc_annotated_fraction.h5ad"
 
 # RNA-specific
 SYM_COL="Gene"
