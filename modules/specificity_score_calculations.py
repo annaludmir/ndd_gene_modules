@@ -29,6 +29,9 @@ except Exception:
 # Config loading
 # -------------------------------------------------------------------
 
+DEFAULT_MIN_GROUP_CELLS = 100
+
+
 def load_config(config_path: str) -> dict:
     """
     Load a YAML configuration file for the GES pipeline.
@@ -44,6 +47,10 @@ def load_config(config_path: str) -> dict:
         - cell_filter        obs expression (pandas eval syntax, may use
                              derived columns); only matching cells are kept,
                              so they alone form each target's background
+        - min_group_cells    minimum cells in a target and in its background
+                             (default 100); targets below it are skipped, since
+                             GES of a near-empty group is dominated by genes
+                             with no reads there and comes out huge
     """
     config_path = Path(config_path).expanduser().resolve()
 
@@ -751,6 +758,7 @@ def run_ges_pipeline(config_path: str):
     chemistry = config.get("chemistry", None)
     cell_filter = config.get("cell_filter", None)
     expression_threshold = float(config.get("expression_threshold", 0.05))
+    min_group_cells = int(config.get("min_group_cells", DEFAULT_MIN_GROUP_CELLS))
     permutations = bool(config.get("permutations", False))
     n_permutations = int(config.get("n_permutations", 500))
     species = config.get("species", "human")
@@ -786,6 +794,7 @@ def run_ges_pipeline(config_path: str):
     print(f"• Chemistry:            {chemistry}")
     print(f"• Cell filter:          {cell_filter}")
     print(f"• Expression threshold: {expression_threshold}")
+    print(f"• Min group cells:      {min_group_cells}")
     print(f"• Permutations:         {permutations}")
     if permutations:
         print(f"• Num permutations:     {n_permutations}")
@@ -867,6 +876,15 @@ def run_ges_pipeline(config_path: str):
 
             if target_data.n_obs == 0:
                 print(f"  ⚠️ target '{target_raw}' has zero cells → skipping")
+                continue
+
+            # Background = cells with any other label in this column
+            col_values = adata.obs[condition_col]
+            n_background = int((col_values.notna() & ~target_mask).sum())
+            if target_data.n_obs < min_group_cells or n_background < min_group_cells:
+                print(f"  ⚠️ '{target_raw}': {target_data.n_obs:,} target vs {n_background:,} "
+                      f"background cells (< min_group_cells={min_group_cells}) → skipping; "
+                      f"GES of a near-empty group is not meaningful")
                 continue
 
             # Filter genes by expression threshold in target group

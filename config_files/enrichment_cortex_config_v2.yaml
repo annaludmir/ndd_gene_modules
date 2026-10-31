@@ -33,13 +33,6 @@ column_conditions_for_gsea:
     - Proliferating_NonCycling
     - Differentiating_NonCycling
 
-  NeuronType:
-    # scored in its own GES run
-    ges_results_folder: "results/ges_score_results/ges_score_for_cortex_neuron_type_v2_20261030"
-    conditions:
-      - "Excitatory"
-      - "Inhibitory"
-
   NeuronMaturity:
     # scored in its own GES run
     ges_results_folder: "results/ges_score_results/ges_score_for_cortex_neuron_maturity_v2_20261030"
