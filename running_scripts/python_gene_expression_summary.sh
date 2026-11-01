@@ -45,6 +45,7 @@ mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new python modul
 #  --wilcoxon-region Forebrain \
 #  --wilcoxon-compare-all-region-pairs \
 #  --export-significant-gene-boxplots \
+#  --export-all-gene-boxplots \
 
 rc=$?
 echo "Python exit code: $rc"
