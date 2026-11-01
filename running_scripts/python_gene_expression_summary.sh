@@ -46,6 +46,8 @@ mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new python modul
 #  --wilcoxon-compare-all-region-pairs \
 #  --export-significant-gene-boxplots \
 #  --export-all-gene-boxplots \
+#  --dotplot-cell-filter "cell_cycle_score > 0.004" \
+#                                # proliferating cells only; cortex file: "CellCycleFraction > 0.004"
 
 rc=$?
 echo "Python exit code: $rc"

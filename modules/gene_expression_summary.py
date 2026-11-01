@@ -695,12 +695,28 @@ def get_requested_region_pairs(selected_region, compare_all_region_pairs):
     ]
 
 
+def _dot_stats(expr_df, gene, mask):
+    """Per meta-region (n_expressing, n_total, mean expression of expressing
+    cells) over the cells in `mask` (all cells if None) — the dot plot's data."""
+    sub = expr_df if mask is None else expr_df.loc[mask]
+    stats = []
+    for region_name in META_REGIONS:
+        vals = sub.loc[sub["meta_region"] == region_name, gene].astype(float)
+        expressing = vals[vals > 0]
+        stats.append((int(len(expressing)), int(len(vals)),
+                      float(expressing.mean()) if len(expressing) else 0.0))
+    return stats
+
+
 def _save_gene_region_plots(
     out_dir, gene, region_values, region_labels, n_expressing_per_region,
     n_total_per_region, subtitle, enrichment_label, colors,
+    dot_stats=None, dot_population=None,
 ):
     """Save one gene's boxplot (expressing cells per region) and dot plot
-    (fraction expressing as size, mean expression as colour) into out_dir."""
+    (fraction expressing as size, mean expression as colour) into out_dir.
+    `dot_stats` (from _dot_stats) lets the dot plot use a different cell
+    population than the boxplot, named by `dot_population`."""
     # --- Boxplot ---
     plot_path = out_dir / f"{sanitize_name(gene)}.png"
 
@@ -733,24 +749,29 @@ def _save_gene_region_plots(
     plt.close(fig)
 
     # --- Dot plot: size = fraction expressing, color = mean expression ---
+    if dot_stats is not None:
+        n_expressing_per_region = [n_e for n_e, _, _ in dot_stats]
+        n_total_per_region = [n_t for _, n_t, _ in dot_stats]
+        mean_exprs = [m for _, _, m in dot_stats]
+    else:
+        mean_exprs = [float(np.mean(v)) if len(v) else 0.0 for v in region_values]
     fractions = [
         n_e / n_t if n_t > 0 else 0.0
         for n_e, n_t in zip(n_expressing_per_region, n_total_per_region)
     ]
-    mean_exprs = [float(np.mean(v)) if len(v) else 0.0 for v in region_values]
     dot_path = out_dir / f"{sanitize_name(gene)}_dot_plot.png"
 
     MAX_DOT_SIZE = 600
     dot_sizes = [max(30.0, f * MAX_DOT_SIZE) for f in fractions]
     expr_max = max(mean_exprs) if max(mean_exprs) > 0 else 1.0
 
-    fig, ax = plt.subplots(figsize=(5.5, 2.8))
+    fig, ax = plt.subplots(figsize=(5.5, 3.4))
     sc = ax.scatter(
         range(len(region_labels)),
         [0] * len(region_labels),
         s=dot_sizes,
         c=mean_exprs,
-        cmap="Reds",
+        cmap="viridis",
         vmin=0,
         vmax=expr_max,
         edgecolors="#444444",
@@ -786,14 +807,26 @@ def _save_gene_region_plots(
                     edgecolors="#444444", linewidths=0.5, label=f"{int(f * 100)}%")
         for f in [0.25, 0.50, 0.75, 1.0]
     ]
+    # Size legend in one row below the plot, its title as the first entry so
+    # nothing sits above the circles
+    title_handle = plt.Line2D([], [], linestyle="none", marker="none")
     ax.legend(
-        handles=legend_handles, title="% expressing",
-        loc="upper left", frameon=True, fontsize=7, title_fontsize=7,
+        handles=[title_handle] + legend_handles,
+        labels=["% expressing:"] + [h.get_label() for h in legend_handles],
+        loc="upper center", bbox_to_anchor=(0.5, -0.24), ncol=5,
+        frameon=False, fontsize=7,
+        columnspacing=2.2, handletextpad=2.4, borderaxespad=0.0,
+        handleheight=3.2, handlelength=0.6,
     )
 
-    ax.set_title(gene, fontsize=12, pad=10)
-    ax.text(0.5, 1.08, enrichment_label, transform=ax.transAxes,
+    # Enrichment label (and the cell population) just above the axes, the
+    # gene title above that, padded so the two never overlap
+    label_lines = [enrichment_label]
+    if dot_population:
+        label_lines.append(f"% expressing and mean: {dot_population}")
+    ax.text(0.5, 1.03, "\n".join(label_lines), transform=ax.transAxes,
             ha="center", va="bottom", fontsize=8)
+    ax.set_title(gene, fontsize=12, pad=12 + 11 * len(label_lines))
 
     fig.tight_layout()
     fig.savefig(dot_path, dpi=300, bbox_inches="tight")
@@ -808,6 +841,8 @@ def create_significant_gene_boxplots(
     selected_region,
     compare_all_region_pairs=False,
     sym_col="Gene",
+    dot_mask=None,
+    dot_population=None,
 ):
     """Save per-gene boxplots across all meta-regions for strong requested enrichments."""
     expr_df, found_genes = build_expression_dataframe(adata, genes, sym_col=sym_col)
@@ -901,6 +936,8 @@ def create_significant_gene_boxplots(
             _save_gene_region_plots(
                 region_dir, gene, region_values, region_labels, n_expressing_per_region,
                 n_total_per_region, subtitle, enrichment_label, colors,
+                dot_stats=_dot_stats(expr_df, gene, dot_mask) if dot_mask is not None else None,
+                dot_population=dot_population,
             )
             n_saved_plots += 1
 
@@ -916,6 +953,8 @@ def create_all_gene_boxplots(
     per_gene_wilcoxon_summary,
     output_dir,
     sym_col="Gene",
+    dot_mask=None,
+    dot_population=None,
 ):
     """Save a boxplot and dot plot for every leading gene, whatever its
     significance, across all meta-regions. The plot names the regions in which
@@ -972,6 +1011,8 @@ def create_all_gene_boxplots(
         _save_gene_region_plots(
             output_dir, gene, region_values, region_labels, n_expressing_per_region,
             n_total_per_region, subtitle, enrichment_label, colors,
+            dot_stats=_dot_stats(expr_df, gene, dot_mask) if dot_mask is not None else None,
+            dot_population=dot_population,
         )
         n_saved_plots += 1
 
@@ -1316,6 +1357,7 @@ def create_gene_expression_summary(
     wilcoxon_compare_all_region_pairs=False,
     export_significant_gene_boxplots=False,
     export_all_gene_boxplots=False,
+    dotplot_cell_filter=None,
     chemistry=DEFAULT_CHEMISTRY,
     chemistry_col=DEFAULT_CHEMISTRY_COL,
     region_pairs=None,
@@ -1436,6 +1478,16 @@ def create_gene_expression_summary(
         all_pairs_per_gene_wilcoxon_summary,
         region_pair_counts_plot_path,
     )
+    # Optional: dot plots over a cell subset (e.g. proliferating cells only)
+    dot_mask, dot_population = None, None
+    if dotplot_cell_filter:
+        dot_mask = (pd.Series(prepared_adata.obs.eval(dotplot_cell_filter),
+                              index=prepared_adata.obs_names)
+                    .fillna(False).astype(bool).to_numpy())
+        dot_population = f"{dotplot_cell_filter} ({int(dot_mask.sum()):,} cells)"
+        print(f"Dot plots use cells with {dotplot_cell_filter}: "
+              f"{int(dot_mask.sum()):,}/{len(dot_mask):,}")
+
     boxplot_export_result = {
         "significant_gene_boxplots_dir": None,
         "n_significant_gene_boxplots": 0,
@@ -1450,6 +1502,8 @@ def create_gene_expression_summary(
             selected_region=wilcoxon_region,
             compare_all_region_pairs=wilcoxon_compare_all_region_pairs,
             sym_col=sym_col,
+            dot_mask=dot_mask,
+            dot_population=dot_population,
         )
 
     all_boxplot_result = {"all_gene_boxplots_dir": None, "n_all_gene_boxplots": 0}
@@ -1460,6 +1514,8 @@ def create_gene_expression_summary(
             per_gene_wilcoxon_summary=all_pairs_per_gene_wilcoxon_summary,
             output_dir=output_dir / "all_gene_boxplots",
             sym_col=sym_col,
+            dot_mask=dot_mask,
+            dot_population=dot_population,
         )
 
     return {
@@ -1600,6 +1656,16 @@ def build_arg_parser():
         ),
     )
     parser.add_argument(
+        "--dotplot-cell-filter",
+        default=None,
+        help=(
+            "obs expression selecting the cells the dot plots summarize, e.g. "
+            "\"cell_cycle_score > 0.004\" (human_dev) or \"CellCycleFraction > 0.004\" "
+            "(cortex) for proliferating cells only. Both % expressing and mean expression "
+            "use only these cells. Boxplots and Wilcoxon tests are unaffected."
+        ),
+    )
+    parser.add_argument(
         "--export-all-gene-boxplots",
         action="store_true",
         help=(
@@ -1654,6 +1720,7 @@ if __name__ == "__main__":
         wilcoxon_compare_all_region_pairs=args.wilcoxon_compare_all_region_pairs,
         export_significant_gene_boxplots=args.export_significant_gene_boxplots,
         export_all_gene_boxplots=args.export_all_gene_boxplots,
+        dotplot_cell_filter=args.dotplot_cell_filter,
         chemistry=None if args.chemistry == "None" else args.chemistry,
         chemistry_col=args.chemistry_col,
         region_pairs=args.region_pairs,
