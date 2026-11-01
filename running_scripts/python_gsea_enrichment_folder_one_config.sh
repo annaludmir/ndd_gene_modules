@@ -34,6 +34,11 @@
 # Usage:
 #   sbatch running_scripts/python_gsea_enrichment_folder_one_config.sh \
 #       <gene_list_dir> <config_yaml> [run_name_prefix] [config_label]
+#
+# A gene list whose run fails (e.g. a CSV that is not a gene list) is reported
+# and skipped; the rest still run and the batch summary covers the ones that
+# worked. To stop at the first failure instead:
+#   CONTINUE_ON_ERROR=false sbatch running_scripts/python_gsea_enrichment_folder_one_config.sh ...
 
 set -euo pipefail
 
@@ -46,6 +51,7 @@ GENE_LIST_DIR="${1:-}"
 BASE_CONFIG="${2:-}"
 RUN_NAME_PREFIX="${3:-}"
 CONFIG_LABEL="${4:-}"
+CONTINUE_ON_ERROR="${CONTINUE_ON_ERROR:-true}"
 
 if [[ -z "$GENE_LIST_DIR" || -z "$BASE_CONFIG" ]]; then
   echo "Usage: sbatch running_scripts/python_gsea_enrichment_folder_one_config.sh <gene_list_dir> <config_yaml> [run_name_prefix] [config_label]"
@@ -114,8 +120,10 @@ run_gene_list() {
   echo "Run name: $run_name"
   echo "Using temporary config: $temp_config"
 
-  mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new \
-    python -u "$PIPELINE_SCRIPT" "$temp_config"
+  if ! mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new \
+      python -u "$PIPELINE_SCRIPT" "$temp_config"; then
+    return 1
+  fi
 
   # Record every run dir the pipeline just created (name follows the pattern
   #   "{run_name}_threshold_{min_ges_score_threshold}_{YYYYMMDD}")
@@ -138,16 +146,29 @@ fi
 echo "Found ${#csv_files[@]} gene list CSV files under: $GENE_LIST_DIR"
 echo "Config: $BASE_CONFIG"
 
+failed=()
 for gene_list_path in "${csv_files[@]}"; do
   echo
   echo "============================================================"
   echo "Processing gene list: ${gene_list_path#"$GENE_LIST_DIR"/}"
   echo "============================================================"
-  run_gene_list "$gene_list_path"
+  if ! run_gene_list "$gene_list_path"; then
+    failed+=("${gene_list_path#"$GENE_LIST_DIR"/}")
+    if [[ "$CONTINUE_ON_ERROR" != "true" ]]; then
+      echo "[error] run failed for $gene_list_path — stopping (CONTINUE_ON_ERROR=$CONTINUE_ON_ERROR)."
+      exit 1
+    fi
+    echo "[error] run failed for $gene_list_path — skipping it and continuing."
+  fi
 done
 
 echo
 echo "Completed all enrichment runs for directory: $GENE_LIST_DIR"
+echo "  succeeded: $(( ${#csv_files[@]} - ${#failed[@]} ))/${#csv_files[@]}"
+if [[ ${#failed[@]} -gt 0 ]]; then
+  echo "  FAILED (${#failed[@]}) — see the traceback above each:"
+  printf '    %s\n' "${failed[@]}"
+fi
 
 # --- Batch summary CSV ----------------------------------------------------
 if [[ -s "$MANIFEST_FILE" ]]; then
@@ -171,4 +192,10 @@ if [[ -s "$MANIFEST_FILE" ]]; then
 else
   echo
   echo "[warn] No run dirs were recorded — skipping batch summary."
+fi
+
+# Exit non-zero only when every gene list failed, so a few bad CSVs don't mark
+# the whole job as failed (or break a dependent --dependency=afterok job).
+if [[ ${#failed[@]} -eq ${#csv_files[@]} ]]; then
+  exit 1
 fi
