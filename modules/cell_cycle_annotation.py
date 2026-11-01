@@ -517,9 +517,13 @@ def _cycling_score_from_obs(adata, col: str, threshold: float) -> np.ndarray:
             f"obs column '{col}' not found; the cycling / Non-cycling call needs the "
             f"dataset's cell-cycle score (set --cell-cycle-score-col). "
             f"Available: {list(adata.obs.columns)}")
-    score = pd.to_numeric(adata.obs[col], errors="coerce").to_numpy(dtype=float)
+    score = pd.to_numeric(adata.obs[col], errors="coerce").to_numpy()
+    # Keep the stored float precision (often float32): the cutoff is compared
+    # at that precision, so a stored 0.004 counts as 0.004 (see _above_cutoff)
+    if not np.issubdtype(score.dtype, np.floating):
+        score = score.astype(np.float64)
     valid = ~np.isnan(score)
-    n_cyc = int((score[valid] > threshold).sum())
+    n_cyc = int(_above_cutoff(score[valid], threshold).sum())
     q = np.nanpercentile(score, [10, 50, 90]) if valid.any() else [np.nan] * 3
     print(f"  Cycling from obs['{col}'] (as is): p10={q[0]:.4g}  median={q[1]:.4g}  "
           f"p90={q[2]:.4g}  |  > {threshold:g}: {n_cyc:,}/{int(valid.sum()):,} cells")
@@ -890,6 +894,16 @@ def _drop_regions_overlapping(regions, region_gene, blocked_regions):
     return keep_r, keep_g
 
 
+def _above_cutoff(score: np.ndarray, threshold: float) -> np.ndarray:
+    """score > threshold, compared at the score's own float precision. A float32
+    0.004 is 0.0040000002 in float64, so a full-precision comparison would call
+    a cell sitting exactly at the cutoff cycling."""
+    score = np.asarray(score)
+    if np.issubdtype(score.dtype, np.floating):
+        return score > score.dtype.type(threshold)
+    return score > threshold
+
+
 def _classify_phases(cycling_score, g1_frac, s_frac, g2m_frac,
                      cycling_threshold, g1_threshold, s_threshold, g2m_threshold,
                      has_data=None):
@@ -899,7 +913,7 @@ def _classify_phases(cycling_score, g1_frac, s_frac, g2m_frac,
     valid = ~np.isnan(cycling_score)
     if has_data is not None:
         valid &= np.asarray(has_data, dtype=bool)
-    is_cycling = valid & (cycling_score > cycling_threshold)
+    is_cycling = valid & _above_cutoff(cycling_score, cycling_threshold)
     passes_g1  = np.nan_to_num(g1_frac)  > g1_threshold
     passes_s   = np.nan_to_num(s_frac)   > s_threshold
     passes_g2m = np.nan_to_num(g2m_frac) > g2m_threshold
