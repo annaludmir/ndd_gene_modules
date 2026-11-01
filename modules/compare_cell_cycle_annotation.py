@@ -8,6 +8,9 @@ to explain why their CellCyclePhase calls differ:
   3. total UMIs of shared cells (the phase-fraction denominator)
   4. correlation of the per-cell scores (cycling score and phase scores)
   5. a phase cross-table (% of each file-A phase going to each file-B phase)
+  6. the cells cycling in one file and Non-cycling in the other: both files'
+     cycling scores side by side (stored type, distance from the 0.004
+     cutoff, scale between files), saved to cycling_disagreement_cells.csv
 
 Files are opened in backed mode; only shared cells' rows of X are read, in a
 sample, for the UMI totals.
@@ -112,10 +115,48 @@ def main():
                    if r.replace("-", "") == c.replace("-", ""))
         print(f"  overall agreement (PostM == Post-M): {100 * same / tab.values.sum():.1f}%")
 
+        print(f"\n== 6. Cells cycling in one file but Non-cycling in the other")
+        disagree = None
+        if ca and cb:
+            col_a, col_b = ca[0], cb[0]
+            print(f"  stored types: {la}.{col_a} = {a.obs[col_a].dtype}, "
+                  f"{lb}.{col_b} = {b.obs[col_b].dtype}")
+            sa = pd.to_numeric(a.obs.loc[common, col_a], errors="coerce").astype("float64")
+            sb = pd.to_numeric(b.obs.loc[common, col_b], errors="coerce").astype("float64")
+            nc_a, nc_b = pa.eq("Non-cycling"), pb.eq("Non-cycling")
+            mask = nc_a ^ nc_b
+            disagree = pd.DataFrame({
+                f"phase_{la}": pa[mask], f"phase_{lb}": pb[mask],
+                f"{col_a}_{la}": sa[mask], f"{col_b}_{lb}": sb[mask],
+            })
+            disagree["difference"] = disagree[f"{col_a}_{la}"] - disagree[f"{col_b}_{lb}"]
+            disagree["ratio"] = disagree[f"{col_a}_{la}"] / disagree[f"{col_b}_{lb}"]
+            print(f"  {int(mask.sum()):,} cells (of {len(common):,} shared)")
+            if mask.any():
+                print("  by phase pair:")
+                print("    " + disagree.groupby([f"phase_{la}", f"phase_{lb}"]).size()
+                      .to_string().replace("\n", "\n    "))
+                for lbl, col in ((la, f"{col_a}_{la}"), (lb, f"{col_b}_{lb}")):
+                    v = disagree[col]
+                    print(f"  {lbl:10s} score: min {v.min():.6g}  median {v.median():.6g}  "
+                          f"max {v.max():.6g}  | exactly 0.004: {int((v == 0.004).sum()):,}  "
+                          f"| within 1e-6 of 0.004: {int(((v - 0.004).abs() < 1e-6).sum()):,}")
+                print(f"  {la} - {lb}: median {disagree['difference'].median():.3g}, "
+                      f"max |diff| {disagree['difference'].abs().max():.3g}")
+                print(f"  {la} / {lb}: median {disagree['ratio'].median():.6g}")
+            # Whole-file scale, to tell a constant factor apart from noise
+            both = sa.notna() & sb.notna() & (sb > 0)
+            print(f"  all shared cells — {la}/{lb} ratio: median {(sa[both] / sb[both]).median():.6g}, "
+                  f"identical values: {int((sa[both] == sb[both]).sum()):,}/{int(both.sum()):,}")
+        else:
+            print("  (no cycling-score column in one of the files; skipped)")
+
         if args.out:
             out = Path(args.out)
             out.mkdir(parents=True, exist_ok=True)
             tab.to_csv(out / "phase_crosstab_counts.csv")
+            if disagree is not None:
+                disagree.to_csv(out / "cycling_disagreement_cells.csv", index_label="cell")
             pct.to_csv(out / "phase_crosstab_percent.csv")
             pd.DataFrame({"cell": ids, f"total_{la}": ta, f"total_{lb}": tb}).to_csv(
                 out / "total_umis_shared_cells.csv", index=False)
