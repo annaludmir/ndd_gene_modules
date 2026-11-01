@@ -724,7 +724,7 @@ def _save_gene_region_plots(
     box = ax.boxplot(
         region_values,
         patch_artist=True,
-        labels=region_labels,
+        tick_labels=region_labels,
         widths=0.6,
     )
     for patch, region_name in zip(box["boxes"], region_labels):
@@ -1159,7 +1159,7 @@ def create_custom_region_pair_outputs(
             box = ax.boxplot(
                 [values_a, values_b],
                 patch_artist=True,
-                labels=[region_a, region_b],
+                tick_labels=[region_a, region_b],
                 widths=0.55,
             )
             for patch, region_name in zip(box["boxes"], [region_a, region_b]):

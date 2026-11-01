@@ -29,25 +29,28 @@ cd /miridan-data/annaludmir/ndd_gene_modules
 GSEA_SUMMARY_FILE="/miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/no_ges_score_threshold/no_ges_theshold_microcephaly_genes All Layers_threshold_0_20260621/data/enrichment_results/GSEA/GSEA_final_summary.csv"
 # LEADING_GENE_SUMMARY_FILE="/miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/microcephaly/Microcephaly Cell Phase_threshold_1_20260222/data/enrichment_results/GSEA/GSEA_final_summary.csv"
 
-# Custom raw-region pair mode: use Telencephalon leading genes, compare
-# Telencephalon vs Diencephalon expression per gene (boxplots + descriptive CSV).
-# The Wilcoxon / meta-region pipeline is skipped in this mode, so the flags
-# below are commented out.
-mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new python modules/gene_expression_summary.py \
-  --h5ad-path data/human_dev.h5ad \
-  --gsea-summary-file "$GSEA_SUMMARY_FILE" \
-  --condition Forebrain_General \
-  --export-all-gene-boxplots \
-  --chemistry v3 \
-  --subfolder-name microcephaly_forebrain_gene_expression_summary \
-#  --leading-gene-summary-file "$LEADING_GENE_SUMMARY_FILE" \
-#  --leading-gene-conditions S G2M G1 PostM Non-cycling \
-#  --wilcoxon-region Forebrain \
-#  --wilcoxon-compare-all-region-pairs \
-#  --export-significant-gene-boxplots \
-#  --export-all-gene-boxplots \
-#  --dotplot-cell-filter "cell_cycle_score > 0.004" \
-#                                # proliferating cells only; cortex file: "CellCycleFraction > 0.004"
+# Options: one per line; comment a line out (or in) to switch it. Unlike
+# options continued with "\", a commented line here can't cut the command.
+ARGS=(
+  --h5ad-path data/human_dev.h5ad
+  --gsea-summary-file "$GSEA_SUMMARY_FILE"
+  --condition Forebrain_General
+  --chemistry v3
+  --subfolder-name microcephaly_forebrain_gene_expression_summary
+  --wilcoxon-region Forebrain
+  --export-all-gene-boxplots
+  # --export-significant-gene-boxplots
+  # --wilcoxon-compare-all-region-pairs
+  # Dot plots over proliferating cells only (cortex file: "CellCycleFraction > 0.004"):
+  # --dotplot-cell-filter "cell_cycle_score > 0.004"
+  # --leading-gene-summary-file "$LEADING_GENE_SUMMARY_FILE"
+  # --leading-gene-conditions S G2M G1 PostM Non-cycling
+  # Raw-region pair mode instead (skips the Wilcoxon / meta-region pipeline):
+  # --region-pairs Telencephalon:Midbrain
+)
+
+mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new \
+  python modules/gene_expression_summary.py "${ARGS[@]}"
 
 rc=$?
 echo "Python exit code: $rc"
