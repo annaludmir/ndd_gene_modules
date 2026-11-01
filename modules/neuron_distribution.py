@@ -23,6 +23,9 @@ results/additional_analyses/neuron_distribution/<label>/:
        Neurons coloured by NeuronType (Excitatory / Inhibitory / Mixed /
        Unassigned) over all cells in light grey; the smallest groups are drawn
        last so rare ones (e.g. cortex Inhibitory) stay visible.
+  5. umap_neuron_maturity.png
+       The same, coloured by NeuronMaturity (Immature / Intermediate /
+       Mature / Unassigned).
 
 Only obs and obsm are read (backed mode), so even large files are cheap.
 If the file has no UMAP, --umap-from takes obsm["X_umap"] from another h5ad,
@@ -136,16 +139,18 @@ UMAP_KEYS = ("X_umap", "UMAP")
 
 
 def load_umap(a, umap_from: str | None):
-    """(xy, NeuronType) for the cells that have UMAP coordinates, or None.
-    Coordinates come from the file itself or, if it has none, from obsm of
-    `umap_from`, matched by cell ID; cells absent there are left out."""
-    if "NeuronType" not in a.obs:
-        print("  [skip] UMAPs — no NeuronType column")
+    """(xy, labels) for the cells that have UMAP coordinates, or None; labels
+    holds the NeuronType / NeuronMaturity columns the file has. Coordinates
+    come from the file itself or, if it has none, from obsm of `umap_from`,
+    matched by cell ID; cells absent there are left out."""
+    cols = [c for c in LABELS if c in a.obs]
+    if not cols:
+        print(f"  [skip] UMAPs — no {' / '.join(LABELS)} column")
         return None
-    nt = a.obs["NeuronType"].astype(object).to_numpy()
+    labels = a.obs[cols].astype(object)
     key = next((k for k in UMAP_KEYS if k in a.obsm), None)
     if key is not None:
-        return np.asarray(a.obsm[key])[:, :2], nt
+        return np.asarray(a.obsm[key])[:, :2], labels
     if not umap_from:
         print("  [skip] UMAPs — no obsm['X_umap'] in this file (pass --umap-from)")
         return None
@@ -163,7 +168,7 @@ def load_umap(a, umap_from: str | None):
         if not found.any():
             return None
         xy = np.asarray(src.obsm[key])[:, :2][pos[found]]
-        return xy, nt[found]
+        return xy, labels[found]
     finally:
         src.file.close()
 
@@ -195,11 +200,18 @@ def umap_uncertain(xy: np.ndarray, nt: np.ndarray, dataset: str, out_dir: Path) 
     print(f"  Saved: {path.name}")
 
 
-def umap_neuron_type(xy: np.ndarray, nt: np.ndarray, dataset: str, out_dir: Path) -> None:
-    """Neurons coloured by NeuronType over all cells in light grey."""
+UMAP_LABEL_PLOTS = {   # label column -> (file name, title)
+    "NeuronType":     ("umap_neuron_type.png",     "excitatory / inhibitory neurons"),
+    "NeuronMaturity": ("umap_neuron_maturity.png", "neuron maturity"),
+}
+
+
+def umap_by_label(xy: np.ndarray, nt: np.ndarray, label_col: str,
+                  dataset: str, out_dir: Path) -> None:
+    """Neurons coloured by `label_col` over all cells in light grey."""
     is_neuron = pd.notna(nt)
     # Timeline colours, but Unassigned darker so it shows against the background
-    colors = dict(LABELS["NeuronType"], Unassigned="#8f8e88")
+    colors = dict(LABELS[label_col], Unassigned="#8f8e88")
 
     fig, ax = plt.subplots(figsize=(7.5, 7))
     ax.scatter(xy[~is_neuron, 0], xy[~is_neuron, 1], s=0.3, c="#e6e5e0",
@@ -217,8 +229,9 @@ def umap_neuron_type(xy: np.ndarray, nt: np.ndarray, dataset: str, out_dir: Path
     ax.spines[["top", "right"]].set_visible(False)
     ax.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, -0.06),
               ncol=3, frameon=False, fontsize=9)
-    ax.set_title(f"{dataset}: excitatory / inhibitory neurons", fontsize=12)
-    path = out_dir / "umap_neuron_type.png"
+    file_name, title = UMAP_LABEL_PLOTS[label_col]
+    ax.set_title(f"{dataset}: {title}", fontsize=12)
+    path = out_dir / file_name
     fig.savefig(path, dpi=250, bbox_inches="tight")
     plt.close(fig)
     print(f"  Saved: {path.name}")
@@ -256,8 +269,14 @@ def run(h5ad: str, label: str, output_dir: str = str(DEFAULT_OUTPUT_DIR),
 
         umap = load_umap(a, umap_from)
         if umap is not None:
-            umap_uncertain(*umap, label, out_dir)
-            umap_neuron_type(*umap, label, out_dir)
+            xy, labels = umap
+            if "NeuronType" in labels:
+                umap_uncertain(xy, labels["NeuronType"].to_numpy(), label, out_dir)
+            for label_col in UMAP_LABEL_PLOTS:
+                if label_col in labels:
+                    umap_by_label(xy, labels[label_col].to_numpy(), label_col, label, out_dir)
+                else:
+                    print(f"  [skip] {label_col} UMAP — column missing (rerun the annotation)")
     finally:
         a.file.close()
     print(f"  Outputs: {out_dir}")
