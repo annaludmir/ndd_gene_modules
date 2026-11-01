@@ -25,6 +25,8 @@ results/additional_analyses/neuron_distribution/<label>/:
        last so rare ones (e.g. cortex Inhibitory) stay visible.
 
 Only obs and obsm are read (backed mode), so even large files are cheap.
+If the file has no UMAP, --umap-from takes obsm["X_umap"] from another h5ad,
+matched by cell ID (cells missing there are left out of the UMAPs).
 
 Usage:
   python modules/neuron_distribution.py \
@@ -130,17 +132,44 @@ def timeline(obs: pd.DataFrame, label_col: str, group_col: str, age_col: str,
     print(f"  Saved: timeline_{label_col}_{group_col}_<label>.png ({len(labels)} figures)")
 
 
-def umap_uncertain(a, dataset: str, out_dir: Path) -> None:
-    """All cells grey, other neurons darker grey, Mixed / Unassigned on top."""
-    key = next((k for k in ("X_umap", "UMAP") if k in a.obsm), None)
-    if key is None:
-        print("  [skip] UMAP — no obsm['X_umap'] in this file")
-        return
+UMAP_KEYS = ("X_umap", "UMAP")
+
+
+def load_umap(a, umap_from: str | None):
+    """(xy, NeuronType) for the cells that have UMAP coordinates, or None.
+    Coordinates come from the file itself or, if it has none, from obsm of
+    `umap_from`, matched by cell ID; cells absent there are left out."""
     if "NeuronType" not in a.obs:
-        print("  [skip] UMAP — no NeuronType column")
-        return
-    xy = np.asarray(a.obsm[key])[:, :2]
+        print("  [skip] UMAPs — no NeuronType column")
+        return None
     nt = a.obs["NeuronType"].astype(object).to_numpy()
+    key = next((k for k in UMAP_KEYS if k in a.obsm), None)
+    if key is not None:
+        return np.asarray(a.obsm[key])[:, :2], nt
+    if not umap_from:
+        print("  [skip] UMAPs — no obsm['X_umap'] in this file (pass --umap-from)")
+        return None
+    src = ad.read_h5ad(umap_from, backed="r")
+    try:
+        key = next((k for k in UMAP_KEYS if k in src.obsm), None)
+        if key is None:
+            print(f"  [skip] UMAPs — no obsm['X_umap'] in {umap_from} either")
+            return None
+        pos = src.obs_names.get_indexer(a.obs_names)
+        found = pos >= 0
+        print(f"  UMAP from {umap_from} (obsm['{key}']): "
+              f"{int(found.sum()):,}/{a.n_obs:,} cells matched by ID"
+              + (f"; {int((~found).sum()):,} left out" if (~found).any() else ""))
+        if not found.any():
+            return None
+        xy = np.asarray(src.obsm[key])[:, :2][pos[found]]
+        return xy, nt[found]
+    finally:
+        src.file.close()
+
+
+def umap_uncertain(xy: np.ndarray, nt: np.ndarray, dataset: str, out_dir: Path) -> None:
+    """All cells grey, other neurons darker grey, Mixed / Unassigned on top."""
     is_neuron = pd.notna(nt)
 
     fig, ax = plt.subplots(figsize=(7.5, 7))
@@ -166,14 +195,8 @@ def umap_uncertain(a, dataset: str, out_dir: Path) -> None:
     print(f"  Saved: {path.name}")
 
 
-def umap_neuron_type(a, dataset: str, out_dir: Path) -> None:
+def umap_neuron_type(xy: np.ndarray, nt: np.ndarray, dataset: str, out_dir: Path) -> None:
     """Neurons coloured by NeuronType over all cells in light grey."""
-    key = next((k for k in ("X_umap", "UMAP") if k in a.obsm), None)
-    if key is None or "NeuronType" not in a.obs:
-        print("  [skip] neuron-type UMAP — no obsm['X_umap'] or NeuronType column")
-        return
-    xy = np.asarray(a.obsm[key])[:, :2]
-    nt = a.obs["NeuronType"].astype(object).to_numpy()
     is_neuron = pd.notna(nt)
     # Timeline colours, but Unassigned darker so it shows against the background
     colors = dict(LABELS["NeuronType"], Unassigned="#8f8e88")
@@ -202,7 +225,8 @@ def umap_neuron_type(a, dataset: str, out_dir: Path) -> None:
 
 
 def run(h5ad: str, label: str, output_dir: str = str(DEFAULT_OUTPUT_DIR),
-        region_col: str = "Region", age_col: str = "Age") -> None:
+        region_col: str = "Region", age_col: str = "Age",
+        umap_from: str | None = None) -> None:
     out_dir = Path(output_dir) / label
     out_dir.mkdir(parents=True, exist_ok=True)
     print(f"\n{label}: {h5ad}")
@@ -230,8 +254,10 @@ def run(h5ad: str, label: str, output_dir: str = str(DEFAULT_OUTPUT_DIR),
                 for group_col in groupings:
                     timeline(obs, label_col, group_col, age_col, label, out_dir)
 
-        umap_uncertain(a, label, out_dir)
-        umap_neuron_type(a, label, out_dir)
+        umap = load_umap(a, umap_from)
+        if umap is not None:
+            umap_uncertain(*umap, label, out_dir)
+            umap_neuron_type(*umap, label, out_dir)
     finally:
         a.file.close()
     print(f"  Outputs: {out_dir}")
@@ -244,8 +270,12 @@ def main():
     p.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR))
     p.add_argument("--region-col", default="Region")
     p.add_argument("--age-col", default="Age")
+    p.add_argument("--umap-from", default=None,
+                   help="h5ad to take obsm['X_umap'] from (matched by cell ID) when "
+                        "--h5ad has none, e.g. data/full_adata_with_umap.h5ad.")
     args = p.parse_args()
-    run(args.h5ad, args.label, args.output_dir, args.region_col, args.age_col)
+    run(args.h5ad, args.label, args.output_dir, args.region_col, args.age_col,
+        umap_from=args.umap_from)
 
 
 if __name__ == "__main__":

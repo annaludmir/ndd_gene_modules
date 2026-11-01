@@ -23,10 +23,18 @@ declare -A DATASETS=(
   [cortex]="data/Cortex_EMX1_louvain3_passedQC_PostM_rev1_neuron_type.h5ad"
 )
 
+# Where to take UMAP coordinates from when a file has none (matched by cell ID).
+declare -A UMAP_FROM=(
+  [human_dev]="data/full_adata_with_umap.h5ad"
+  [cortex]="data/full_adata_with_umap.h5ad"
+)
+
 rc=0
 for label in "${!DATASETS[@]}"; do
+  extra=()
+  [[ -n "${UMAP_FROM[$label]:-}" ]] && extra=(--umap-from "${UMAP_FROM[$label]}")
   mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new \
-    python -u modules/neuron_distribution.py --h5ad "${DATASETS[$label]}" --label "$label" || {
+    python -u modules/neuron_distribution.py --h5ad "${DATASETS[$label]}" --label "$label" ${extra[@]+"${extra[@]}"} || {
       echo "[error] $label failed"; rc=1; }
 done
 
