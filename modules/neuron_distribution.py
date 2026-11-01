@@ -7,14 +7,14 @@ are distributed over age and region, and where the uncertain calls sit.
 Per dataset (one h5ad), writes to
 results/additional_analyses/neuron_distribution/<label>/:
 
-  1. timeline_NeuronMaturity_<grouping>.png / .csv
-  2. timeline_NeuronType_<grouping>.png / .csv
-       One panel per region, a stacked bar per age: the share of each label
-       among that region's neurons at that age, with the neuron count above
-       the bar. <grouping> is Region (as annotated) and RegionsGeneral
-       (Forebrain / Midbrain / Hindbrain _General, as in the GES configs;
-       cells in other regions are left out of it). Chemistries are pooled.
-       Skipped when the dataset has no region column.
+  1. timeline_NeuronMaturity_<grouping>_<label>.png, + one .csv per grouping
+  2. timeline_NeuronType_<grouping>_<label>.png,     + one .csv per grouping
+       One figure per label (e.g. Excitatory): a line per region over age
+       (weeks), y = % of that region's neurons at that age with the label.
+       <grouping> is Region (as annotated) and RegionsGeneral (Forebrain /
+       Midbrain / Hindbrain, as in the GES configs; cells in other regions are
+       left out of it). Chemistries are pooled. Without a region column
+       (e.g. the cortex) there is a single line over all cells.
   3. umap_mixed_unassigned_neurons.png
        All cells in light grey, other neurons darker grey, Mixed and
        Unassigned neurons coloured on top. Uses the stored obsm["X_umap"];
@@ -82,8 +82,9 @@ def age_label(a) -> str:
 
 def timeline(obs: pd.DataFrame, label_col: str, group_col: str, age_col: str,
              dataset: str, out_dir: Path) -> None:
-    """Stacked share of each label per age, one panel per region."""
-    colors = LABELS[label_col]
+    """For each label, one line plot: % of each region's neurons with that
+    label at each age (one line per region)."""
+    labels = list(LABELS[label_col])
     df = obs.loc[obs[label_col].notna() & obs[group_col].notna(), [group_col, age_col, label_col]].copy()
     if df.empty:
         print(f"  [skip] {label_col} × {group_col}: no labelled neurons with a region")
@@ -91,55 +92,42 @@ def timeline(obs: pd.DataFrame, label_col: str, group_col: str, age_col: str,
     df[age_col] = pd.to_numeric(df[age_col], errors="coerce").round(1)
     df = df.dropna(subset=[age_col])
     df[label_col] = df[label_col].astype(str)
+    df[group_col] = df[group_col].astype(str)
 
     counts = (df.groupby([group_col, age_col, label_col], observed=True).size()
                 .unstack(label_col, fill_value=0)
-                .reindex(columns=list(colors), fill_value=0))
-    counts.to_csv(out_dir / f"timeline_{label_col}_{group_col}.csv")
+                .reindex(columns=labels, fill_value=0))
+    totals = counts.sum(axis=1)
+    pct = counts.div(totals, axis=0) * 100
+    table = counts.join(totals.rename("n_neurons")).join(pct.add_prefix("pct_"))
+    table.to_csv(out_dir / f"timeline_{label_col}_{group_col}.csv")
 
-    groups = [g for g in (list(REGIONS_GENERAL) if group_col == "RegionsGeneral"
-                          else sorted(df[group_col].astype(str).unique()))
-              if g in counts.index.get_level_values(0)]
+    groups = sorted(df[group_col].unique())
+    legend_name = {g: g.removesuffix("_General") for g in groups}
     ages = sorted(df[age_col].unique())
-    ncols = min(3, len(groups))
-    nrows = int(np.ceil(len(groups) / ncols))
-    fig, axes = plt.subplots(nrows, ncols, figsize=(5.2 * ncols, 3.4 * nrows),
-                             squeeze=False, sharey=True)
-    for ax, g in zip(axes.flat, groups):
-        sub = counts.loc[g].reindex(ages, fill_value=0)
-        totals = sub.sum(axis=1)
-        frac = sub.div(totals.replace(0, np.nan), axis=0).fillna(0)
-        x = np.arange(len(ages))
-        bottom = np.zeros(len(ages))
-        for lab, col in colors.items():
-            ax.bar(x, frac[lab].to_numpy(), bottom=bottom, color=col, width=0.8,
-                   edgecolor="white", linewidth=0.5)
-            bottom += frac[lab].to_numpy()
-        for xi, n in zip(x, totals):
-            if n:
-                ax.text(xi, 1.01, f"{int(n):,}", ha="center", va="bottom",
-                        fontsize=6, rotation=90, color="#52514e")
-        ax.set_title(str(g), fontsize=10, pad=26)
-        ax.set_xticks(x)
-        ax.set_xticklabels([age_label(a) for a in ages], fontsize=7, rotation=90)
-        ax.set_ylim(0, 1)
-        ax.set_xlabel(f"{age_col} (weeks post-conception)", fontsize=8)
-        ax.spines[["top", "right"]].set_visible(False)
-    for ax in axes.flat[len(groups):]:
-        ax.set_visible(False)
-    for ax in axes[:, 0]:
-        ax.set_ylabel("share of neurons", fontsize=9)
+    lo, hi = np.floor(min(ages) * 2) / 2, np.ceil(max(ages) * 2) / 2
 
-    fig.legend(handles=[Patch(color=c, label=l) for l, c in colors.items()],
-               loc="upper center", bbox_to_anchor=(0.5, 0.0), ncol=len(colors),
-               frameon=False, fontsize=9)
-    fig.suptitle(f"{dataset}: {label_col} by age and {group_col} "
-                 f"(chemistries v2 + v3 pooled; numbers = neurons per bar)", fontsize=11)
-    fig.tight_layout()
-    path = out_dir / f"timeline_{label_col}_{group_col}.png"
-    fig.savefig(path, dpi=200, bbox_inches="tight")
-    plt.close(fig)
-    print(f"  Saved: {path.name}")
+    for lab in labels:
+        fig, ax = plt.subplots(figsize=(10, 5))
+        for g in groups:
+            series = pct.loc[g, lab].sort_index()
+            ax.plot(series.index, series.values, marker="o", markersize=6, linewidth=2,
+                    markeredgecolor="white", label=legend_name[g])
+        ax.set_xticks(np.arange(lo, hi + 0.01, 0.5))
+        ax.tick_params(axis="x", labelrotation=45)
+        ax.grid(True, linestyle="--", alpha=0.5)
+        ax.set_xlabel(f"{age_col} (PCW)", fontsize=12)
+        ax.set_ylabel("Percentage of neurons (%)", fontsize=12)
+        ax.set_title(f"Neuron {label_col.removeprefix('Neuron')} Proportions: {lab}",
+                     fontsize=14, fontweight="bold")
+        if group_col != "AllCells":
+            ax.legend(title=group_col, loc="upper left", bbox_to_anchor=(1.04, 1),
+                      fontsize=11, title_fontsize=11)
+        fig.tight_layout()
+        path = out_dir / f"timeline_{label_col}_{group_col}_{lab}.png"
+        fig.savefig(path, dpi=200, bbox_inches="tight")
+        plt.close(fig)
+    print(f"  Saved: timeline_{label_col}_{group_col}_<label>.png ({len(labels)} figures)")
 
 
 def umap_uncertain(a, dataset: str, out_dir: Path) -> None:
