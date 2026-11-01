@@ -39,6 +39,7 @@ ARGS=(
   --subfolder-name microcephaly_forebrain_gene_expression_summary
   --wilcoxon-region Forebrain
   --export-all-gene-boxplots
+  --not-normalized-boxplots   # also <gene>_not_normalized.png boxplots (raw X)
   # --export-significant-gene-boxplots
   # --wilcoxon-compare-all-region-pairs
   # Dot plots over proliferating cells only (cortex file: "CellCycleFraction > 0.004"):

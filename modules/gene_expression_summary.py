@@ -708,18 +708,51 @@ def _dot_stats(expr_df, gene, mask):
     return stats
 
 
-def _save_gene_region_plots(
-    out_dir, gene, region_values, region_labels, n_expressing_per_region,
-    n_total_per_region, subtitle, enrichment_label, colors,
-    dot_stats=None, dot_population=None,
-):
-    """Save one gene's boxplot (expressing cells per region) and dot plot
-    (fraction expressing as size, mean expression as colour) into out_dir.
-    `dot_stats` (from _dot_stats) lets the dot plot use a different cell
-    population than the boxplot, named by `dot_population`."""
-    # --- Boxplot ---
-    plot_path = out_dir / f"{sanitize_name(gene)}.png"
+NOT_NORMALIZED_SUFFIX = "_not_normalized"
 
+
+def build_raw_expression_dataframe(adata, genes, region_col, cell_filter_col,
+                                   cell_filter_val, sym_col="Gene"):
+    """Expression table like build_expression_dataframe, from adata.X as stored
+    (no normalization). Only the requested genes are copied, and cells are
+    filtered as in prepare_expression_adata, so rows line up with its table."""
+    sym = adata.var[sym_col].astype(str)
+    adata_genes = adata[:, sym.isin(set(genes)).to_numpy()]
+    raw = prepare_expression_adata(
+        adata_genes,
+        region_col=region_col,
+        cell_filter_col=cell_filter_col,
+        cell_filter_val=cell_filter_val,
+        normalize=False,
+    )
+    return build_expression_dataframe(raw, genes, sym_col=sym_col)[0]
+
+
+def _expressing_values_by_region(expr_df, gene, region_labels):
+    """Per region, the gene's values in cells expressing it (value > 0)."""
+    return [
+        expr_df.loc[(expr_df["meta_region"] == region) & (expr_df[gene] > 0), gene]
+        .astype(float).to_numpy()
+        for region in region_labels
+    ]
+
+
+def _save_not_normalized_boxplot(out_dir, gene, raw_expr_df, region_labels,
+                                 subtitle, enrichment_label, colors):
+    """The gene's boxplot again from un-normalized values, as
+    <gene>_not_normalized.png next to the normalized one."""
+    _save_boxplot(
+        out_dir / f"{sanitize_name(gene)}{NOT_NORMALIZED_SUFFIX}.png", gene,
+        _expressing_values_by_region(raw_expr_df, gene, region_labels), region_labels,
+        subtitle.replace("log-normalized", "not normalized"), enrichment_label, colors,
+        ylabel="expression, not normalized (expressing cells only)",
+    )
+
+
+def _save_boxplot(plot_path, gene, region_values, region_labels, subtitle,
+                  enrichment_label, colors,
+                  ylabel="log-normalized expression (expressing cells only)"):
+    """One gene's boxplot of expressing cells per region."""
     fig, ax = plt.subplots(figsize=(5.2, 4.5))
     box = ax.boxplot(
         region_values,
@@ -735,7 +768,7 @@ def _save_gene_region_plots(
         median.set_linewidth(1.5)
 
     ax.set_title(gene, fontsize=12, pad=12)
-    ax.set_ylabel("log-normalized expression (expressing cells only)", fontsize=10)
+    ax.set_ylabel(ylabel, fontsize=10)
     ax.set_xlabel("meta_region", fontsize=10)
     ax.grid(axis="y", alpha=0.3)
     ax.set_axisbelow(True)
@@ -747,6 +780,19 @@ def _save_gene_region_plots(
     fig.tight_layout()
     fig.savefig(plot_path, dpi=300, bbox_inches="tight")
     plt.close(fig)
+
+
+def _save_gene_region_plots(
+    out_dir, gene, region_values, region_labels, n_expressing_per_region,
+    n_total_per_region, subtitle, enrichment_label, colors,
+    dot_stats=None, dot_population=None,
+):
+    """Save one gene's boxplot (expressing cells per region) and dot plot
+    (fraction expressing as size, mean expression as colour) into out_dir.
+    `dot_stats` (from _dot_stats) lets the dot plot use a different cell
+    population than the boxplot, named by `dot_population`."""
+    _save_boxplot(out_dir / f"{sanitize_name(gene)}.png", gene, region_values,
+                  region_labels, subtitle, enrichment_label, colors)
 
     # --- Dot plot: size = fraction expressing, color = mean expression ---
     if dot_stats is not None:
@@ -843,8 +889,10 @@ def create_significant_gene_boxplots(
     sym_col="Gene",
     dot_mask=None,
     dot_population=None,
+    raw_expr_df=None,
 ):
-    """Save per-gene boxplots across all meta-regions for strong requested enrichments."""
+    """Save per-gene boxplots across all meta-regions for strong requested enrichments.
+    With `raw_expr_df` (build_raw_expression_dataframe), also <gene>_not_normalized.png."""
     expr_df, found_genes = build_expression_dataframe(adata, genes, sym_col=sym_col)
     requested_region_pairs = get_requested_region_pairs(
         selected_region=selected_region,
@@ -939,6 +987,9 @@ def create_significant_gene_boxplots(
                 dot_stats=_dot_stats(expr_df, gene, dot_mask) if dot_mask is not None else None,
                 dot_population=dot_population,
             )
+            if raw_expr_df is not None:
+                _save_not_normalized_boxplot(region_dir, gene, raw_expr_df, region_labels,
+                                             subtitle, enrichment_label, colors)
             n_saved_plots += 1
 
     return {
@@ -955,10 +1006,12 @@ def create_all_gene_boxplots(
     sym_col="Gene",
     dot_mask=None,
     dot_population=None,
+    raw_expr_df=None,
 ):
     """Save a boxplot and dot plot for every leading gene, whatever its
     significance, across all meta-regions. The plot names the regions in which
-    the gene is significantly enriched vs both other regions (FDR < 0.05)."""
+    the gene is significantly enriched vs both other regions (FDR < 0.05).
+    With `raw_expr_df` (build_raw_expression_dataframe), also <gene>_not_normalized.png."""
     expr_df, found_genes = build_expression_dataframe(adata, genes, sym_col=sym_col)
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -1014,6 +1067,9 @@ def create_all_gene_boxplots(
             dot_stats=_dot_stats(expr_df, gene, dot_mask) if dot_mask is not None else None,
             dot_population=dot_population,
         )
+        if raw_expr_df is not None:
+            _save_not_normalized_boxplot(output_dir, gene, raw_expr_df, region_labels,
+                                         subtitle, enrichment_label, colors)
         n_saved_plots += 1
 
     return {
@@ -1358,6 +1414,7 @@ def create_gene_expression_summary(
     export_significant_gene_boxplots=False,
     export_all_gene_boxplots=False,
     dotplot_cell_filter=None,
+    not_normalized_boxplots=False,
     chemistry=DEFAULT_CHEMISTRY,
     chemistry_col=DEFAULT_CHEMISTRY_COL,
     region_pairs=None,
@@ -1488,6 +1545,16 @@ def create_gene_expression_summary(
         print(f"Dot plots use cells with {dotplot_cell_filter}: "
               f"{int(dot_mask.sum()):,}/{len(dot_mask):,}")
 
+    # Optional: the same boxplots from un-normalized values (<gene>_not_normalized.png)
+    raw_expr_df = None
+    if not_normalized_boxplots and (export_significant_gene_boxplots or export_all_gene_boxplots):
+        print("Building un-normalized expression table for the boxplots...")
+        raw_expr_df = build_raw_expression_dataframe(
+            adata, summary_info["leading_genes"], region_col=region_col,
+            cell_filter_col=cell_filter_col, cell_filter_val=cell_filter_val,
+            sym_col=sym_col,
+        )
+
     boxplot_export_result = {
         "significant_gene_boxplots_dir": None,
         "n_significant_gene_boxplots": 0,
@@ -1504,6 +1571,7 @@ def create_gene_expression_summary(
             sym_col=sym_col,
             dot_mask=dot_mask,
             dot_population=dot_population,
+            raw_expr_df=raw_expr_df,
         )
 
     all_boxplot_result = {"all_gene_boxplots_dir": None, "n_all_gene_boxplots": 0}
@@ -1516,6 +1584,7 @@ def create_gene_expression_summary(
             sym_col=sym_col,
             dot_mask=dot_mask,
             dot_population=dot_population,
+            raw_expr_df=raw_expr_df,
         )
 
     return {
@@ -1675,6 +1744,15 @@ def build_arg_parser():
         ),
     )
     parser.add_argument(
+        "--not-normalized-boxplots",
+        action="store_true",
+        help=(
+            "With --export-all-gene-boxplots / --export-significant-gene-boxplots, also save "
+            "each boxplot from adata.X as stored, without normalize_total + log1p, as "
+            "<gene>_not_normalized.png in the same folder."
+        ),
+    )
+    parser.add_argument(
         "--chemistry",
         default=DEFAULT_CHEMISTRY,
         help="Chemistry value to keep from adata.obs before analysis. Use 'None' to disable.",
@@ -1721,6 +1799,7 @@ if __name__ == "__main__":
         export_significant_gene_boxplots=args.export_significant_gene_boxplots,
         export_all_gene_boxplots=args.export_all_gene_boxplots,
         dotplot_cell_filter=args.dotplot_cell_filter,
+        not_normalized_boxplots=args.not_normalized_boxplots,
         chemistry=None if args.chemistry == "None" else args.chemistry,
         chemistry_col=args.chemistry_col,
         region_pairs=args.region_pairs,
