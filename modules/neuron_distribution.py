@@ -27,7 +27,22 @@ results/additional_analyses/neuron_distribution/<label>/:
        The same, coloured by NeuronMaturity (Immature / Intermediate /
        Mature / Unassigned).
 
-Only obs and obsm are read (backed mode), so even large files are cheap.
+Maturity diagnostics (is there an age trend under the class calls?):
+
+  6. maturity_score_<grouping>.png / .csv
+       The continuous neuron_maturity_score (log2 mature / immature markers)
+       per age: median line per region with the interquartile range shaded.
+  7. maturity_split/<subset>/
+       Items 1 and 6 again within one neuron type (NeuronType_Excitatory,
+       NeuronType_Inhibitory) or one chemistry (Chemistry_v2, Chemistry_v3),
+       to tell an age trend apart from changes in neuron-type or chemistry mix.
+  8. marker_expression_<grouping>.png / .csv
+       Each maturity marker gene (immature row, mature row): mean
+       log1p(counts per 10k) over neurons per age, a line per region; the CSV
+       also has the % of neurons expressing it. Reads X in row chunks (raw
+       counts expected, as in neuron_type_annotation.py).
+
+Items 1–7 read only obs and obsm (backed mode); item 8 reads X once.
 If the file has no UMAP, --umap-from takes obsm["X_umap"] from another h5ad,
 matched by cell ID (cells missing there are left out of the UMAPs).
 
@@ -46,6 +61,9 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 import numpy as np
 import pandas as pd
+
+from cell_cycle_annotation import _symbol_to_var_map
+from neuron_type_annotation import IMMATURE_MARKERS, MATURE_MARKERS, MATURITY_SCORE_COL
 
 
 DEFAULT_OUTPUT_DIR = Path("results/additional_analyses/neuron_distribution")
@@ -86,7 +104,7 @@ def age_label(a) -> str:
 
 
 def timeline(obs: pd.DataFrame, label_col: str, group_col: str, age_col: str,
-             dataset: str, out_dir: Path) -> None:
+             dataset: str, out_dir: Path, subset: str | None = None) -> None:
     """For each label, one line plot: % of each region's neurons with that
     label at each age (one line per region)."""
     labels = list(LABELS[label_col])
@@ -123,8 +141,8 @@ def timeline(obs: pd.DataFrame, label_col: str, group_col: str, age_col: str,
         ax.grid(True, linestyle="--", alpha=0.5)
         ax.set_xlabel(f"{age_col} (PCW)", fontsize=12)
         ax.set_ylabel("Percentage of neurons (%)", fontsize=12)
-        ax.set_title(f"Neuron {label_col.removeprefix('Neuron')} Proportions: {lab}",
-                     fontsize=14, fontweight="bold")
+        ax.set_title(f"Neuron {label_col.removeprefix('Neuron')} Proportions: {lab}"
+                     + (f" ({subset})" if subset else ""), fontsize=14, fontweight="bold")
         if group_col != "AllCells":
             ax.legend(title=group_col, loc="upper left", bbox_to_anchor=(1.04, 1),
                       fontsize=11, title_fontsize=11)
@@ -133,6 +151,161 @@ def timeline(obs: pd.DataFrame, label_col: str, group_col: str, age_col: str,
         fig.savefig(path, dpi=200, bbox_inches="tight")
         plt.close(fig)
     print(f"  Saved: timeline_{label_col}_{group_col}_<label>.png ({len(labels)} figures)")
+
+
+def _age_ticks(ax, ages) -> None:
+    lo, hi = np.floor(min(ages) * 2) / 2, np.ceil(max(ages) * 2) / 2
+    ax.set_xticks(np.arange(lo, hi + 0.01, 0.5))
+    ax.tick_params(axis="x", labelrotation=45)
+
+
+def maturity_score_by_age(obs: pd.DataFrame, group_col: str, age_col: str,
+                          out_dir: Path, subset: str | None = None) -> None:
+    """Median neuron_maturity_score per age (IQR shaded), a line per region."""
+    if MATURITY_SCORE_COL not in obs:
+        print(f"  [skip] maturity score plot — no '{MATURITY_SCORE_COL}' column")
+        return
+    df = obs.loc[obs[group_col].notna(), [group_col, age_col]].copy()
+    df["score"] = pd.to_numeric(obs[MATURITY_SCORE_COL], errors="coerce")
+    df[age_col] = pd.to_numeric(df[age_col], errors="coerce").round(1)
+    df = df.dropna()
+    if df.empty:
+        print(f"  [skip] maturity score × {group_col}: no scored neurons")
+        return
+    df[group_col] = df[group_col].astype(str)
+    stats = (df.groupby([group_col, age_col])["score"]
+               .agg(n_neurons="size", median="median", mean="mean",
+                    q25=lambda v: v.quantile(0.25), q75=lambda v: v.quantile(0.75)))
+    stats.to_csv(out_dir / f"maturity_score_{group_col}.csv")
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+    for g in sorted(df[group_col].unique()):
+        st = stats.loc[g].sort_index()
+        line, = ax.plot(st.index, st["median"], marker="o", markersize=6, linewidth=2,
+                        markeredgecolor="white", label=g.removesuffix("_General"))
+        ax.fill_between(st.index, st["q25"], st["q75"], color=line.get_color(), alpha=0.12,
+                        linewidth=0)
+    ax.axhline(0, color="#8f8e88", linewidth=1)
+    _age_ticks(ax, df[age_col].unique())
+    ax.grid(True, linestyle="--", alpha=0.5)
+    ax.set_xlabel(f"{age_col} (PCW)", fontsize=12)
+    ax.set_ylabel("Maturity score, log2(mature / immature)\nmedian, IQR shaded", fontsize=12)
+    ax.set_title("Neuron maturity score" + (f" ({subset})" if subset else ""),
+                 fontsize=14, fontweight="bold")
+    if group_col != "AllCells":
+        ax.legend(title=group_col, loc="upper left", bbox_to_anchor=(1.04, 1),
+                  fontsize=11, title_fontsize=11)
+    fig.tight_layout()
+    fig.savefig(out_dir / f"maturity_score_{group_col}.png", dpi=200, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  Saved: maturity_score_{group_col}.png" + (f" ({subset})" if subset else ""))
+
+
+def maturity_split(obs: pd.DataFrame, groupings, age_col: str, dataset: str,
+                   out_dir: Path, chemistry_col: str) -> None:
+    """Maturity timelines and score plots within each neuron type and chemistry."""
+    subsets = {}
+    if "NeuronType" in obs:
+        for t in ("Excitatory", "Inhibitory"):
+            subsets[f"NeuronType_{t}"] = obs["NeuronType"].astype(object) == t
+    if chemistry_col in obs:
+        for c in sorted(obs.loc[obs["NeuronMaturity"].notna(), chemistry_col].dropna().astype(str).unique()):
+            subsets[f"{chemistry_col}_{c}"] = obs[chemistry_col].astype(str) == c
+    else:
+        print(f"  [note] no '{chemistry_col}' column — maturity not split by chemistry")
+    for name, mask in subsets.items():
+        sub = obs[mask.to_numpy() & obs["NeuronMaturity"].notna().to_numpy()]
+        print(f"  maturity_split/{name}: {len(sub):,} neurons")
+        if sub.empty:
+            continue
+        sub_dir = out_dir / "maturity_split" / name
+        sub_dir.mkdir(parents=True, exist_ok=True)
+        for group_col in groupings:
+            timeline(sub, "NeuronMaturity", group_col, age_col, dataset, sub_dir, subset=name)
+            maturity_score_by_age(sub, group_col, age_col, sub_dir, subset=name)
+
+
+def marker_expression_by_age(a, obs: pd.DataFrame, groupings, age_col: str,
+                             sym_col: str, out_dir: Path, chunk: int = 20000) -> None:
+    """Mean log1p(CP10k) and % expressing of each maturity marker per age and
+    region, over neurons (cells with a NeuronMaturity call)."""
+    neuron = obs["NeuronMaturity"].notna().to_numpy()
+    sym2var = _symbol_to_var_map(a, sym_col)
+    var_pos = {v: i for i, v in enumerate(a.var_names.astype(str))}
+    genes = [g for g in IMMATURE_MARKERS + MATURE_MARKERS if sym2var.get(g) in var_pos]
+    missing = [g for g in IMMATURE_MARKERS + MATURE_MARKERS if g not in genes]
+    if missing:
+        print(f"  [note] marker genes not in the file: {missing}")
+    if not genes or not neuron.any():
+        print("  [skip] marker expression — no marker genes or no neurons")
+        return
+    gene_ix = np.array([var_pos[sym2var[g]] for g in genes])
+
+    print(f"  Reading X for {int(neuron.sum()):,} neurons × {len(genes)} marker genes ...")
+    parts = []
+    for start in range(0, a.n_obs, chunk):
+        end = min(start + chunk, a.n_obs)
+        keep = neuron[start:end]
+        if not keep.any():
+            continue
+        X = a.X[start:end]
+        total = np.asarray(X.sum(axis=1)).ravel()[keep]
+        sub = X[:, gene_ix]
+        sub = sub.toarray() if hasattr(sub, "toarray") else np.asarray(sub)
+        sub = sub[keep]
+        parts.append(np.log1p(sub * (1e4 / np.where(total > 0, total, 1.0))[:, None]))
+    expr = pd.DataFrame(np.vstack(parts).astype(np.float32), columns=genes,
+                        index=obs.index[neuron])
+
+    base = obs.loc[neuron].copy()
+    base[age_col] = pd.to_numeric(base[age_col], errors="coerce").round(1)
+    for group_col in groupings:
+        df = base[[group_col, age_col]].join(expr)
+        df = df.dropna(subset=[group_col, age_col])
+        if df.empty:
+            continue
+        df[group_col] = df[group_col].astype(str)
+        g = df.groupby([group_col, age_col])
+        mean = g[genes].mean()
+        pct = g[genes].agg(lambda v: 100 * (v > 0).mean())
+        table = pd.concat({"mean_log1p_cp10k": mean.stack(),
+                           "pct_expressing": pct.stack()}, axis=1)
+        table.index.names = [group_col, age_col, "gene"]
+        table = table.join(g.size().rename("n_neurons"))
+        table.to_csv(out_dir / f"marker_expression_{group_col}.csv")
+
+        regions = sorted(df[group_col].unique())
+        ncol = max(len(IMMATURE_MARKERS), len(MATURE_MARKERS))
+        fig, axes = plt.subplots(2, ncol, figsize=(3.2 * ncol, 6.4), squeeze=False)
+        for r, (kind, markers) in enumerate((("immature", IMMATURE_MARKERS),
+                                             ("mature", MATURE_MARKERS))):
+            for c in range(ncol):
+                ax = axes[r, c]
+                gene = markers[c] if c < len(markers) else None
+                if gene not in genes:
+                    ax.set_visible(False)
+                    continue
+                for reg in regions:
+                    st = mean.loc[reg, gene].sort_index()
+                    ax.plot(st.index, st.values, marker="o", markersize=3, linewidth=1.5,
+                            label=reg.removesuffix("_General"))
+                ax.set_title(f"{gene} ({kind})", fontsize=10)
+                ax.grid(True, linestyle="--", alpha=0.4)
+                ax.tick_params(labelsize=8)
+                ax.spines[["top", "right"]].set_visible(False)
+                if c == 0:
+                    ax.set_ylabel("mean log1p(CP10k)", fontsize=9)
+                if r == 1:
+                    ax.set_xlabel(f"{age_col} (PCW)", fontsize=9)
+        handles, names = next(ax for ax in axes.ravel() if ax.get_visible()).get_legend_handles_labels()
+        if group_col != "AllCells":
+            fig.legend(handles, names, title=group_col, loc="lower center",
+                       ncol=min(len(names), 8), frameon=False, bbox_to_anchor=(0.5, -0.06))
+        fig.suptitle("Maturity marker expression in neurons by age", fontsize=13, fontweight="bold")
+        fig.tight_layout()
+        fig.savefig(out_dir / f"marker_expression_{group_col}.png", dpi=200, bbox_inches="tight")
+        plt.close(fig)
+        print(f"  Saved: marker_expression_{group_col}.png")
 
 
 UMAP_KEYS = ("X_umap", "UMAP")
@@ -239,7 +412,8 @@ def umap_by_label(xy: np.ndarray, nt: np.ndarray, label_col: str,
 
 def run(h5ad: str, label: str, output_dir: str = str(DEFAULT_OUTPUT_DIR),
         region_col: str = "Region", age_col: str = "Age",
-        umap_from: str | None = None) -> None:
+        umap_from: str | None = None, chemistry_col: str = "Chemistry",
+        sym_col: str = "Gene", marker_expression: bool = True) -> None:
     out_dir = Path(output_dir) / label
     out_dir.mkdir(parents=True, exist_ok=True)
     print(f"\n{label}: {h5ad}")
@@ -266,6 +440,12 @@ def run(h5ad: str, label: str, output_dir: str = str(DEFAULT_OUTPUT_DIR),
                     continue
                 for group_col in groupings:
                     timeline(obs, label_col, group_col, age_col, label, out_dir)
+            if "NeuronMaturity" in obs:
+                for group_col in groupings:
+                    maturity_score_by_age(obs, group_col, age_col, out_dir)
+                maturity_split(obs, groupings, age_col, label, out_dir, chemistry_col)
+                if marker_expression:
+                    marker_expression_by_age(a, obs, groupings, age_col, sym_col, out_dir)
 
         umap = load_umap(a, umap_from)
         if umap is not None:
@@ -292,9 +472,15 @@ def main():
     p.add_argument("--umap-from", default=None,
                    help="h5ad to take obsm['X_umap'] from (matched by cell ID) when "
                         "--h5ad has none, e.g. data/full_adata_with_umap.h5ad.")
+    p.add_argument("--chemistry-col", default="Chemistry",
+                   help="obs column to split the maturity diagnostics by (skipped if absent).")
+    p.add_argument("--sym-col", default="Gene", help="var column with gene symbols.")
+    p.add_argument("--no-marker-expression", action="store_true",
+                   help="Skip the marker-gene expression plots (the only step that reads X).")
     args = p.parse_args()
     run(args.h5ad, args.label, args.output_dir, args.region_col, args.age_col,
-        umap_from=args.umap_from)
+        umap_from=args.umap_from, chemistry_col=args.chemistry_col, sym_col=args.sym_col,
+        marker_expression=not args.no_marker_expression)
 
 
 if __name__ == "__main__":
