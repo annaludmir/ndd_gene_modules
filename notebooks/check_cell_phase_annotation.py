@@ -14,7 +14,11 @@ def _():
         from anndata.io import read_elem            # anndata >= 0.11
     except ImportError:
         from anndata.experimental import read_elem  # older anndata
+    return h5py, pd, re, read_elem
 
+
+@app.cell
+def _(h5py, pd, read_elem):
     CORTEX_PATH = "/miridan-data/annaludmir/ndd_gene_modules/data/Cortex_EMX1_louvain3_passedQC_PostM_rev1.h5ad"
     HUMAN_PATH = "/miridan-data/annaludmir/ndd_gene_modules/data/human_dev_without_week_5_cc_annotated_fraction.h5ad"
 
@@ -25,7 +29,7 @@ def _():
     obs_cx = read_obs(CORTEX_PATH)
     obs_hd = read_obs(HUMAN_PATH)
     obs_cx.shape, obs_hd.shape
-    return obs_cx, obs_hd, pd, re
+    return obs_cx, obs_hd
 
 
 @app.cell
@@ -101,7 +105,16 @@ def _(matched, pd):
 
 
 @app.cell
-def _():
+def _(pd):
+    import anndata as ad
+    cx_file = ad.read_h5ad("/miridan-data/annaludmir/ndd_gene_modules/data/Cortex_EMX1_louvain3_passedQC_PostM_rev1.h5ad", backed="r")
+    hd_file = ad.read_h5ad("/miridan-data/annaludmir/ndd_gene_modules/data/human_dev_without_week_5_cc_annotated_fraction.h5ad", backed="r")
+    common = cx_file.obs_names.intersection(hd_file.obs_names)
+    print(cx_file.uns.get("cell_cycle_scoring"), hd_file.uns.get("cell_cycle_scoring"))   # how each was made
+    print(cx_file.n_vars, hd_file.n_vars)                                                  # gene sets differ?
+    for c in ["cc_score_g1", "cc_score_s", "cc_score_g2m"]:
+        if c in cx_file.obs and c in hd_file.obs:
+            print(c, pd.concat([cx_file.obs.loc[common, c], hd_file.obs.loc[common, c]], axis=1).corr().iloc[0, 1])
     return
 
 
@@ -128,7 +141,6 @@ def _():
     # 1. Select specific columns (using .copy() to avoid SettingWithCopyWarning)
     selected_cols = ["gene_list_file_name", "num_genes_in_gene_list", "column_condition_title",
         "column_condition_value", "NES", "FDR_qval_BH_reported", "lead_genes", "num_of_lead_genes"]
-
     return (selected_cols,)
 
 
@@ -174,6 +186,12 @@ def _(pd, selected_cols):
     # 2. Add the constant column
     filtered_df_v3_cortex_neuron_maturity['chemistry'] = 'v3'
     filtered_df_v3_cortex_neuron_maturity['layer'] = 'cortex'
+    return (filtered_df_v3_cortex_neuron_maturity,)
+
+
+@app.cell
+def _(filtered_df_v3_cortex_neuron_maturity):
+    filtered_df_v3_cortex_neuron_maturity
     return
 
 
@@ -187,17 +205,19 @@ def _(pd, selected_cols):
     # 2. Add the constant column
     filtered_df_v2_cortex_neuron_maturity['chemistry'] = 'v2'
     filtered_df_v2_cortex_neuron_maturity['layer'] = 'cortex'
-    return
+    return (filtered_df_v2_cortex_neuron_maturity,)
 
 
 @app.cell
 def _(
     filtered_df_v2_all_layer_neuron_maturity,
+    filtered_df_v2_cortex_neuron_maturity,
     filtered_df_v3_all_layer_neuron_maturity,
+    filtered_df_v3_cortex_neuron_maturity,
     pd,
 ):
     # 1. Concatenate the DataFrames along rows
-    neuron_maturity = pd.concat([filtered_df_v3_all_layer_neuron_maturity, filtered_df_v2_all_layer_neuron_maturity], ignore_index=True)
+    neuron_maturity = pd.concat([filtered_df_v3_all_layer_neuron_maturity, filtered_df_v2_all_layer_neuron_maturity, filtered_df_v3_cortex_neuron_maturity, filtered_df_v2_cortex_neuron_maturity], ignore_index=True)
 
     # 2. Sort by specific columns
     sorted_neuron_maturity = neuron_maturity.sort_values(
@@ -210,6 +230,12 @@ def _(
 def _(sorted_neuron_maturity):
     sorted_neuron_maturity[["gene_list_file_name", "layer", "chemistry", "column_condition_title",
         "column_condition_value", "NES", "FDR_qval_BH_reported", "lead_genes", "num_genes_in_gene_list", "num_of_lead_genes"]]
+    return
+
+
+@app.cell
+def _():
+    1
     return
 
 
