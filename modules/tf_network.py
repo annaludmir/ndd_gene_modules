@@ -25,7 +25,7 @@ Output structure:
       metadata/pipeline_output.log
     {dataset_name}_{YYYYMMDD}/           ← created only when --gene-list is given
       data/tf_targets_{gene_list_stem}.csv
-      figures/tf_network_{gene_list_stem}.png
+      figures/tf_network_{gene_list_stem}.png (+ .svg)
       metadata/pipeline_output.log
       {config}.yaml
 
@@ -951,8 +951,10 @@ def plot_tf_network(
     fig.suptitle(title, fontsize=12, y=1.01)
     plt.tight_layout()
     fig.savefig(fig_path, dpi=150, bbox_inches="tight")
+    svg_path = fig_path.with_suffix(".svg")
+    fig.savefig(svg_path, bbox_inches="tight")
     plt.close(fig)
-    print(f"  Saved: {fig_path.name}")
+    print(f"  Saved: {fig_path.name} (+ {svg_path.name})")
 
 
 # ---------------------------------------------------------------------------
@@ -1085,8 +1087,10 @@ def plot_tf_network_connected(
     fig.suptitle(title, fontsize=12)
     plt.tight_layout()
     fig.savefig(fig_path, dpi=150, bbox_inches="tight")
+    svg_path = fig_path.with_suffix(".svg")
+    fig.savefig(svg_path, bbox_inches="tight")
     plt.close(fig)
-    print(f"  Saved: {fig_path.name}")
+    print(f"  Saved: {fig_path.name} (+ {svg_path.name})")
 
 
 # ---------------------------------------------------------------------------

@@ -63,6 +63,7 @@ Inputs:
 Output:
   <subfolder>/figures/tf_validation_network_<gene_list>.png, or
   <subfolder>/figures/tf_validation_network_<gene_list>_part<i>of<n>.png
+  each also as .svg
 
 Usage:
   python modules/tf_validation_plot.py \
@@ -462,8 +463,10 @@ def plot_validation_network_connected(
     _add_legends(fig, groups, line_specs, has_unvalidated, legend_title,
                  "_motif_hit" in plot_df.columns, "_literature" in plot_df.columns)
     fig.savefig(fig_path, dpi=150, bbox_inches="tight")
+    svg_path = fig_path.with_suffix(".svg")
+    fig.savefig(svg_path, bbox_inches="tight")
     plt.close(fig)
-    print(f"  Saved: {fig_path.name}")
+    print(f"  Saved: {fig_path.name} (+ {svg_path.name})")
 
 
 def plot_validation_network_hub_spoke(
@@ -542,8 +545,10 @@ def plot_validation_network_hub_spoke(
     _add_legends(fig, groups, line_specs, has_unvalidated, legend_title,
                  "_motif_hit" in plot_df.columns, "_literature" in plot_df.columns)
     fig.savefig(fig_path, dpi=150, bbox_inches="tight")
+    svg_path = fig_path.with_suffix(".svg")
+    fig.savefig(svg_path, bbox_inches="tight")
     plt.close(fig)
-    print(f"  Saved: {fig_path.name}")
+    print(f"  Saved: {fig_path.name} (+ {svg_path.name})")
 
 
 PLOT_STYLES = {
@@ -617,10 +622,11 @@ def plot_validation_run(
 
         # Clear this gene list's figures from earlier runs, so a split that
         # changed size doesn't leave stale parts next to the new ones.
-        for old in fig_dir.glob(f"tf_validation_network_{gene_list}.png"):
-            old.unlink()
-        for old in fig_dir.glob(f"tf_validation_network_{gene_list}_part*of*.png"):
-            old.unlink()
+        for ext in ("png", "svg"):
+            for old in fig_dir.glob(f"tf_validation_network_{gene_list}.{ext}"):
+                old.unlink()
+            for old in fig_dir.glob(f"tf_validation_network_{gene_list}_part*of*.{ext}"):
+                old.unlink()
 
         if plot_df.empty:
             print(f"  [skip] {gene_list}: no validated pairs to draw")
