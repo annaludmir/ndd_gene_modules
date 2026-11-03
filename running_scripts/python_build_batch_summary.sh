@@ -47,8 +47,9 @@ if [[ $# -gt 0 ]]; then
   INDEX_ARGS=(--gene-list-index "$@")
 fi
 
-python -u modules/build_batch_summary.py \
-  --base-folder "$OUTPUT_ROOT" \
-  --run-glob "$RUN_GLOB" \
-  --output-csv "$OUTPUT_CSV" \
-  ${INDEX_ARGS[@]+"${INDEX_ARGS[@]}"}
+mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new \
+  python -u modules/build_batch_summary.py \
+    --base-folder "$OUTPUT_ROOT" \
+    --run-glob "$RUN_GLOB" \
+    --output-csv "$OUTPUT_CSV" \
+    ${INDEX_ARGS[@]+"${INDEX_ARGS[@]}"}
