@@ -228,12 +228,17 @@ def maturity_split(obs: pd.DataFrame, groupings, age_col: str, dataset: str,
 def marker_expression_by_age(a, obs: pd.DataFrame, groupings, age_col: str,
                              sym_col: str, out_dir: Path, chunk: int = 20000) -> None:
     """Mean log1p(CP10k) and % expressing of each maturity marker per age and
-    region, over neurons (cells with a NeuronMaturity call)."""
+    region, over neurons (cells with a NeuronMaturity call). The markers are
+    the ones the file was annotated with (uns), else the default sets."""
+    info = a.uns.get("neuron_maturity_annotation", {})
+    immature_markers = [str(g) for g in info.get("immature_markers", IMMATURE_MARKERS)]
+    mature_markers = [str(g) for g in info.get("mature_markers", MATURE_MARKERS)]
+    print(f"  Marker set: {info.get('marker_set', 'default')}")
     neuron = obs["NeuronMaturity"].notna().to_numpy()
     sym2var = _symbol_to_var_map(a, sym_col)
     var_pos = {v: i for i, v in enumerate(a.var_names.astype(str))}
-    genes = [g for g in IMMATURE_MARKERS + MATURE_MARKERS if sym2var.get(g) in var_pos]
-    missing = [g for g in IMMATURE_MARKERS + MATURE_MARKERS if g not in genes]
+    genes = [g for g in immature_markers + mature_markers if sym2var.get(g) in var_pos]
+    missing = [g for g in immature_markers + mature_markers if g not in genes]
     if missing:
         print(f"  [note] marker genes not in the file: {missing}")
     if not genes or not neuron.any():
@@ -275,10 +280,10 @@ def marker_expression_by_age(a, obs: pd.DataFrame, groupings, age_col: str,
         table.to_csv(out_dir / f"marker_expression_{group_col}.csv")
 
         regions = sorted(df[group_col].unique())
-        ncol = max(len(IMMATURE_MARKERS), len(MATURE_MARKERS))
+        ncol = max(len(immature_markers), len(mature_markers))
         fig, axes = plt.subplots(2, ncol, figsize=(3.2 * ncol, 6.4), squeeze=False)
-        for r, (kind, markers) in enumerate((("immature", IMMATURE_MARKERS),
-                                             ("mature", MATURE_MARKERS))):
+        for r, (kind, markers) in enumerate((("immature", immature_markers),
+                                             ("mature", mature_markers))):
             for c in range(ncol):
                 ax = axes[r, c]
                 gene = markers[c] if c < len(markers) else None

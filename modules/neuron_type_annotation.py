@@ -42,6 +42,16 @@ and Mature if score >= log2(--maturity-min-ratio), Immature if <= -that,
 Intermediate in between, Unassigned if no marker of either set is detected.
 Development is a continuum, so Intermediate is expected to be common.
 
+--maturity-markers picks the marker sets (MATURITY_MARKER_SETS):
+  default    the sets above
+  braun2023  from Braun et al. 2023 (first-trimester human brain atlas):
+               immature: NHLH2, NXPH4, CALB2, CNTNAP2, ARG2, CDH7
+               mature:   FABP7, POU3F2, ROBO2, MN1, SLA, NTM, DPY19L1,
+                         EPHB6, LIMCH1, CHL1
+The output columns have the same names whichever set is used;
+uns["neuron_maturity_annotation"]["marker_set"] records which one.
+--maturity-only keeps an existing NeuronType and redoes only maturity.
+
 Usage:
   python modules/neuron_type_annotation.py \
     --h5ad-input  data/human_dev_without_week_5.h5ad \
@@ -71,6 +81,16 @@ INHIBITORY_MARKERS = [
 
 IMMATURE_MARKERS = ["DCX", "SOX11", "SOX4", "DPYSL3", "CD24", "NNAT"]
 MATURE_MARKERS   = ["RBFOX3", "SYP", "SYT1", "SNAP25", "NEFL", "NEFM"]
+
+# Braun et al. 2023 (Science), first-trimester human brain
+BRAUN2023_IMMATURE_MARKERS = ["NHLH2", "NXPH4", "CALB2", "CNTNAP2", "ARG2", "CDH7"]
+BRAUN2023_MATURE_MARKERS   = ["FABP7", "POU3F2", "ROBO2", "MN1", "SLA", "NTM",
+                              "DPY19L1", "EPHB6", "LIMCH1", "CHL1"]
+
+MATURITY_MARKER_SETS = {   # name -> (immature, mature)
+    "default":   (IMMATURE_MARKERS, MATURE_MARKERS),
+    "braun2023": (BRAUN2023_IMMATURE_MARKERS, BRAUN2023_MATURE_MARKERS),
+}
 
 MATURITY_COL           = "NeuronMaturity"
 MATURITY_SCORE_COL     = "neuron_maturity_score"
@@ -176,12 +196,16 @@ def annotate_neuron_maturity(
     cell_class_col: str = DEFAULT_CELL_CLASS_COL,
     neuron_class: str = DEFAULT_NEURON_CLASS,
     min_ratio: float = DEFAULT_MATURITY_RATIO,
+    marker_set: str = "default",
 ):
     """Add `NeuronMaturity` and `neuron_maturity_score` to adata.obs (in
-    place) for neurons; other cells get NaN. See the module docstring."""
+    place) for neurons; other cells get NaN. `marker_set` names an entry of
+    MATURITY_MARKER_SETS. See the module docstring."""
     import scipy.sparse as sp
+    immature_markers, mature_markers = MATURITY_MARKER_SETS[marker_set]
+    print(f"  Maturity marker set: {marker_set}")
     rows = _neuron_rows(adata, cell_class_col, neuron_class)
-    ix = _marker_sets(adata, sym_col, {"immature": IMMATURE_MARKERS, "mature": MATURE_MARKERS})
+    ix = _marker_sets(adata, sym_col, {"immature": immature_markers, "mature": mature_markers})
 
     X = adata.X.tocsr() if sp.issparse(adata.X) else adata.X
     total = np.asarray(X[rows].sum(axis=1)).ravel()
@@ -215,8 +239,9 @@ def annotate_neuron_maturity(
     sc_all = np.full(adata.n_obs, np.nan, dtype=np.float32); sc_all[rows] = score
     adata.obs[MATURITY_SCORE_COL] = sc_all
     adata.uns["neuron_maturity_annotation"] = {
-        "immature_markers": [str(g) for g in IMMATURE_MARKERS],
-        "mature_markers":   [str(g) for g in MATURE_MARKERS],
+        "marker_set": marker_set,
+        "immature_markers": [str(g) for g in immature_markers],
+        "mature_markers":   [str(g) for g in mature_markers],
         "cell_class_col": cell_class_col,
         "neuron_class": str(neuron_class),
         "min_ratio": float(min_ratio),
@@ -250,6 +275,12 @@ def main():
                    help=f"Mature / Immature when one set's normalized score is at least this "
                         f"many times the other's; otherwise 'Intermediate'. "
                         f"Default {DEFAULT_MATURITY_RATIO}.")
+    p.add_argument("--maturity-markers", choices=sorted(MATURITY_MARKER_SETS), default="default",
+                   help="Marker sets for NeuronMaturity: 'default' (DCX, SOX11, ... vs RBFOX3, "
+                        "SYP, ...) or 'braun2023' (Braun et al. 2023). Default 'default'.")
+    p.add_argument("--maturity-only", action="store_true",
+                   help="Redo only NeuronMaturity and keep the input's NeuronType (e.g. on a "
+                        "*_neuron_type.h5ad, to compare marker sets).")
     args = p.parse_args()
 
     in_path  = Path(args.h5ad_input).resolve()
@@ -263,11 +294,16 @@ def main():
     adata = sc.read_h5ad(str(in_path))
     print(f"  {adata.n_obs:,} cells × {adata.n_vars:,} genes")
 
-    annotate_neuron_type(adata, sym_col=args.sym_col, cell_class_col=args.cell_class_col,
-                         neuron_class=args.neuron_class, min_ratio=args.min_ratio)
+    if args.maturity_only:
+        if NEURON_TYPE_COL not in adata.obs:
+            print(f"  [note] input has no {NEURON_TYPE_COL}; only {MATURITY_COL} is added")
+    else:
+        annotate_neuron_type(adata, sym_col=args.sym_col, cell_class_col=args.cell_class_col,
+                             neuron_class=args.neuron_class, min_ratio=args.min_ratio)
     annotate_neuron_maturity(adata, sym_col=args.sym_col, cell_class_col=args.cell_class_col,
                              neuron_class=args.neuron_class,
-                             min_ratio=args.maturity_min_ratio)
+                             min_ratio=args.maturity_min_ratio,
+                             marker_set=args.maturity_markers)
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     print(f"\nSaving: {out_path}")

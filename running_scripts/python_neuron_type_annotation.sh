@@ -17,13 +17,21 @@ mamba activate /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new
 cd /miridan-data/annaludmir/ndd_gene_modules
 
 # Edit these before submitting.
-H5AD_INPUT="/miridan-data/annaludmir/ndd_gene_modules/data/Cortex_EMX1_louvain3_passedQC_PostM_rev1.h5ad"
-H5AD_OUTPUT="/miridan-data/annaludmir/ndd_gene_modules/data/Cortex_EMX1_louvain3_passedQC_PostM_rev1_neuron_type.h5ad"
+# Braun et al. 2023 maturity markers on the already-annotated file (NeuronType kept).
+# For a full run from scratch: the un-annotated input, MATURITY_MARKERS="default",
+# MATURITY_ONLY=false.
+H5AD_INPUT="/miridan-data/annaludmir/ndd_gene_modules/data/human_dev_without_week_5_cc_annotated_neuron_type.h5ad"
+H5AD_OUTPUT="/miridan-data/annaludmir/ndd_gene_modules/data/human_dev_without_week_5_cc_annotated_neuron_type_braun2023.h5ad"
 SYM_COL="Gene"
 CELL_CLASS_COL="CellClass"   # only cells with this == NEURON_CLASS are classified
 NEURON_CLASS="Neuron"
 MIN_RATIO="2"                # both marker sets detected: winner needs >= this x the other's UMIs
 MATURITY_MIN_RATIO="1.5"     # Mature / Immature: one set's normalized score >= this x the other's
+MATURITY_MARKERS="braun2023" # default | braun2023
+MATURITY_ONLY=true           # true: keep the input's NeuronType, redo only NeuronMaturity
+
+EXTRA=()
+[[ "$MATURITY_ONLY" == "true" ]] && EXTRA+=(--maturity-only)
 
 mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new \
   python -u modules/neuron_type_annotation.py \
@@ -33,7 +41,9 @@ mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new \
     --cell-class-col "$CELL_CLASS_COL" \
     --neuron-class "$NEURON_CLASS" \
     --min-ratio "$MIN_RATIO" \
-    --maturity-min-ratio "$MATURITY_MIN_RATIO"
+    --maturity-min-ratio "$MATURITY_MIN_RATIO" \
+    --maturity-markers "$MATURITY_MARKERS" \
+    ${EXTRA[@]+"${EXTRA[@]}"}
 
 rc=$?
 echo "Python exit code: $rc"

@@ -21,12 +21,14 @@ cd /miridan-data/annaludmir/ndd_gene_modules
 declare -A DATASETS=(
   [human_dev]="data/human_dev_without_week_5_cc_annotated_neuron_type.h5ad"
   [cortex]="data/Cortex_EMX1_louvain3_passedQC_PostM_rev1_neuron_type.h5ad"
+  [human_dev_braun2023]="data/human_dev_without_week_5_cc_annotated_neuron_type_braun2023.h5ad"
 )
 
 # Where to take UMAP coordinates from when a file has none (matched by cell ID).
 declare -A UMAP_FROM=(
   [human_dev]="data/full_adata_with_umap.h5ad"
   [cortex]="data/full_adata_with_umap.h5ad"
+  [human_dev_braun2023]="data/full_adata_with_umap.h5ad"
 )
 
 rc=0
