@@ -136,7 +136,8 @@ run_gene_list() {
 }
 
 # Recursive, sorted list of CSV files (subfolders included).
-mapfile -t csv_files < <(find "$GENE_LIST_DIR" -type f -name '*.csv' | sort)
+# index.csv files describe the lists (ai-adata-miner script 29); they aren't gene lists
+mapfile -t csv_files < <(find "$GENE_LIST_DIR" -type f -name '*.csv' ! -name 'index.csv' | sort)
 
 if [[ ${#csv_files[@]} -eq 0 ]]; then
   echo "Error: no CSV files found under directory: $GENE_LIST_DIR"

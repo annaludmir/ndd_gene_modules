@@ -7,9 +7,18 @@ produce a single batch_summary CSV with the same schema as the one produced by
 
 Columns:
   run_name, enrichment_config_path, ges_config_path, gene_list_file_name,
+  [gene_list_description, gene_list_scope, gene_list_label,
+   gene_list_top_genes, gene_list_top_go,]
   num_genes_in_gene_list, column_condition_title, column_condition_value,
   condition_compared_to, NES, FDR_qval_BH, is_significant, lead_genes,
   num_of_lead_genes
+
+The gene_list_* columns say what a gene list is, for lists exported by
+ai-adata-miner's script 29 (Spectra / NMF programmes, whose file names are
+only factor IDs). They are read from the `index.csv` next to the gene list
+(its folder's index.csv; consensus/index.csv for consensus lists), matched by
+file name, or from --gene-list-index files. Lists without an index entry get
+empty values.
 
 Two invocation styles:
 
@@ -47,6 +56,45 @@ from enrichment_cal_lists_loop import (
 )
 
 
+# index.csv column -> batch summary column
+INDEX_COLUMNS = {
+    "description": "gene_list_description",
+    "scope":       "gene_list_scope",
+    "label":       "gene_list_label",
+    "top_genes":   "gene_list_top_genes",
+    "top_go":      "gene_list_top_go",
+}
+
+_index_cache: dict[Path, dict[str, dict]] = {}
+
+
+def _read_index(path: Path) -> dict[str, dict]:
+    """{gene list file name: gene_list_* values} from one index.csv (cached);
+    empty if the file is missing or has no `file` column."""
+    path = path.resolve()
+    if path not in _index_cache:
+        entries = {}
+        if path.is_file():
+            idx = pd.read_csv(path)
+            if "file" in idx.columns:
+                for _, r in idx.iterrows():
+                    entries[Path(str(r["file"])).name] = {
+                        out: ("" if pd.isna(r[col]) else r[col])
+                        for col, out in INDEX_COLUMNS.items() if col in idx.columns}
+        _index_cache[path] = entries
+    return _index_cache[path]
+
+
+def gene_list_info(gene_list_path: Path, extra_indexes: list[Path]) -> dict:
+    """gene_list_* columns for one gene list: from --gene-list-index files
+    first, then the index.csv in the list's own folder."""
+    for idx in [*extra_indexes, gene_list_path.parent / "index.csv"]:
+        hit = _read_index(idx).get(gene_list_path.name)
+        if hit is not None:
+            return hit
+    return {}
+
+
 def _resolve_relative(path_str: str, root: str) -> Path:
     p = Path(str(path_str))
     if p.is_absolute():
@@ -54,7 +102,7 @@ def _resolve_relative(path_str: str, root: str) -> Path:
     return (Path(root) / p).resolve()
 
 
-def build_rows_from_run_dir(run_dir: Path) -> list[dict]:
+def build_rows_from_run_dir(run_dir: Path, extra_indexes: list[Path] = ()) -> list[dict]:
     """Read one run dir's config + GSEA summary and return per-row records."""
     cfg_path = run_dir / "metadata" / "config_used.yaml"
     if not cfg_path.exists():
@@ -73,6 +121,7 @@ def build_rows_from_run_dir(run_dir: Path) -> list[dict]:
         _read_gene_list_size(gene_list_path)
         if gene_list_path.exists() else np.nan
     )
+    list_info      = gene_list_info(gene_list_path, list(extra_indexes))
 
     # Columns may come from their own GES run, so the GES config is per column
     col_specs = cfg.get("column_conditions_for_gsea", {}) or {}
@@ -121,6 +170,7 @@ def build_rows_from_run_dir(run_dir: Path) -> list[dict]:
             "enrichment_config_path": str(cfg_path),
             "ges_config_path": ges_cfg_for(col_name),
             "gene_list_file_name": gene_list_path.name,
+            **list_info,
             "num_genes_in_gene_list": gene_list_n,
             "column_condition_title": col_name,
             "column_condition_value": cond_val,
@@ -146,7 +196,15 @@ def main():
                    help="Glob pattern under --base-folder, e.g. '*_threshold_*_20260723'.")
     p.add_argument("--output-csv", required=True,
                    help="Where to write the batch summary CSV.")
+    p.add_argument("--gene-list-index", nargs="+", default=[],
+                   help="index.csv files describing the gene lists (ai-adata-miner script 29), "
+                        "matched by file name. Not needed when the index.csv sits next to the "
+                        "lists, which is read automatically.")
     args = p.parse_args()
+    extra_indexes = [Path(x).resolve() for x in args.gene_list_index]
+    for idx in extra_indexes:
+        if not idx.is_file():
+            print(f"  [warn] --gene-list-index not found: {idx}")
 
     run_dirs: list[Path] = []
     if args.run_dirs:
@@ -172,7 +230,7 @@ def main():
             print(f"  [skip] not a directory: {run_dir}")
             continue
         print(f"Processing: {run_dir}")
-        all_rows.extend(build_rows_from_run_dir(run_dir))
+        all_rows.extend(build_rows_from_run_dir(run_dir, extra_indexes))
 
     if not all_rows:
         print("\nNo summary rows collected; nothing written.")
@@ -180,7 +238,17 @@ def main():
 
     out_path = Path(args.output_csv).resolve()
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(all_rows).to_csv(out_path, index=False)
+    summary = pd.DataFrame(all_rows)
+    # Keep the gene_list_* columns next to gene_list_file_name in a fixed order
+    info_cols = [c for c in INDEX_COLUMNS.values() if c in summary.columns]
+    if info_cols:
+        rest = [c for c in summary.columns if c not in info_cols]
+        at = rest.index("gene_list_file_name") + 1
+        summary = summary[rest[:at] + info_cols + rest[at:]]
+        described = summary.drop_duplicates("run_name")["gene_list_description"].fillna("").astype(str).str.len().gt(0) \
+            if "gene_list_description" in summary.columns else pd.Series(dtype=bool)
+        print(f"Gene list descriptions found for {int(described.sum())}/{len(described)} runs")
+    summary.to_csv(out_path, index=False)
     print(f"\nWrote batch summary CSV: {out_path}  ({len(all_rows)} rows)")
 
 
