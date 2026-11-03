@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from create_figs_ges_for_presentation import (
-    Q_LABEL_FONTSIZE, add_q_note, fit_labels_in_view, format_q, permutation_num_of,
+    Q_STAR_FONTSIZE, add_q_note, fit_labels_in_view, q_stars,
 )
 
 def plot_bar_chart(ges_results_df, output_file, gene_list_name, comparison):
@@ -71,27 +71,19 @@ def plot_bar_chart(ges_results_df, output_file, gene_list_name, comparison):
 
     q_texts = []
 
-    # ---- Add q-value annotations per bar (black if significant, gray otherwise) ----
+    # ---- Significance stars per bar (* FDR < 0.05, ** FDR < 0.01) ----
     if q_col is not None:
         y_range = max(1e-9, (ymax - ymin))
         offset = 0.03 * y_range
 
         q_series = pd.to_numeric(ges_results_df[q_col], errors="coerce").to_numpy()
-        n_perm   = permutation_num_of(ges_results_df)
 
         for i, rect in enumerate(bars):
           nes = float(rect.get_height())
-          qv = q_series[i] if i < len(q_series) else np.nan
-      
-          if np.isfinite(qv):
-              q_txt = format_q(qv, n_perm)
-              sig = (qv < 0.05)
-          else:
-              q_txt = "NA"
-              sig = False
-      
-          txt_color = "black" if sig else "#7a7a7a"
-      
+          stars = q_stars(q_series[i]) if i < len(q_series) else ""
+          if not stars:
+              continue
+
           x = rect.get_x() + rect.get_width() / 2
           if nes >= 0:
               y = nes + offset
@@ -99,13 +91,13 @@ def plot_bar_chart(ges_results_df, output_file, gene_list_name, comparison):
           else:
               y = 2 * offset
               va = "top"
-      
+
           q_texts.append(ax.text(
-              x, y, q_txt,
+              x, y, stars,
               ha="center", va=va,
-              fontsize=Q_LABEL_FONTSIZE,
-              color=txt_color,
-              fontweight="bold" if sig else "normal",
+              fontsize=Q_STAR_FONTSIZE,
+              color="black",
+              fontweight="bold",
               clip_on=False
           ))
 
@@ -115,7 +107,7 @@ def plot_bar_chart(ges_results_df, output_file, gene_list_name, comparison):
     if q_texts:
         add_q_note(ax)
     plt.tight_layout()
-    # Expand ylim so the q labels fit inside the plot
+    # Expand ylim so the stars fit inside the plot
     fit_labels_in_view(fig, ax, q_texts)
     plt.savefig(output_file, dpi=300, bbox_inches="tight")
     plt.close(fig)

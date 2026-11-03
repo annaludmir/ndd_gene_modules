@@ -30,12 +30,27 @@ def q_label(q, permutation_num: int = DEFAULT_PERMUTATION_NUM, name: str = "q") 
 
 
 Q_LABEL_FONTSIZE = 7
+Q_STAR_FONTSIZE = 11
+# (threshold, stars), strictest first
+Q_STARS = ((0.01, "**"), (0.05, "*"))
+
+
+def q_stars(q) -> str:
+    """Significance stars for an FDR q-value: "**" for q < 0.01, "*" for
+    q < 0.05, "" otherwise (or when q is missing)."""
+    try:
+        q = float(q)
+    except (TypeError, ValueError):
+        return ""
+    if not np.isfinite(q):
+        return ""
+    return next((stars for cut, stars in Q_STARS if q < cut), "")
 
 
 def add_q_note(ax) -> None:
-    """Small note under the title saying what the bar labels are, since they
-    are printed without a "q=" prefix."""
-    ax.text(0.0, 1.01, "numbers above bars: FDR q-value", transform=ax.transAxes,
+    """Small note under the title saying what the stars above the bars mean."""
+    note = "   ".join(f"{stars} FDR < {cut:g}" for cut, stars in reversed(Q_STARS))
+    ax.text(0.0, 1.01, note, transform=ax.transAxes,
             ha="left", va="bottom", fontsize=Q_LABEL_FONTSIZE, color="#555555")
 
 
@@ -81,7 +96,7 @@ def plot_bar_chart(
     """
     Bar chart of NES per condition.
     - Bars colored to match a red↔white↔purple heatmap aesthetic.
-    - Annotates FDR only when significant (FDR < fdr_sig), and ALWAYS places it above the bar.
+    - Marks significant bars with stars (* FDR < 0.05, ** FDR < 0.01), always above the bar.
       For negative NES bars, the label is placed just above y=0 (still "above the bar" visually).
     - Removes top/right spines (keeps only left/bottom).
     - Replaces the previous orange "very significant" line with a purple-toned line.
@@ -184,18 +199,18 @@ def plot_bar_chart(
     ax.spines["right"].set_visible(False)
     ax.tick_params(top=False, right=False)
 
-    # ---- annotate significant FDR only (FDR < fdr_sig), always above bar ----
+    # ---- significance stars (* FDR < 0.05, ** FDR < 0.01), always above bar ----
     q_texts = []
     if fdr_col is not None:
         fdr_vals = pd.to_numeric(ges_results_df[fdr_col], errors="coerce").to_numpy()
-        n_perm   = permutation_num_of(ges_results_df)
 
         y_range = max(1e-9, (ymax - ymin))
         offset = 0.04 * y_range
 
         for i, rect in enumerate(bars):
             fdr = fdr_vals[i] if i < len(fdr_vals) else np.nan
-            if not (np.isfinite(fdr) and fdr < fdr_sig):
+            stars = q_stars(fdr)
+            if not (stars and fdr < fdr_sig):
                 continue
 
             bar_h = float(rect.get_height())
@@ -207,9 +222,9 @@ def plot_bar_chart(
             y = (bar_h + offset) if (np.isfinite(bar_h) and bar_h >= 0) else (0 + offset)
 
             q_texts.append(ax.text(
-                x, y, format_q(fdr, n_perm),
+                x, y, stars,
                 ha="center", va="bottom",
-                fontsize=Q_LABEL_FONTSIZE,
+                fontsize=Q_STAR_FONTSIZE,
                 color="black",
                 fontweight="bold",
                 clip_on=False,
