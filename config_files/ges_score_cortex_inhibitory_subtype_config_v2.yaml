@@ -1,0 +1,24 @@
+name_of_run: "ges_score_for_cortex_inhibitory_subtype_v2"
+ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules/"
+data_path: "data/Cortex_EMX1_louvain3_passedQC_PostM_rev1_neuron_type_braun2023.h5ad"
+output_folder: "results/ges_score_results/"
+
+# Inhibitory neurons by lineage of origin (InhibitorySubtype, neuron_type_annotation.py):
+# only assigned inhibitory neurons are kept (Ambiguous / Unassigned dropped),
+# so each subtype's background is the other subtypes.
+cell_filter: "InhibitorySubtype in ['MGE', 'MGE_thalamic', 'LGE', 'CGE', 'Thalamic_local', 'Hypothalamic_SST']"
+
+column_conditions:
+  InhibitorySubtype:
+    - "MGE"
+    - "MGE_thalamic"
+    - "LGE"
+    - "CGE"
+    - "Thalamic_local"
+    - "Hypothalamic_SST"
+
+expression_threshold: 0.05
+normalize_data: true
+chemistry: "v2"
+permutations: false
+# n_permutations: 500  # optional

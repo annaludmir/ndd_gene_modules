@@ -16,12 +16,17 @@ module load mamba/mamba-1.5.8
 mamba activate /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new
 cd /miridan-data/annaludmir/ndd_gene_modules
 
-# Edit these before submitting.
-# Braun et al. 2023 maturity markers on the already-annotated file (NeuronType kept).
-# For a full run from scratch: the un-annotated input, MATURITY_MARKERS="default",
+# Edit these before submitting: label -> "input output".
+# Braun et al. 2023 maturity markers on the already-annotated files (NeuronType
+# kept), plus InhibitorySubtype and MidbrainLineage (MidbrainLineage is skipped
+# for a file without REGION_COL, e.g. the cortex).
+# For a full run from scratch: the un-annotated inputs, MATURITY_MARKERS="default",
 # MATURITY_ONLY=false.
-H5AD_INPUT="/miridan-data/annaludmir/ndd_gene_modules/data/human_dev_without_week_5_cc_annotated_neuron_type.h5ad"
-H5AD_OUTPUT="/miridan-data/annaludmir/ndd_gene_modules/data/human_dev_without_week_5_cc_annotated_neuron_type_braun2023.h5ad"
+DATA=/miridan-data/annaludmir/ndd_gene_modules/data
+declare -A FILES=(
+  [human_dev]="$DATA/human_dev_without_week_5_cc_annotated_neuron_type.h5ad $DATA/human_dev_without_week_5_cc_annotated_neuron_type_braun2023.h5ad"
+  [cortex]="$DATA/Cortex_EMX1_louvain3_passedQC_PostM_rev1_neuron_type.h5ad $DATA/Cortex_EMX1_louvain3_passedQC_PostM_rev1_neuron_type_braun2023.h5ad"
+)
 SYM_COL="Gene"
 CELL_CLASS_COL="CellClass"   # only cells with this == NEURON_CLASS are classified
 NEURON_CLASS="Neuron"
@@ -29,22 +34,32 @@ MIN_RATIO="2"                # both marker sets detected: winner needs >= this x
 MATURITY_MIN_RATIO="1.5"     # Mature / Immature: one set's normalized score >= this x the other's
 MATURITY_MARKERS="braun2023" # default | braun2023
 MATURITY_ONLY=true           # true: keep the input's NeuronType, redo only NeuronMaturity
+SUBTYPE_MIN_RATIO="1.5"      # InhibitorySubtype / MidbrainLineage: best set >= this x the runner-up
+REGION_COL="Region"          # MidbrainLineage: neurons with REGION_COL == MIDBRAIN_VALUE
+MIDBRAIN_VALUE="Midbrain"
 
 EXTRA=()
 [[ "$MATURITY_ONLY" == "true" ]] && EXTRA+=(--maturity-only)
 
-mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new \
-  python -u modules/neuron_type_annotation.py \
-    --h5ad-input  "$H5AD_INPUT" \
-    --h5ad-output "$H5AD_OUTPUT" \
-    --sym-col "$SYM_COL" \
-    --cell-class-col "$CELL_CLASS_COL" \
-    --neuron-class "$NEURON_CLASS" \
-    --min-ratio "$MIN_RATIO" \
-    --maturity-min-ratio "$MATURITY_MIN_RATIO" \
-    --maturity-markers "$MATURITY_MARKERS" \
-    ${EXTRA[@]+"${EXTRA[@]}"}
+rc=0
+for label in "${!FILES[@]}"; do
+  read -r H5AD_INPUT H5AD_OUTPUT <<< "${FILES[$label]}"
+  echo "=== $label: $H5AD_INPUT -> $H5AD_OUTPUT"
+  mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new \
+    python -u modules/neuron_type_annotation.py \
+      --h5ad-input  "$H5AD_INPUT" \
+      --h5ad-output "$H5AD_OUTPUT" \
+      --sym-col "$SYM_COL" \
+      --cell-class-col "$CELL_CLASS_COL" \
+      --neuron-class "$NEURON_CLASS" \
+      --min-ratio "$MIN_RATIO" \
+      --maturity-min-ratio "$MATURITY_MIN_RATIO" \
+      --maturity-markers "$MATURITY_MARKERS" \
+      --subtype-min-ratio "$SUBTYPE_MIN_RATIO" \
+      --region-col "$REGION_COL" \
+      --midbrain-value "$MIDBRAIN_VALUE" \
+      ${EXTRA[@]+"${EXTRA[@]}"} || { echo "[error] $label failed"; rc=1; }
+done
 
-rc=$?
-echo "Python exit code: $rc"
+echo "Exit code: $rc"
 exit $rc

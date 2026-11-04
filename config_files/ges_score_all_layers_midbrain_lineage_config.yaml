@@ -1,0 +1,21 @@
+name_of_run: "ges_score_for_all_layers_midbrain_lineage"
+ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules/"
+data_path: "data/human_dev_without_week_5_cc_annotated_neuron_type_braun2023.h5ad"
+output_folder: "results/ges_score_results/"
+
+# Midbrain neuronal lineages (MidbrainLineage, neuron_type_annotation.py):
+# only midbrain neurons with an assigned lineage are kept (Ambiguous /
+# Unassigned dropped), so each lineage's background is the other lineages.
+cell_filter: "MidbrainLineage in ['Dopaminergic_posteriorFP', 'Subthalamic_anteriorFP', 'RedNucleus_Motor_basal']"
+
+column_conditions:
+  MidbrainLineage:
+    - "Dopaminergic_posteriorFP"
+    - "Subthalamic_anteriorFP"
+    - "RedNucleus_Motor_basal"
+
+expression_threshold: 0.05
+normalize_data: true
+chemistry: "v3"
+permutations: false
+# n_permutations: 500  # optional

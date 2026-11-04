@@ -41,5 +41,16 @@ column_conditions_for_gsea:
       - "Intermediate"
       - "Mature"
 
+  # InhibitorySubtype:
+  #   # scored in its own GES run; uncomment and set the run date once it has finished
+  #   ges_results_folder: "results/ges_score_results/ges_score_for_cortex_inhibitory_subtype_YYYYMMDD"
+  #   conditions:
+  #     - "MGE"
+  #     - "MGE_thalamic"
+  #     - "LGE"
+  #     - "CGE"
+  #     - "Thalamic_local"
+  #     - "Hypothalamic_SST"
+
 keep_only_significant: false
 nes_keep_threshold: 1.5
