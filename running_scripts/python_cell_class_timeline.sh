@@ -19,14 +19,32 @@ module load mamba/mamba-1.5.8
 mamba activate /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new
 cd /miridan-data/annaludmir/ndd_gene_modules
 
+# MODE=class: % of all cells of a class per region and age (default).
+# MODE=phase: % of each class's cycling cells in S / G2M per age, a line per class.
+#   MODE=phase sbatch running_scripts/python_cell_class_timeline.sh
+MODE="${MODE:-class}"
+
 # Options: one per line; comment a line out (or in) to switch it.
-ARGS=(
-  --h5ad data/human_dev.h5ad
-  --label human_dev
-  --cell-class "Neuronal IPC"     # several allowed: --cell-class "Neuronal IPC" "Radial glia" Neuroblast
-  # --by-region                   # also per Region as annotated
-  # --chemistry v3                # one chemistry only (default: all cells)
-)
+if [[ "$MODE" == "phase" ]]; then
+  ARGS=(
+    --mode phase
+    --h5ad data/human_dev_without_week_5_cc_annotated_neuron_type.h5ad   # needs CellCyclePhase
+    --label human_dev_without_week_5
+    --cell-class "Neuronal IPC" "Radial glia" Glioblast
+    --phases S G2M                # % of cycling cells (G1, S, G2M, Post-M) in each phase
+    --min-cycling-cells 20        # leave out class x age points with fewer cycling cells
+    --by-region-general           # also one set of figures per Forebrain / Midbrain / Hindbrain
+    # --chemistry v3              # one chemistry only (default: all cells)
+  )
+else
+  ARGS=(
+    --h5ad data/human_dev.h5ad
+    --label human_dev
+    --cell-class "Neuronal IPC"   # several allowed: --cell-class "Neuronal IPC" "Radial glia" Neuroblast
+    # --by-region                 # also per Region as annotated
+    # --chemistry v3              # one chemistry only (default: all cells)
+  )
+fi
 
 mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new \
   python -u modules/cell_class_timeline.py "${ARGS[@]}"
