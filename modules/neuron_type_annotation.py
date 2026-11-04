@@ -45,9 +45,10 @@ Development is a continuum, so Intermediate is expected to be common.
 --maturity-markers picks the marker sets (MATURITY_MARKER_SETS):
   default    the sets above
   braun2023  from Braun et al. 2023 (first-trimester human brain atlas):
-               immature: NHLH2, NXPH4, CALB2, CNTNAP2, ARG2, CDH7
+               immature: NHLH2, NXPH4, CALB2, CNTNAP2, ARG2, CDH7, TTR,
+                         DDIT4
                mature:   FABP7, POU3F2, ROBO2, MN1, SLA, NTM, DPY19L1,
-                         EPHB6, LIMCH1, CHL1
+                         EPHB6, LIMCH1, CHL1, HTRA1
 The output columns have the same names whichever set is used;
 uns["neuron_maturity_annotation"]["marker_set"] records which one.
 --maturity-only keeps an existing NeuronType and redoes only maturity.
@@ -83,9 +84,10 @@ IMMATURE_MARKERS = ["DCX", "SOX11", "SOX4", "DPYSL3", "CD24", "NNAT"]
 MATURE_MARKERS   = ["RBFOX3", "SYP", "SYT1", "SNAP25", "NEFL", "NEFM"]
 
 # Braun et al. 2023 (Science), first-trimester human brain
-BRAUN2023_IMMATURE_MARKERS = ["NHLH2", "NXPH4", "CALB2", "CNTNAP2", "ARG2", "CDH7"]
+BRAUN2023_IMMATURE_MARKERS = ["NHLH2", "NXPH4", "CALB2", "CNTNAP2", "ARG2", "CDH7",
+                              "TTR", "DDIT4"]
 BRAUN2023_MATURE_MARKERS   = ["FABP7", "POU3F2", "ROBO2", "MN1", "SLA", "NTM",
-                              "DPY19L1", "EPHB6", "LIMCH1", "CHL1"]
+                              "DPY19L1", "EPHB6", "LIMCH1", "CHL1", "HTRA1"]
 
 MATURITY_MARKER_SETS = {   # name -> (immature, mature)
     "default":   (IMMATURE_MARKERS, MATURE_MARKERS),
