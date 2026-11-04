@@ -23,6 +23,9 @@ but Non-cycling (G1, S, G2M, Post-M). Points with fewer than
   phase_timeline_<phase>.png           all regions pooled
   phase_timeline_<phase>_<region>.png  with --by-region-general, per region
   phase_timeline.csv                   cycling cells and % per phase, class x age
+With --lines phase it is one figure per class, a line per phase instead:
+  phases_by_age_<class>.png (and _<region> with --by-region-general)
+  phases_by_age.csv
 
 Usage:
   python modules/cell_class_timeline.py --h5ad data/human_dev.h5ad \
@@ -92,9 +95,10 @@ def class_timeline(obs: pd.DataFrame, classes: list[str], class_col: str, group_
 
 def phase_timeline(obs: pd.DataFrame, classes: list[str], class_col: str, phase_col: str,
                    phases: list[str], age_col: str, out_dir: Path, min_cycling: int,
-                   tag: str = "", subtitle: str = "") -> None:
-    """Per phase, one figure: a line per class, y = % of the class's cycling
-    cells at each age that are in the phase."""
+                   tag: str = "", subtitle: str = "", lines: str = "class") -> None:
+    """y = % of a class's cycling cells at each age that are in a phase.
+    lines="class": one figure per phase, a line per class; lines="phase": one
+    figure per class, a line per phase."""
     df = obs.loc[obs[class_col].astype(str).isin(classes), [class_col, age_col, phase_col]].copy()
     df[phase_col] = df[phase_col].astype(str)
     df = df[df[phase_col].notna() & ~df[phase_col].isin([NON_CYCLING, "nan", "None"])]
@@ -110,30 +114,36 @@ def phase_timeline(obs: pd.DataFrame, classes: list[str], class_col: str, phase_
               .unstack(phase_col, fill_value=0)
               .reindex(index=cycling.index, columns=phases, fill_value=0))
     pct = counts.div(cycling, axis=0) * 100
+    prefix = "phases_by_age" if lines == "phase" else "phase_timeline"
     counts.add_prefix("n_").join(cycling).join(pct.add_prefix("pct_")).to_csv(
-        out_dir / f"phase_timeline{tag}.csv")
+        out_dir / f"{prefix}{tag}.csv")
 
     ages = sorted(df[age_col].unique())
-    for phase in phases:
+    present = [c for c in classes if c in pct.index.get_level_values(0)]
+    if lines == "phase":   # one figure per class, a line per phase
+        figures = [(cls, [(ph, cls, ph) for ph in phases]) for cls in present]
+        legend_title, name = phase_col, "Cell Cycle Phases: {}"
+    else:                  # one figure per phase, a line per class
+        figures = [(ph, [(cls, cls, ph) for cls in present]) for ph in phases]
+        legend_title, name = class_col, "Cell Cycle Phase Proportions: {}"
+    for fig_key, series_spec in figures:
         fig, ax = plt.subplots(figsize=(10, 5))
-        for cls in classes:
-            if cls not in pct.index.get_level_values(0):
-                continue
+        for line_label, cls, ph in series_spec:
             ok = cycling.loc[cls] >= min_cycling
-            series = pct.loc[cls, phase][ok].sort_index()
+            series = pct.loc[cls, ph][ok].sort_index()
             ax.plot(series.index, series.values, marker="o", markersize=6, linewidth=2,
-                    markeredgecolor="white", label=cls)
+                    markeredgecolor="white", label=line_label)
         _age_ticks(ax, ages)
         ax.set_ylim(bottom=0)
         ax.grid(True, linestyle="--", alpha=0.5)
         ax.set_xlabel(f"{age_col} (PCW)", fontsize=12)
         ax.set_ylabel("Percentage of cycling cells (%)", fontsize=12)
-        ax.set_title(f"Cell Cycle Phase Proportions: {phase}"
-                     + (f" ({subtitle})" if subtitle else ""), fontsize=14, fontweight="bold")
-        ax.legend(title=class_col, loc="upper left", bbox_to_anchor=(1.04, 1),
+        ax.set_title(name.format(fig_key) + (f" ({subtitle})" if subtitle else ""),
+                     fontsize=14, fontweight="bold")
+        ax.legend(title=legend_title, loc="upper left", bbox_to_anchor=(1.04, 1),
                   fontsize=11, title_fontsize=11)
         fig.tight_layout()
-        path = out_dir / f"phase_timeline_{sanitize_name(phase)}{tag}.png"
+        path = out_dir / f"{prefix}_{sanitize_name(fig_key)}{tag}.png"
         fig.savefig(path, dpi=200, bbox_inches="tight")
         plt.close(fig)
         print(f"  Saved: {path}")
@@ -156,6 +166,9 @@ def main():
     p.add_argument("--phases", nargs="+", default=["S", "G2M"],
                    help="--mode phase: phases to plot, one figure each. Default S G2M.")
     p.add_argument("--phase-col", default="CellCyclePhase")
+    p.add_argument("--lines", choices=["class", "phase"], default="class",
+                   help="--mode phase: 'class' = one figure per phase, a line per class "
+                        "(default); 'phase' = one figure per class, a line per phase.")
     p.add_argument("--min-cycling-cells", type=int, default=DEFAULT_MIN_CYCLING,
                    help=f"--mode phase: leave out class x age points with fewer cycling cells. "
                         f"Default {DEFAULT_MIN_CYCLING}.")
@@ -190,14 +203,16 @@ def main():
         print(f"  {args.phase_col}: " + ", ".join(
             f"{k} {v:,}" for k, v in obs[args.phase_col].astype(str).value_counts().items()))
         phase_timeline(obs, args.cell_class, args.class_col, args.phase_col, args.phases,
-                       args.age_col, out_dir, args.min_cycling_cells, subtitle=subtitle)
+                       args.age_col, out_dir, args.min_cycling_cells, subtitle=subtitle,
+                       lines=args.lines)
         if args.by_region_general:
             for region in sorted(obs["RegionsGeneral"].dropna().unique()):
                 name = region.removesuffix("_General")
                 phase_timeline(obs[obs["RegionsGeneral"] == region], args.cell_class,
                                args.class_col, args.phase_col, args.phases, args.age_col,
                                out_dir, args.min_cycling_cells, tag=f"_{name}",
-                               subtitle=", ".join(x for x in (name, subtitle) if x))
+                               subtitle=", ".join(x for x in (name, subtitle) if x),
+                               lines=args.lines)
     else:
         groupings = ["RegionsGeneral"] + ([args.region_col] if args.by_region else [])
         for group_col in groupings:

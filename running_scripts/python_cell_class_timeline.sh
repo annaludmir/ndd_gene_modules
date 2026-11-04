@@ -22,10 +22,23 @@ cd /miridan-data/annaludmir/ndd_gene_modules
 # MODE=class: % of all cells of a class per region and age (default).
 # MODE=phase: % of each class's cycling cells in S / G2M per age, a line per class.
 #   MODE=phase sbatch running_scripts/python_cell_class_timeline.sh
+# MODE=phase_lines: one figure per class with a line per phase (G1, S, G2M,
+#   Post-M), % of that class's cycling cells per age.
 MODE="${MODE:-class}"
 
 # Options: one per line; comment a line out (or in) to switch it.
-if [[ "$MODE" == "phase" ]]; then
+if [[ "$MODE" == "phase_lines" ]]; then
+  ARGS=(
+    --mode phase --lines phase
+    --h5ad data/human_dev_without_week_5_cc_annotated_fraction.h5ad   # needs CellCyclePhase
+    --label human_dev_without_week_5
+    --cell-class Glioblast        # one figure per class
+    --phases G1 S G2M Post-M
+    --min-cycling-cells 20        # leave out ages with fewer cycling cells
+    # --by-region-general         # also one figure per Forebrain / Midbrain / Hindbrain
+    # --chemistry v3              # one chemistry only (default: all cells)
+  )
+elif [[ "$MODE" == "phase" ]]; then
   ARGS=(
     --mode phase
     --h5ad data/human_dev_without_week_5_cc_annotated_fraction.h5ad   # needs CellCyclePhase
