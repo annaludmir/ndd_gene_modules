@@ -28,7 +28,7 @@ MODE="${MODE:-class}"
 if [[ "$MODE" == "phase" ]]; then
   ARGS=(
     --mode phase
-    --h5ad data/human_dev_without_week_5_cc_annotated_neuron_type.h5ad   # needs CellCyclePhase
+    --h5ad data/human_dev_without_week_5_cc_annotated_fraction.h5ad   # needs CellCyclePhase
     --label human_dev_without_week_5
     --cell-class "Neuronal IPC" "Radial glia" Glioblast
     --phases S G2M                # % of cycling cells (G1, S, G2M, Post-M) in each phase
