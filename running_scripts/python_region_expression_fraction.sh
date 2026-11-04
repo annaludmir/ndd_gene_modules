@@ -23,17 +23,23 @@ cd /miridan-data/annaludmir/ndd_gene_modules
 
 GSEA_SUMMARY_FILE="/miridan-data/annaludmir/ndd_gene_modules/results/enrichment_results/no_ges_score_threshold/no_ges_theshold_microcephaly_genes All Layers_threshold_0_20260621/data/enrichment_results/GSEA/GSEA_final_summary.csv"
 
+# Regions to compare; override at submit time, e.g.
+#   REGION_B=Hindbrain sbatch running_scripts/python_region_expression_fraction.sh
+REGION_A="${REGION_A:-Forebrain}"   # meta-regions: Forebrain = Forebrain + Telencephalon + Diencephalon,
+REGION_B="${REGION_B:-Midbrain}"    # Hindbrain = Hindbrain + Cerebellum + Pons + Medulla
+PAIR="$(echo "${REGION_A}_vs_${REGION_B}" | tr '[:upper:]' '[:lower:]')"
+
 # Options: one per line; comment a line out (or in) to switch it.
 ARGS=(
   --h5ad-path data/human_dev.h5ad
   --cell-class "Neuronal IPC"
-  --region-a Forebrain            # meta-regions: Forebrain = Forebrain + Telencephalon + Diencephalon
-  --region-b Midbrain
+  --region-a "$REGION_A"
+  --region-b "$REGION_B"
   --chemistry v3
   --gsea-summary-file "$GSEA_SUMMARY_FILE"
   --condition Forebrain_General   # its Lead_genes are the gene set
   # --gene-list data/genes/microcephaly_genes.csv   # or a gene list instead of leading genes
-  --subfolder-name neuronal_ipc_forebrain_vs_midbrain_microcephaly_leading
+  --subfolder-name "neuronal_ipc_${PAIR}_microcephaly_leading"
   # --downsample-to 2000          # UMIs per cell for the depth-matched part (default: 10% quantile)
   # --no-collapse                 # raw Region values (e.g. --region-a Telencephalon)
 )
