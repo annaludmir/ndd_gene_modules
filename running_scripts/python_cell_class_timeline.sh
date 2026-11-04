@@ -35,7 +35,7 @@ if [[ "$MODE" == "phase_lines" ]]; then
     --cell-class Glioblast        # one figure per class
     --phases G1 S G2M Post-M
     --min-cycling-cells 20        # leave out ages with fewer cycling cells
-    # --by-region-general         # also one figure per Forebrain / Midbrain / Hindbrain
+    --by-region-general           # also one figure per Forebrain / Midbrain / Hindbrain
     # --chemistry v3              # one chemistry only (default: all cells)
   )
 elif [[ "$MODE" == "phase" ]]; then
