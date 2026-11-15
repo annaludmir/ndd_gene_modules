@@ -80,5 +80,19 @@ column_conditions_for_gsea:
       - "Subthalamic_anteriorFP"
       - "RedNucleus_Motor_basal"
 
+  NeuronLineage:
+    # all 9 lineage labels against each other, scored in its own GES run
+    ges_results_folder: "results/ges_score_results/ges_score_for_all_layers_neuron_lineage_v2_20261115"
+    conditions:
+      - "Dopaminergic_posteriorFP"
+      - "Subthalamic_anteriorFP"
+      - "RedNucleus_Motor_basal"
+      - "MGE"
+      - "MGE_thalamic"
+      - "LGE"
+      - "CGE"
+      - "Thalamic_local"
+      - "Hypothalamic_SST"
+
 keep_only_significant: false
 nes_keep_threshold: 1.5
