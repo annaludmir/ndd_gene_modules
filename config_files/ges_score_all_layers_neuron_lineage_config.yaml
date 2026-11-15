@@ -1,0 +1,41 @@
+name_of_run: "ges_score_for_all_layers_neuron_lineage"
+ndd_gene_modules_folder_root: "/miridan-data/annaludmir/ndd_gene_modules/"
+data_path: "data/human_dev_without_week_5_cc_annotated_neuron_type_braun2023.h5ad"
+output_folder: "results/ges_score_results/"
+
+# All 9 lineage labels against each other (one shared background):
+# midbrain neurons take their MidbrainLineage, every other inhibitory neuron its
+# InhibitorySubtype (midbrain inhibitory neurons never take a subtype). Rules are
+# checked in order, the first match wins; Ambiguous / Unassigned cells match none
+# and are dropped by cell_filter.
+cell_filter: "NeuronLineage in ['Dopaminergic_posteriorFP', 'Subthalamic_anteriorFP', 'RedNucleus_Motor_basal', 'MGE', 'MGE_thalamic', 'LGE', 'CGE', 'Thalamic_local', 'Hypothalamic_SST']"
+
+column_conditions:
+  NeuronLineage:
+    derived:
+      rules:
+        Dopaminergic_posteriorFP: "MidbrainLineage == 'Dopaminergic_posteriorFP'"
+        Subthalamic_anteriorFP: "MidbrainLineage == 'Subthalamic_anteriorFP'"
+        RedNucleus_Motor_basal: "MidbrainLineage == 'RedNucleus_Motor_basal'"
+        MGE: "InhibitorySubtype == 'MGE' and Region != 'Midbrain'"
+        MGE_thalamic: "InhibitorySubtype == 'MGE_thalamic' and Region != 'Midbrain'"
+        LGE: "InhibitorySubtype == 'LGE' and Region != 'Midbrain'"
+        CGE: "InhibitorySubtype == 'CGE' and Region != 'Midbrain'"
+        Thalamic_local: "InhibitorySubtype == 'Thalamic_local' and Region != 'Midbrain'"
+        Hypothalamic_SST: "InhibitorySubtype == 'Hypothalamic_SST' and Region != 'Midbrain'"
+    conditions:
+      - "Dopaminergic_posteriorFP"
+      - "Subthalamic_anteriorFP"
+      - "RedNucleus_Motor_basal"
+      - "MGE"
+      - "MGE_thalamic"
+      - "LGE"
+      - "CGE"
+      - "Thalamic_local"
+      - "Hypothalamic_SST"
+
+expression_threshold: 0.05
+normalize_data: true
+chemistry: "v3"
+permutations: false
+# n_permutations: 500  # optional
