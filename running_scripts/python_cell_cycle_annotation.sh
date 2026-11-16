@@ -65,7 +65,9 @@ cd /miridan-data/annaludmir/ndd_gene_modules
 # Edit these before submitting.
 MODALITY="rna"   # rna | atac
 H5AD_INPUT="/miridan-data/annaludmir/ndd_gene_modules/data/human_dev_without_week_5.h5ad"
-H5AD_OUTPUT="/miridan-data/annaludmir/ndd_gene_modules/data/human_dev_without_week_5_cc_annotated_fraction.h5ad"
+# _rescaled = the rescaled fraction cutoffs (G1 0.0018, S 0.0017, G2M 0.027); the
+# earlier _cc_annotated_fraction.h5ad (spec cutoffs) is left as it is.
+H5AD_OUTPUT="/miridan-data/annaludmir/ndd_gene_modules/data/human_dev_without_week_5_cc_annotated_rescaled.h5ad"
 
 # RNA-specific
 SYM_COL="Gene"
@@ -117,7 +119,11 @@ CELL_CYCLE_SCORE_COL="cell_cycle_score"
 CYCLING_THRESHOLD=""
 
 # Optional phase threshold overrides. Leave empty to use the defaults for
-# $SCORING (fraction: 0.002/0.002/0.03; background: 1.0 SD for all three).
+# $SCORING (fraction: G1 0.0018 / S 0.0017 / G2M 0.027; background: 1.0 SD for
+# all three). The fraction defaults are the spec values (0.002/0.002/0.03, set
+# on the exon-only cortex file) rescaled for human_dev, whose counts include
+# intronic reads; see the comment above G2M_THRESHOLD in
+# modules/cell_cycle_annotation.py. For exon-only data set 0.002/0.002/0.03.
 G1_THRESHOLD=""
 S_THRESHOLD=""
 G2M_THRESHOLD=""

@@ -14,10 +14,15 @@ obs column (--cell-cycle-score-col), used as is: this module does not compute
 a cycling score. The 0.004 cutoff applies under every --scoring mode. Only
 the G1 / S / G2M scores are computed here (obs cc_score_g1/_s/_g2m).
 
-Phase thresholds under --scoring fraction (from the spec):
-    G1 gene UMI fraction  > 0.2% (0.002)
-    S  gene UMI fraction  > 0.2% (0.002)
-    G2M gene UMI fraction > 3%   (0.03)
+Phase thresholds under --scoring fraction:
+    G1 gene UMI fraction  > 0.18% (0.0018)   spec: 0.2% (0.002)
+    S  gene UMI fraction  > 0.17% (0.0017)   spec: 0.2% (0.002)
+    G2M gene UMI fraction > 2.7%  (0.027)    spec: 3%   (0.03)
+The spec values were set on the cortex file, whose counts are exonic only.
+The defaults are rescaled for human_dev, whose counts also include intronic
+(unspliced) reads; see the comment above G2M_THRESHOLD for how they were
+derived. The spec values are kept as SPEC_*_THRESHOLD; pass them with
+--g1-threshold/--s-threshold/--g2m-threshold for exon-only data.
 
 Usage:
   python modules/cell_cycle_annotation.py \
@@ -210,9 +215,49 @@ CELL_CYCLE_SCORE_COL = "cell_cycle_score"
 CYCLING_THRESHOLD    = 0.004
 
 # Phase thresholds for --scoring fraction (fractions, not percentages).
-G1_THRESHOLD      = 0.002   # 0.2%
-S_THRESHOLD       = 0.002   # 0.2%
-G2M_THRESHOLD     = 0.03    # 3%
+#
+# Spec values, set on the cortex file (Cortex_EMX1_louvain3_passedQC_PostM_rev1):
+SPEC_G1_THRESHOLD  = 0.002  # 0.2%
+SPEC_S_THRESHOLD   = 0.002  # 0.2%
+SPEC_G2M_THRESHOLD = 0.03   # 3%
+#
+# Defaults, rescaled for human_dev (human_dev_without_week_5.h5ad).
+#
+# Why: a phase score is (phase genes' UMIs) / (cell's total UMIs). human_dev's
+# counts include intronic (unspliced) reads (obs 'fraction_unspliced'), the
+# cortex file's do not. On the 297,927 cells that are in both files
+# (compare_cell_cycle_annotation.py and follow-up checks, Nov 2026):
+#   - total UMIs per cell are ~1.8x higher in human_dev (median ratio
+#     cortex/human_dev 0.549); the gain comes mostly from long genes with big
+#     introns (CNTNAP2 7x ... RBFOX1 80x; median over all genes 1.72x).
+#   - the cell-cycle genes are short and gain little: G2M genes 1.14x,
+#     G1/S genes 1.05x, histones (S, no introns) ~1x.
+#   - so every phase fraction is smaller in human_dev, and fixed spec cutoffs
+#     are effectively stricter there. With the spec G2M cutoff, 13% of cortex
+#     G2M cells became S in human_dev (and none the other way): their G2M
+#     score fell from just above 0.03 to just below it.
+#
+# All three cutoffs are measured on the shared cells: the median of
+# (human_dev cc_score_<phase>) / (cortex CellCycle_<phase>) over cells where
+# both are > 0, times the spec cutoff:
+#   phase  median ratio  Pearson r   spec x ratio
+#   G1     0.907         0.986       0.002 x 0.907 = 0.00181 -> 0.0018
+#   S      0.862         0.998       0.002 x 0.862 = 0.00172 -> 0.0017
+#   G2M    0.887         0.999       0.03  x 0.887 = 0.0266  -> 0.027
+# r close to 1 means the same signal on a smaller scale, so rescaling the
+# cutoff is the right correction. S shrinks the most: histone genes have no
+# introns, and human_dev has one histone gene fewer in the S set (3 vs 4).
+# (An earlier estimate from per-gene UMI gains gave 0.0016 for G1 and S; the
+# measured values replace it.)
+#
+# Caveat: these factors are medians. The intronic gain varies per cell with
+# how much long-gene expression it has (more in neurons, less in
+# progenitors), so a single rescaled cutoff matches cortex on average, not
+# cell by cell. --scoring background is not sensitive to the total and avoids
+# this. For exon-only data, use the SPEC_* values.
+G1_THRESHOLD      = 0.0018  # 0.18%  (spec 0.002 x 0.907)
+S_THRESHOLD       = 0.0017  # 0.17%  (spec 0.002 x 0.862)
+G2M_THRESHOLD     = 0.027   # 2.7%   (spec 0.03  x 0.887)
 
 # Phase thresholds for --scoring background, in standard deviations of the
 # background-normalized score. Comparable across gene sets by construction.
@@ -1253,11 +1298,14 @@ def main():
     # check the distribution table printed at run time and tune. Under
     # `background` they are in SDs, so 1.0 means "1 SD above this dataset's mean".
     parser.add_argument("--g1-threshold",  type=float, default=None,
-                        help=f"G1 cutoff. Default {G1_THRESHOLD} / {BG_G1_THRESHOLD}.")
+                        help=f"G1 cutoff. Default {G1_THRESHOLD} (fraction, rescaled for "
+                             f"intronic counts; spec {SPEC_G1_THRESHOLD}) / {BG_G1_THRESHOLD} (background).")
     parser.add_argument("--s-threshold",   type=float, default=None,
-                        help=f"S cutoff. Default {S_THRESHOLD} / {BG_S_THRESHOLD}.")
+                        help=f"S cutoff. Default {S_THRESHOLD} (fraction, rescaled for "
+                             f"intronic counts; spec {SPEC_S_THRESHOLD}) / {BG_S_THRESHOLD} (background).")
     parser.add_argument("--g2m-threshold", type=float, default=None,
-                        help=f"G2M cutoff. Default {G2M_THRESHOLD} / {BG_G2M_THRESHOLD}.")
+                        help=f"G2M cutoff. Default {G2M_THRESHOLD} (fraction, rescaled for "
+                             f"intronic counts; spec {SPEC_G2M_THRESHOLD}) / {BG_G2M_THRESHOLD} (background).")
 
     args = parser.parse_args()
 
