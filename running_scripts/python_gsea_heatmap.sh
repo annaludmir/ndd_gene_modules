@@ -22,21 +22,21 @@ cd /miridan-data/annaludmir/ndd_gene_modules
 # Edit these before submitting.
 # Batch summaries; add =Label when the same gene list x condition is in several.
 BATCH_SUMMARIES=(
-  "results/enrichment_results/batch_summary_20261115_final_genes_to_run_on_all_layers.csv = Human_dev",
-  "results/enrichment_results/batch_summary_20261115_final_genes_to_run_on_all_layers_v2.csv = Human_dev_v2",
-  "results/enrichment_results/batch_summary_20261115_final_genes_to_run_on_cortex.csv = Cortex",
-  "results/enrichment_results/batch_summary_20261115_final_genes_to_run_on_cortex_v2.csv = Cortex_v2"
+  "results/enrichment_results/batch_summary_20261115_final_genes_to_run_on_all_layers.csv=All V3"
+  "results/enrichment_results/batch_summary_20261115_final_genes_to_run_on_all_layers_v2.csv=All V2"
+  "results/enrichment_results/batch_summary_20261115_final_genes_to_run_on_cortex.csv=Cortex V3"
+  "results/enrichment_results/batch_summary_20261115_final_genes_to_run_on_cortex_v2.csv=Cortex V2"
 )
 # Gene lists, top to bottom: file name (with or without .csv), optionally =Row label.
 # Leave empty to show every gene list in the summaries.
 GENE_LISTS=(
-  "ASD_HC",
-  "ASD_SFARI",
-  "autism_strong",
+  "ASD_HC"
+  "ASD_SFARI"
+  "autism_strong"
   "ASD_SFARI_2"
-  "ASD_SFARI_3",
-  "ASD_SFARI_syndromic",
-  "ASD-DD",
+  "ASD_SFARI_3"
+  "ASD_SFARI_syndromic"
+  "ASD-DD"
   "ASD-predominant"
 )
 # Only these columns (column_condition_title), in this order; empty = all.
