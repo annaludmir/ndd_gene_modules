@@ -41,8 +41,12 @@ GENE_LISTS=(
 )
 # Only these columns (column_condition_title), in this order; empty = all.
 COLUMNS=(
-  # CellClass
-  # NeuronLineage
+  CellClass
+  NeuronLineage
+  NeuronSubtype
+  NeuronMaturity
+  Region
+  RegionsGeneral
 )
 OUTPUT="results/additional_analyses/gsea_heatmap/gsea_heatmap.png"
 
