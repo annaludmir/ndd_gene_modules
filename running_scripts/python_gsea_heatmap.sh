@@ -43,7 +43,7 @@ GENE_LISTS=(
 COLUMNS=(
   CellClass
   NeuronLineage
-  NeuronSubtype
+  NeuronType
   NeuronMaturity
   Region
   RegionsGeneral
