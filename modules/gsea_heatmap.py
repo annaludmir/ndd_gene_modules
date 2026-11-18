@@ -18,8 +18,9 @@ size and marks give the significance, from the BH-corrected FDR q
 Inputs:
   --batch-summaries  batch summary CSVs. If the same gene list x column x
                      condition is in more than one, append =Label to each
-                     path (e.g. summary.csv=Cortex); the group names then get
-                     the label, e.g. "CellClass (Cortex)".
+                     path (e.g. summary.csv=Cortex). Each column is then shown
+                     as one block per label, side by side: the label under
+                     each block, the column name once under all of them.
   --gene-lists       gene lists to show, in this order: the file name as in
                      gene_list_file_name (with or without .csv), optionally
                      =Row label. Default: every gene list in the summaries.
@@ -45,7 +46,8 @@ from matplotlib.patches import Rectangle
 CMAP = LinearSegmentedColormap.from_list("nes", ["#3a54a4", "#ffffff", "#c3272b"])
 CELL = 0.38          # inches per cell
 BIG, SMALL = 0.78, 0.46   # square side, fraction of the cell
-GROUP_GAP = 0.5      # gap between column groups, in cells
+GROUP_GAP = 0.4      # gap between the summary blocks of one column, in cells
+TITLE_GAP = 1.2      # gap between columns, in cells
 
 
 def split_label(item: str) -> tuple[str, str | None]:
@@ -76,33 +78,42 @@ def load(summaries: list[str]) -> pd.DataFrame:
         if df.duplicated(key + ["_summary"]).any():
             raise ValueError("A gene list x column x condition is twice in the same batch "
                              "summary; pass summaries that do not overlap.")
-        print("  Same gene list x condition in several summaries: groups get the summary label")
-        df["column_condition_title"] = df["column_condition_title"] + " (" + df["_summary"] + ")"
+        print("  Same gene list x condition in several summaries: each column is split "
+              "into one block per summary label")
+        df["_sub"] = df["_summary"]
+    else:
+        df["_sub"] = ""
     return df
 
 
-def plot(df: pd.DataFrame, rows: list[tuple[str, str]], groups: list[tuple[str, list[str]]],
+def plot(df: pd.DataFrame, rows: list[tuple[str, str]],
+         groups: list[tuple[str, str, list[str]]],
          nes_cutoff: float, trend_q: float, vmax: float, title: str | None,
          out: Path) -> None:
-    lookup = df.set_index(["_list", "column_condition_title", "column_condition_value"])
+    """groups: (column title, summary label or "", conditions), blocks of one
+    column title next to each other."""
+    lookup = df.set_index(["_list", "column_condition_title", "_sub", "column_condition_value"])
 
-    # x position of every column, with a gap between groups
+    # x position of every condition: a small gap between the summary blocks of
+    # one column, a bigger one between columns
     xs, x = [], 0.0
-    for g, conds in groups:
+    for k, (t, sub, conds) in enumerate(groups):
+        if k:
+            x += GROUP_GAP if t == groups[k - 1][0] else TITLE_GAP
         xs.append([x + i for i in range(len(conds))])
-        x += len(conds) + GROUP_GAP
-    width = x - GROUP_GAP
+        x += len(conds)
+    width = x
     nrow = len(rows)
 
     fig, ax = plt.subplots(figsize=((width + 9) * CELL + 2.5, max(nrow, 6) * CELL + 2.4))
     norm = Normalize(-vmax, vmax)
     for r, (lst, _) in enumerate(rows):
-        for (g, conds), gx in zip(groups, xs):
+        for (g, sub, conds), gx in zip(groups, xs):
             for cond, cx in zip(conds, gx):
                 ax.add_patch(Rectangle((cx, r), 1, 1, fill=False, ec="#9a9a9a", lw=0.6))
-                if (lst, g, cond) not in lookup.index:
+                if (lst, g, sub, cond) not in lookup.index:
                     continue
-                rec = lookup.loc[(lst, g, cond)]
+                rec = lookup.loc[(lst, g, sub, cond)]
                 if isinstance(rec, pd.DataFrame):
                     rec = rec.iloc[0]
                 nes, q = rec["NES"], rec["FDR_qval_BH"]
@@ -150,24 +161,43 @@ def plot(df: pd.DataFrame, rows: list[tuple[str, str]], groups: list[tuple[str, 
     ax.set_aspect("equal")
     ax.set_yticks([r + 0.5 for r in range(nrow)], [lab for _, lab in rows], fontsize=9)
     ticks = [c + 0.5 for gx in xs for c in gx]
-    ax.set_xticks(ticks, [c for _, conds in groups for c in conds], rotation=90, fontsize=9)
+    ax.set_xticks(ticks, [c for _, _, conds in groups for c in conds], rotation=90, fontsize=9)
     ax.tick_params(length=0)
     ax.tick_params(axis="x", pad=12)   # room for the group line
     for sp in ax.spines.values():
         sp.set_visible(False)
-    # a line under each group, and the group name under its condition labels
-    for (g, conds), gx in zip(groups, xs):
-        ax.plot([gx[0] + 0.05, gx[-1] + 0.95], [nrow + 0.25] * 2, color="black", lw=0.8,
-                clip_on=False)
+    # Under the condition labels: each summary block's label (e.g. "All V3")
+    # with a line under the block, then the column title (bold) once, with a
+    # line under all of its blocks.
     fig.canvas.draw()
     renderer = fig.canvas.get_renderer()
     low = min(t.get_window_extent(renderer).y0 for t in ax.get_xticklabels())
     y_axes = ax.transAxes.inverted().transform((0, low))[1]
-    for (g, conds), gx in zip(groups, xs):
-        ax.annotate(g, xy=((gx[0] + gx[-1] + 1) / 2, y_axes),
-                    xycoords=("data", "axes fraction"), xytext=(0, -6),
-                    textcoords="offset points", ha="center", va="top", fontsize=11,
-                    fontweight="bold", annotation_clip=False)
+    has_sub = any(sub for _, sub, _ in groups)
+    pt = 1 / 72 * fig.dpi                                # points -> pixels
+
+    def hline(x0, x1, dy_pt):
+        y = ax.transAxes.transform((0, y_axes))[1] - dy_pt * pt
+        yd = ax.transData.inverted().transform((0, y))[1]
+        ax.plot([x0, x1], [yd, yd], color="black", lw=0.8, clip_on=False)
+
+    def label(text, xc, dy_pt, **kw):
+        ax.annotate(text, xy=(xc, y_axes), xycoords=("data", "axes fraction"),
+                    xytext=(0, -dy_pt), textcoords="offset points", ha="center", va="top",
+                    annotation_clip=False, **kw)
+
+    title_dy = 6
+    if has_sub:
+        for (g, sub, conds), gx in zip(groups, xs):
+            label(sub, (gx[0] + gx[-1] + 1) / 2, 6, fontsize=8.5)
+            hline(gx[0] + 0.05, gx[-1] + 0.95, 19)
+        title_dy = 26
+    titles = list(dict.fromkeys(g for g, _, _ in groups))
+    for t in titles:
+        spans = [gx for (g, _, _), gx in zip(groups, xs) if g == t]
+        x0, x1 = spans[0][0], spans[-1][-1] + 1
+        label(t, (x0 + x1) / 2, title_dy, fontsize=11, fontweight="bold")
+        hline(x0 + 0.05, x1 - 0.05, title_dy + 15)
     if title:
         ax.set_title(title, fontsize=12, fontweight="bold", loc="left", pad=12)
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -233,19 +263,28 @@ def main():
     df = df[df["_list"].isin([r[0] for r in rows])]
     titles = list(dict.fromkeys(df["column_condition_title"]))
     if args.columns:
-        wanted = [c for c in args.columns if c in titles]
-        # with summary labels the titles are "Col (Label)": match on the prefix too
-        wanted += [t for c in args.columns for t in titles
-                   if t.startswith(c + " (") and t not in wanted]
-        if not wanted:
-            raise ValueError(f"--columns not found. Columns: {titles}")
-        titles = wanted
-    groups = [(t, list(dict.fromkeys(df.loc[df["column_condition_title"] == t,
-                                            "column_condition_value"])))
-              for t in titles]
+        absent = [c for c in args.columns if c not in titles]
+        if absent:
+            print(f"  [warning] --columns not in the summaries, left out: {absent}")
+        titles = [c for c in args.columns if c in titles]
+        if not titles:
+            raise ValueError(f"--columns not found. Columns: "
+                             f"{list(dict.fromkeys(df['column_condition_title']))}")
+    subs = list(dict.fromkeys(df["_sub"]))            # summary order as given
+    groups = []
+    for t in titles:
+        # one condition order for all blocks of a column (first seen), so the
+        # v2 / v3 / cortex blocks line up
+        order = list(dict.fromkeys(df.loc[df["column_condition_title"] == t,
+                                          "column_condition_value"]))
+        for sub in subs:
+            m = (df["column_condition_title"] == t) & (df["_sub"] == sub)
+            if m.any():
+                present = set(df.loc[m, "column_condition_value"])
+                groups.append((t, sub, [c for c in order if c in present]))
     vmax = args.vmax or float(np.ceil(np.nanmax(np.abs(df["NES"].astype(float)))))
-    print(f"  {len(rows)} gene lists x {sum(len(c) for _, c in groups)} conditions "
-          f"in {len(groups)} columns")
+    print(f"  {len(rows)} gene lists x {sum(len(c) for _, _, c in groups)} conditions "
+          f"in {len(titles)} columns ({len(groups)} blocks)")
     plot(df, rows, groups, args.nes_cutoff, args.trend_q, vmax, args.title, Path(args.output))
 
 
