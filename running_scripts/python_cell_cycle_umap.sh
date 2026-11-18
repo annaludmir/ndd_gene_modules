@@ -34,6 +34,16 @@ ARGS=(
 mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new \
   python -u modules/cell_cycle_umap.py "${ARGS[@]}"
 
+# Forebrain only (cortex): the same options, cells of these regions only, at
+# their positions on the full UMAP. Set FOREBRAIN=false to skip.
+if [[ "${FOREBRAIN:-true}" == "true" ]]; then
+  mamba run -p /miridan-data/annaludmir/conda-envs/jupyter-scanpy_new \
+    python -u modules/cell_cycle_umap.py "${ARGS[@]}" \
+      --regions Telencephalon Diencephalon Forebrain \
+      --label human_dev_rescaled_forebrain \
+      --title "Cell cycle (Telencephalon, Diencephalon, Forebrain)"
+fi
+
 rc=$?
 echo "Python exit code: $rc"
 exit $rc

@@ -9,6 +9,10 @@ hides another where they overlap.
 UMAP coordinates come from the file's obsm["X_umap"] or, if it has none, from
 --umap-from (matched by cell ID; cells missing there are left out).
 
+--regions keeps only cells of those Region values (e.g. the forebrain /
+cortex: Telencephalon Diencephalon Forebrain), at their positions on the
+full-dataset UMAP; the plot zooms to them.
+
 --subsample plots a random subset of cells (a fraction, or a number of
 cells), so dense regions are not solid colour; each cell has the same chance
 of being kept, so the phase proportions do not change.
@@ -44,8 +48,10 @@ PHASE_COLORS = {             # as in the reference figure
 LEGEND_NAMES = {"G2M": "G2/M"}
 
 
-def load(h5ad: str, umap_from: str | None, phase_col: str):
-    """(xy, phase) for the cells that have UMAP coordinates."""
+def load(h5ad: str, umap_from: str | None, phase_col: str,
+         region_col: str = "Region", regions: list[str] | None = None):
+    """(xy, phase) for the cells that have UMAP coordinates (and, with
+    `regions`, whose `region_col` is one of them)."""
     import anndata as ad
     a = ad.read_h5ad(h5ad, backed="r")
     try:
@@ -53,11 +59,22 @@ def load(h5ad: str, umap_from: str | None, phase_col: str):
             raise KeyError(f"obs column '{phase_col}' not found in {h5ad}")
         phase = (a.obs[phase_col].astype(str).str.replace("PostM", "Post-M")
                  .replace({"nan": NON_CYCLING}).to_numpy())
+        keep = np.ones(a.n_obs, dtype=bool)
+        if regions:
+            if region_col not in a.obs.columns:
+                raise KeyError(f"obs column '{region_col}' not found in {h5ad}")
+            reg = a.obs[region_col].astype(str)
+            keep = reg.isin(regions).to_numpy()
+            print(f"  {region_col} in {regions}: {int(keep.sum()):,}/{a.n_obs:,} cells")
+            if not keep.any():
+                raise ValueError(f"No cells in {regions}. {region_col} values: "
+                                 f"{sorted(reg.unique())}")
+        phase = phase[keep]
         key = next((k for k in UMAP_KEYS if k in a.obsm), None)
         if key is not None:
             print(f"  UMAP: obsm['{key}'] of {h5ad}")
-            return np.asarray(a.obsm[key])[:, :2], phase
-        names = a.obs_names
+            return np.asarray(a.obsm[key])[:, :2][keep], phase
+        names = a.obs_names[keep]
     finally:
         a.file.close()
     if not umap_from:
@@ -135,6 +152,11 @@ def main():
     p.add_argument("--umap-from", default=None,
                    help="h5ad to take obsm['X_umap'] from when --h5ad has none.")
     p.add_argument("--phase-col", default="CellCyclePhase")
+    p.add_argument("--region-col", default="Region")
+    p.add_argument("--regions", nargs="+", default=None,
+                   help="Only cells whose --region-col is one of these, e.g. "
+                        "Telencephalon Diencephalon Forebrain. Their positions on the "
+                        "full-dataset UMAP are kept (not a new UMAP).")
     p.add_argument("--title", default="Cell cycle")
     p.add_argument("--point-size", type=float, default=0.3)
     p.add_argument("--per-phase", action="store_true",
@@ -148,7 +170,8 @@ def main():
     args = p.parse_args()
 
     print(f"Loading (backed): {args.h5ad}")
-    xy, phase = load(args.h5ad, args.umap_from, args.phase_col)
+    xy, phase = load(args.h5ad, args.umap_from, args.phase_col,
+                     args.region_col, args.regions)
     print("  " + ", ".join(f"{k} {v:,}" for k, v in pd.Series(phase).value_counts().items()))
     if args.subsample:
         n = len(phase)
