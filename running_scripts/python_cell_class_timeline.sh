@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --mail-user=annaludmir@mail.tau.ac.il
 #SBATCH --mail-type=END,FAIL
-#SBATCH --job-name=cell_class_timeline
+#SBATCH --job-name=class_timeline
 #SBATCH --mem=32G
 #SBATCH --account=miridan-users_v2
 #SBATCH --output=/miridan-data/annaludmir/jobs_output/%j.out

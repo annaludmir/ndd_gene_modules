@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --mail-user=annaludmir@mail.tau.ac.il
 #SBATCH --mail-type=END,FAIL
-#SBATCH --job-name=python
+#SBATCH --job-name=lead_gene_corr
 #SBATCH --mem=500G
 # #SBATCH --mem=250G
 #SBATCH --account=miridan-users_v2  

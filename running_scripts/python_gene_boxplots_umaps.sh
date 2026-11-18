@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --mail-user=annaludmir@mail.tau.ac.il
 #SBATCH --mail-type=END,FAIL
-#SBATCH --job-name=gene_boxplots_umaps
+#SBATCH --job-name=gene_box_umaps
 #SBATCH --mem=250G
 #SBATCH --account=miridan-users_v2
 #SBATCH --output=/miridan-data/annaludmir/jobs_output/%j.out

@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=marimo
+#SBATCH --job-name=marimo_public
 #SBATCH --mem=50G
 #SBATCH --account=miridan-users_v2  
 # #SBATCH --account=public-users_v2
