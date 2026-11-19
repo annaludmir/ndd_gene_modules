@@ -7,6 +7,9 @@ same column (default CellClass: Neuron vs Neuroblast), per batch summary
 
 For each case (gene list x batch summary, from --cases):
   - Venn diagram of the two leading edges: shared genes and genes in only one.
+    In the Venn-only figures, below it the top --n-top genes of each part
+    (A only / both / B only) by GES score in that condition (both: mean of
+    the two conditions), score(s) in brackets.
   - With --es-plots for the case's category (default: the "only" categories):
     running enrichment score (GSEA, weighted as in gseapy prerank) of the
     shared genes and of each condition's exclusive genes, along that
@@ -182,24 +185,88 @@ def es_panel(ax_es, ax_hit, rank, sets: list[tuple[str, list[str], str]], title:
                       fontweight="bold")
 
 
-def case_figure(gl, summary, a, b, cond_a, cond_b, rank_a, rank_b, with_es, path):
+def significant(rec) -> bool:
+    """The batch summary's is_significant (|NES| > 1.5 and FDR <= 0.05)."""
+    v = rec.get("is_significant")
+    if pd.notna(v) and str(v).strip() != "":
+        return str(v).strip().lower() in ("true", "1", "yes")
+    nes, q = rec.get("NES"), rec.get("FDR_qval_BH")
+    return bool(pd.notna(nes) and abs(nes) > 1.5 and pd.notna(q) and q <= 0.05)
+
+
+def top_genes(genes, ranks: list, lead_orders: list, n: int) -> list[str]:
+    """Top n of `genes`: by GES score (mean over the given rankings, missing = lowest),
+    or, without rankings, by mean position in the leading-edge lists."""
+    genes = list(genes)
+    if not genes:
+        return []
+    if all(r is not None for r in ranks):
+        score = {g: np.mean([r.get(g, r.min()) for r in ranks]) for g in genes}
+        order = sorted(genes, key=lambda g: -score[g])
+        fmt = lambda g: f"{g} ({' / '.join(f'{r.get(g, np.nan):.2f}' for r in ranks)})"
+    else:
+        pos = [{g: i for i, g in enumerate(o)} for o in lead_orders]
+        order = sorted(genes, key=lambda g: np.mean([q.get(g, len(q)) for q in pos]))
+        fmt = str
+    return [fmt(g) for g in order[:n]]
+
+
+def gene_table(ax, cols: list[tuple[str, list[str], str]], note: str) -> None:
+    ax.axis("off")
+    for k, (head, genes, color) in enumerate(cols):
+        x = (k + 0.5) / len(cols)
+        ax.text(x, 1.0, head, ha="center", va="top", fontsize=9.5, fontweight="bold",
+                color=color, transform=ax.transAxes)
+        ax.text(x, 0.86, "\n".join(genes) if genes else "-", ha="center", va="top",
+                fontsize=8.5, family="monospace", transform=ax.transAxes, linespacing=1.35)
+    ax.text(0.5, -0.04, note, ha="center", va="top", fontsize=7.5, color="#666",
+            transform=ax.transAxes)
+
+
+def case_figure(gl, summary, a, b, cond_a, cond_b, rank_a, rank_b, with_es, path,
+                lead_a=(), lead_b=(), n_top: int = 10, stats=None):
+    """stats: {condition: (NES, FDR, significant)} for the ES figure titles."""
     shared, a_only, b_only = sorted(a & b), sorted(a - b), sorted(b - a)
+    stats = stats or {}
     if with_es:
         fig = plt.figure(figsize=(17, 6))
         gs = fig.add_gridspec(2, 3, height_ratios=[3, 1], width_ratios=[1, 1, 0.8],
                               hspace=0.08, wspace=0.25)
         for k, (cond, rank, own, key) in enumerate(((cond_a, rank_a, a_only, "A"),
                                                     (cond_b, rank_b, b_only, "B"))):
-            es_panel(fig.add_subplot(gs[0, k]), fig.add_subplot(gs[1, k]), rank,
+            title = f"{'AB'[k]}. Ranked within {cond} ({gl}, {summary})"
+            if cond in stats:
+                nes, fdr, sig = stats[cond]
+                title += (f"\n{'SIGNIFICANT' if sig else 'not significant'} in {cond}: "
+                          f"NES {nes:.2f}, FDR {fdr:.3g}")
+            ax_es = fig.add_subplot(gs[0, k])
+            es_panel(ax_es, fig.add_subplot(gs[1, k]), rank,
                      [("Shared", shared, COLORS["shared"]),
-                      (f"{cond} only", own, COLORS[key])],
-                     f"{'AB'[k]}. Ranked within {cond} ({gl}, {summary})")
+                      (f"{cond} only", own, COLORS[key])], title)
+            if cond in stats and stats[cond][2]:
+                ax_es.title.set_color("#b2182b")
         venn(fig.add_subplot(gs[:, 2]), a, b, cond_a, cond_b,
              f"Leading-edge overlap: {cond_a} vs {cond_b}\n({gl}, {summary})")
+        sig_in = [c for c in (cond_a, cond_b) if c in stats and stats[c][2]]
+        fig.suptitle(f"{gl}, {summary}: enrichment significant in "
+                     f"{' and '.join(sig_in) if sig_in else 'neither'}",
+                     fontsize=14, fontweight="bold", y=1.04)
     else:
-        fig, ax = plt.subplots(figsize=(5.5, 4.5))
-        venn(ax, a, b, cond_a, cond_b,
+        # Venn, and below it the top leading genes of each part
+        fig = plt.figure(figsize=(8, 7.6))
+        gs = fig.add_gridspec(2, 1, height_ratios=[4.5, 3.0], hspace=0.05)
+        venn(fig.add_subplot(gs[0]), a, b, cond_a, cond_b,
              f"Leading-edge overlap: {cond_a} vs {cond_b}\n({gl}, {summary})")
+        if n_top:
+            have = rank_a is not None and rank_b is not None
+            cols = [(f"{cond_a} only", top_genes(a - b, [rank_a], [lead_a], n_top), COLORS["A"]),
+                    ("Both", top_genes(a & b, [rank_a, rank_b], [lead_a, lead_b], n_top),
+                     COLORS["shared"]),
+                    (f"{cond_b} only", top_genes(b - a, [rank_b], [lead_b], n_top), COLORS["B"])]
+            note = (f"Top {n_top} by GES score (in brackets; Both: {cond_a} / {cond_b}, "
+                    f"ordered by their mean)" if have else
+                    f"Top {n_top} by position in the leading edge (GES rankings not found)")
+            gene_table(fig.add_subplot(gs[1]), cols, note)
     path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(path, dpi=200, bbox_inches="tight")
     plt.close(fig)
@@ -218,6 +285,8 @@ def main():
     p.add_argument("--es-plots", nargs="*", default=None,
                    help="Categories that get the ES panels. Default: every category "
                         "with 'only' in its name. Pass 'all' for every case.")
+    p.add_argument("--n-top", type=int, default=10,
+                   help="Venn-only figures: top genes listed per part (0 = none).")
     p.add_argument("--default-threshold", type=float, default=0.0,
                    help="GES threshold when the run's enrichment config can't be read.")
     p.add_argument("--label", required=True)
@@ -250,17 +319,21 @@ def main():
         with_es = (args.es_plots is not None and ("all" in args.es_plots or cat in args.es_plots)) \
             or (args.es_plots is None and "only" in cat.lower())
         rank_a = rank_b = None
-        if with_es:
-            try:
-                rank_a = ranking(ra, args.column, args.condition_a, args.default_threshold)
-                rank_b = ranking(rb, args.column, args.condition_b, args.default_threshold)
-            except (FileNotFoundError, KeyError) as e:
-                print(f"  [note] {gl} / {summ}: no ES panels ({e})")
-                with_es = False
+        try:
+            rank_a = ranking(ra, args.column, args.condition_a, args.default_threshold)
+            rank_b = ranking(rb, args.column, args.condition_b, args.default_threshold)
+        except (FileNotFoundError, KeyError) as e:
+            rank_a = rank_b = None
+            print(f"  [note] {gl} / {summ}: GES rankings not found ({e})"
+                  + ("; no ES panels" if with_es else ""))
+            with_es = False
         safe = "".join(ch if ch.isalnum() or ch in "-_." else "_" for ch in f"{gl}__{summ}")
         path = out_dir / cat / f"{safe}.png"
         case_figure(gl, summ, a, b, args.condition_a, args.condition_b, rank_a, rank_b,
-                    with_es, path)
+                    with_es, path, split_genes(ra["lead_genes"]),
+                    split_genes(rb["lead_genes"]), args.n_top,
+                    {args.condition_a: (ra["NES"], ra["FDR_qval_BH"], significant(ra)),
+                     args.condition_b: (rb["NES"], rb["FDR_qval_BH"], significant(rb))})
         print(f"  {cat:16s} {gl:22s} {summ:10s} shared {len(a & b):3d} | "
               f"{args.condition_a}-only {len(a - b):3d} | {args.condition_b}-only "
               f"{len(b - a):3d}{'  (+ES)' if with_es else ''}")
