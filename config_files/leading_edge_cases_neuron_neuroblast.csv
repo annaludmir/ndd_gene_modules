@@ -1,0 +1,21 @@
+gene_list,summary,category
+ASD_HC,All V3,both
+ASD_HC,Cortex V2,both
+autism_strong,All V3,both
+autism_strong,All V2,both
+autism_strong,Cortex V3,both
+ASD_SFARI_2,All V3,both
+ASD_SFARI_2,All V2,both
+ASD_SFARI_2,Cortex V3,both
+ASD_SFARI_2,Cortex V2,both
+ASD_HC,All V2,neuron_only
+ASD_SFARI_3,All V3,neuron_only
+ASD_SFARI_3,All V2,neuron_only
+ASD-predominant,All V3,neuron_only
+ASD-predominant,All V2,neuron_only
+ASD-predominant,Cortex V3,neuron_only
+ASD_HC,Cortex V3,neuroblast_only
+autism_strong,Cortex V2,neuroblast_only
+ASD_SFARI_3,Cortex V3,neuroblast_only
+ASD_SFARI_syndromic,All V3,neuroblast_only
+ASD_SFARI_syndromic,Cortex V3,neuroblast_only
