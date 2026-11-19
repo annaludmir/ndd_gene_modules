@@ -26,6 +26,9 @@ Inputs:
                      =Row label. Default: every gene list in the summaries.
   --columns          only these column_condition_title values, in this order.
 
+Outputs: --output (.png and .pdf) with all columns, and with more than one
+column also <output>_<Column>.png / .pdf per column, on the same colour scale.
+
 Usage:
   python modules/gsea_heatmap.py \
     --batch-summaries results/enrichment_results/batch_summary_A.csv=Cortex \
@@ -285,7 +288,15 @@ def main():
     vmax = args.vmax or float(np.ceil(np.nanmax(np.abs(df["NES"].astype(float)))))
     print(f"  {len(rows)} gene lists x {sum(len(c) for _, _, c in groups)} conditions "
           f"in {len(titles)} columns ({len(groups)} blocks)")
-    plot(df, rows, groups, args.nes_cutoff, args.trend_q, vmax, args.title, Path(args.output))
+    out = Path(args.output)
+    plot(df, rows, groups, args.nes_cutoff, args.trend_q, vmax, args.title, out)
+    # one file per column as well, same colour scale so they compare
+    if len(titles) > 1:
+        for t in titles:
+            safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in t)
+            plot(df, rows, [g for g in groups if g[0] == t], args.nes_cutoff, args.trend_q,
+                 vmax, f"{args.title}: {t}" if args.title else None,
+                 out.with_name(f"{out.stem}_{safe}{out.suffix}"))
 
 
 if __name__ == "__main__":
