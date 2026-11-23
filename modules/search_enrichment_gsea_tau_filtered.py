@@ -355,8 +355,12 @@ def run_gsea_tau_filtered(
 
     final_summary = pd.DataFrame(summary_rows)
 
+    # BH FDR on the nominal p-values (gseapy's NOM p-val) of all the tests
+    # of this run (every column x condition). gseapy's own "FDR q-val" is
+    # already a per-test FDR, so it is not used (kept only for reference):
+    # BH over it would correct twice.
     _, pvals_corr = smm.multipletests(
-        final_summary["FDR q-val"].astype(float), method="fdr_bh"
+        final_summary["NOM p-val"].astype(float), method="fdr_bh"
     )[:2]
     final_summary["FDR q-val (BH corrected)"] = pvals_corr
     # Text version for reading: q == 0 is reported as < 1/permutation_num.

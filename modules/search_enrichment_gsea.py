@@ -48,7 +48,7 @@ def plot_enhanced_gsea(gsea_res, term, cell_type, output_dir, low_ges_warning=Fa
     ax1.set_title(
         f"{term} enrichment in {cell_type} ges scores\n"
         f"NES={enrichment_results.get('nes'):.3f}  "
-        f"{q_label(enrichment_results.get('fdr'), n_perm, name='FDR')}",
+        f"{q_label(enrichment_results.get('pval'), n_perm, name='nominal p')}",
         fontsize=14, fontweight='bold'
     )
     ax1.grid(alpha=0.3)
@@ -235,9 +235,12 @@ def run_gsea(ges_score_path,
     if summary_rows:
         final_summary = pd.DataFrame(summary_rows)
 
-        # adjust p-values (as old script did)
+        # BH FDR on the nominal p-values (gseapy's NOM p-val) of all the tests
+        # of this run (every column x condition). gseapy's own "FDR q-val" is
+        # already a per-test FDR, so it is not used (kept only for reference):
+        # BH over it would correct twice.
         reject, pvals_corr = smm.multipletests(
-            final_summary["FDR q-val"].astype(float),
+            final_summary["NOM p-val"].astype(float),
             method="fdr_bh"
         )[:2]
 
