@@ -5,6 +5,9 @@ A new UMAP of an h5ad (e.g. human_dev) whose highly variable genes do not
 include cell cycle genes, so the embedding is not organised by cell cycle
 phase.
 
+--chemistry keeps one chemistry only (e.g. v3): v2 and v3 differ enough to
+split a joint UMAP by chemistry, so each gets its own UMAP.
+
 Steps (X = raw counts):
   1. Total counts per cell, over all genes (read in chunks, the file stays
      on disk).
@@ -30,7 +33,8 @@ Outputs (results/additional_analyses/umap_no_cc_genes/<label>/):
 Usage:
   python modules/umap_without_cc_genes.py \
     --h5ad data/human_dev_without_week_5_cc_annotated_rescaled.h5ad \
-    --cc-genes config_files/cell_cycle_genes_tirosh.json --label human_dev
+    --cc-genes config_files/cell_cycle_genes_tirosh.json --chemistry v3 \
+    --label human_dev_v3
 """
 
 import argparse
@@ -193,6 +197,9 @@ def main():
                    help="Harmony on --batch-key before the neighbours (needs harmonypy).")
     p.add_argument("--n-neighbors", type=int, default=15)
     p.add_argument("--min-dist", type=float, default=0.5)
+    p.add_argument("--chemistry", default=None,
+                   help="Keep only cells with this --chemistry-col value (e.g. v3).")
+    p.add_argument("--chemistry-col", default="Chemistry")
     p.add_argument("--max-cells", type=int, default=None,
                    help="Random subset of cells (for a test run).")
     p.add_argument("--color", nargs="+",
@@ -221,8 +228,14 @@ def main():
           f"{int(np.isin(genes, list(cc)).sum())} cell cycle genes found "
           f"(by {'var[' + repr(args.sym_col) + ']' if args.sym_col in a.var else 'var_names'})")
     rows = np.arange(a.n_obs)
+    if args.chemistry:
+        chem = a.obs[args.chemistry_col].astype(str)
+        rows = np.flatnonzero((chem == args.chemistry).to_numpy())
+        print(f"  {args.chemistry_col} == {args.chemistry}: {len(rows):,} cells")
+        if not len(rows):
+            raise ValueError(f"No cells; {args.chemistry_col} values: {sorted(chem.unique())}")
     if args.max_cells and args.max_cells < a.n_obs:
-        rows = np.sort(rng.choice(a.n_obs, args.max_cells, replace=False))
+        rows = np.sort(rng.choice(rows, args.max_cells, replace=False))
         print(f"  test subset: {len(rows):,} cells")
     obs = a.obs.iloc[rows].copy()
     n_sub = len(rows) if not args.hvg_cells else min(args.hvg_cells, len(rows))
@@ -271,6 +284,7 @@ def main():
     res.uns["umap_without_cc_genes"] = {
         "source": str(args.h5ad), "cc_genes": str(args.cc_genes),
         "n_hvg": int(len(cols)), "batch_key": str(args.batch_key),
+        "chemistry": str(args.chemistry),
         "harmony": bool(args.harmony), "n_pcs": int(args.n_pcs),
         "n_neighbors": int(args.n_neighbors), "min_dist": float(args.min_dist)}
     res.write_h5ad(out_dir / "umap_no_cc_genes.h5ad")
